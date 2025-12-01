@@ -1,0 +1,337 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Search, Filter, Plus, ChevronDown, MessageSquare, Clock, AlertCircle, Loader } from "lucide-react";
+import { ticketAPI } from "@/app/services";
+import type { TicketListItem, Ticket, TicketStatus, TicketPriority } from "@/app/services/types";
+
+const statusColors: Record<TicketStatus, string> = {
+  new: "bg-blue-500/30 text-blue-300 border-blue-500/30",
+  in_progress: "bg-primary/30 text-primary border-primary/30",
+  waiting: "bg-yellow-500/30 text-yellow-300 border-yellow-500/30",
+  resolved: "bg-green-500/30 text-green-300 border-green-500/30",
+  archived: "bg-gray-500/30 text-gray-300 border-gray-500/30",
+};
+
+const priorityColors: Record<TicketPriority, string> = {
+  low: "text-gray-400",
+  normal: "text-blue-400",
+  high: "text-orange-400",
+  urgent: "text-red-400",
+};
+
+// Sample data - will be replaced with API calls
+const sampleTickets: TicketListItem[] = [
+  {
+    id: 1,
+    ticket_id: "TKT-001",
+    subject: "Unable to access resources",
+    status: "new",
+    priority: "high",
+    source: "ai_escalation",
+    client_name: "John Doe",
+    client_company: "Acme Corp",
+    assigned_to_name: "Sarah Johnson",
+    messages_count: 3,
+    created_at: "2024-11-28T10:30:00Z",
+    updated_at: "2024-11-28T14:20:00Z",
+  },
+  {
+    id: 2,
+    ticket_id: "TKT-002",
+    subject: "Question about deployment stage",
+    status: "in_progress",
+    priority: "normal",
+    source: "manual_request",
+    client_name: "Jane Smith",
+    client_company: "Tech Solutions",
+    assigned_to_name: "Mike Brown",
+    messages_count: 5,
+    created_at: "2024-11-27T09:15:00Z",
+    updated_at: "2024-11-28T11:00:00Z",
+  },
+  {
+    id: 3,
+    ticket_id: "TKT-003",
+    subject: "Meeting reschedule request",
+    status: "waiting",
+    priority: "normal",
+    source: "ai_escalation",
+    client_name: "Ahmed Hassan",
+    client_company: "Global Inc",
+    assigned_to_name: "Lisa Chen",
+    messages_count: 2,
+    created_at: "2024-11-26T15:45:00Z",
+    updated_at: "2024-11-27T10:30:00Z",
+  },
+  {
+    id: 4,
+    ticket_id: "TKT-004",
+    subject: "Template download issue",
+    status: "resolved",
+    priority: "low",
+    source: "manual_request",
+    client_name: "Sarah Johnson",
+    client_company: "Creative Agency",
+    assigned_to_name: "Tom Wilson",
+    messages_count: 4,
+    created_at: "2024-11-25T08:00:00Z",
+    updated_at: "2024-11-26T16:45:00Z",
+  },
+  {
+    id: 5,
+    ticket_id: "TKT-005",
+    subject: "AI chat not responding",
+    status: "new",
+    priority: "urgent",
+    source: "ai_escalation",
+    client_name: "Mike Brown",
+    client_company: "StartUp Labs",
+    assigned_to_name: "Unassigned",
+    messages_count: 1,
+    created_at: "2024-11-24T12:30:00Z",
+    updated_at: "2024-11-24T12:30:00Z",
+  },
+];
+
+export default function TicketsPage() {
+  const [tickets, setTickets] = useState<TicketListItem[]>(sampleTickets);
+  const [selectedTicket, setSelectedTicket] = useState<TicketListItem | null>(null);
+  const [filterStatus, setFilterStatus] = useState<TicketStatus | "all">("all");
+  const [filterPriority, setFilterPriority] = useState<TicketPriority | "all">("all");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTickets = async () => {
+      try {
+        setLoading(true);
+        const ticketsList = await ticketAPI.listTickets({
+          status: filterStatus !== "all" ? filterStatus : undefined,
+          priority: filterPriority !== "all" ? filterPriority : undefined,
+        }) as TicketListItem[];
+        setTickets(ticketsList);
+      } catch (err) {
+        console.error("Failed to fetch tickets:", err);
+        setError("Failed to load tickets");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTickets();
+  }, [filterStatus, filterPriority]);
+
+  const filteredTickets = tickets.filter((ticket) => {
+    const statusMatch = filterStatus === "all" || ticket.status === filterStatus;
+    const priorityMatch = filterPriority === "all" || ticket.priority === filterPriority;
+    return statusMatch && priorityMatch;
+  });
+
+  return (
+    <div>
+      <div className="min-h-screen text-white relative overflow-hidden star">
+        <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
+
+        <div className="relative z-10 p-8">
+          <div className="bg-card backdrop-blur-sm rounded-2xl p-8 flex flex-col gap-8 border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div>
+              <h1 className="text-4xl font-bold text-white">Tickets</h1>
+              <p className="text-gray-400 text-sm mt-2">Manage and resolve support tickets</p>
+            </div>
+
+            <div className="flex gap-6">
+              {/* Left - Ticket List */}
+              <div className="basis-[35%] flex flex-col gap-4">
+                {/* Search & Filters */}
+                <div className="flex flex-col gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 text-gray-500" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Search tickets..."
+                      className="w-full bg-white/10 border border-white/20 pl-10 pr-4 py-3 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value as TicketStatus | "all")}
+                        className="w-full bg-white/10 border border-white/20 px-3 py-2 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50 transition-all duration-200"
+                      >
+                        <option value="all" className="bg-gray-800">All Status</option>
+                        <option value="new" className="bg-gray-800">New</option>
+                        <option value="in_progress" className="bg-gray-800">In Progress</option>
+                        <option value="waiting" className="bg-gray-800">Waiting</option>
+                        <option value="resolved" className="bg-gray-800">Resolved</option>
+                        <option value="archived" className="bg-gray-800">Archived</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <select
+                        value={filterPriority}
+                        onChange={(e) => setFilterPriority(e.target.value as TicketPriority | "all")}
+                        className="w-full bg-white/10 border border-white/20 px-3 py-2 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50 transition-all duration-200"
+                      >
+                        <option value="all" className="bg-gray-800">All Priority</option>
+                        <option value="low" className="bg-gray-800">Low</option>
+                        <option value="normal" className="bg-gray-800">Normal</option>
+                        <option value="high" className="bg-gray-800">High</option>
+                        <option value="urgent" className="bg-gray-800">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ticket List */}
+                <div className="bg-gradient-to-b from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg max-h-[600px] overflow-y-auto">
+                  <div className="divide-y divide-white/10">
+                    {filteredTickets.map((ticket) => (
+                      <button
+                        key={ticket.id}
+                        onClick={() => setSelectedTicket(ticket)}
+                        className={`w-full p-4 text-left transition-all duration-200 hover:bg-white/10 ${
+                          selectedTicket?.id === ticket.id ? "bg-primary/20 border-l-2 border-primary" : ""
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex-1">
+                            <p className="font-semibold text-white text-sm">{ticket.ticket_id}</p>
+                            <p className="text-xs text-gray-400 mt-1">{ticket.client_name}</p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded border ${statusColors[ticket.status]}`}>
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-300 line-clamp-2">{ticket.subject}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`text-xs font-medium ${priorityColors[ticket.priority]}`}>
+                            {ticket.priority}
+                          </span>
+                          <span className="text-xs text-gray-500">•</span>
+                          <span className="text-xs text-gray-500">{new Date(ticket.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right - Ticket Details */}
+              {selectedTicket ? (
+                <div className="basis-[65%] bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6 flex flex-col gap-6">
+                  {/* Header */}
+                  <div className="border-b border-white/10 pb-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-white">{selectedTicket.ticket_id}</h2>
+                        <p className="text-gray-400 text-sm mt-1">{selectedTicket.subject}</p>
+                      </div>
+                      <span className={`text-sm px-3 py-1 rounded-lg border font-medium ${statusColors[selectedTicket.status]}`}>
+                        {selectedTicket.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Client</p>
+                        <p className="text-white font-medium">{selectedTicket.client_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Priority</p>
+                        <p className={`font-medium ${priorityColors[selectedTicket.priority]}`}>{selectedTicket.priority}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Source</p>
+                        <p className="text-white font-medium capitalize">{selectedTicket.source.replace('_', ' ')}</p>
+                        <button className="text-primary hover:text-primary/80 text-sm transition-colors">
+                          Change
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Created</p>
+                        <p className="text-white font-medium">{new Date(selectedTicket.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Assigned To */}
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <p className="text-xs text-gray-500 mb-2">Assigned To</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/50 rounded-full" />
+                      <div className="flex-1">
+                        <p className="text-white font-medium text-sm">{selectedTicket.assigned_to_name}</p>
+                      </div>
+                      <button className="text-primary hover:text-primary/80 text-sm transition-colors">
+                        Change
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Conversation Thread */}
+                  <div className="flex-1 flex flex-col gap-4">
+                    <h3 className="text-lg font-semibold text-white">Conversation</h3>
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10 space-y-4 max-h-[250px] overflow-y-auto">
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex-shrink-0" />
+                        <div>
+                          <p className="text-sm text-gray-300">Client message</p>
+                          <p className="text-xs text-gray-500 mt-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                          <p className="text-xs text-gray-600 mt-2">Nov 28, 10:30 AM</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 justify-end">
+                        <div className="flex-1 text-right">
+                          <p className="text-sm text-primary">Support response</p>
+                          <p className="text-xs text-gray-400 mt-1">Thank you for reaching out. We're looking into this.</p>
+                          <p className="text-xs text-gray-600 mt-2">Nov 28, 11:15 AM</p>
+                        </div>
+                        <div className="w-8 h-8 bg-primary rounded-full flex-shrink-0" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Internal Notes */}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-lg font-semibold text-white">Internal Notes</h3>
+                    <textarea
+                      placeholder="Add internal notes (visible only to staff)..."
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200 resize-none"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-4 border-t border-white/10">
+                    <select className="flex-1 bg-white/10 border border-white/20 px-4 py-2 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50 transition-all duration-200">
+                      <option className="bg-gray-800">Change Status...</option>
+                      <option className="bg-gray-800">New</option>
+                      <option className="bg-gray-800">In Progress</option>
+                      <option className="bg-gray-800">Waiting on Client</option>
+                      <option className="bg-gray-800">Resolved</option>
+                      <option className="bg-gray-800">Archived</option>
+                    </select>
+                    <button className="bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg">
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="basis-[65%] bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6 flex items-center justify-center">
+                  <div className="text-center">
+                    <MessageSquare size={48} className="text-gray-500 mx-auto mb-4" />
+                    <p className="text-gray-400">Select a ticket to view details</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

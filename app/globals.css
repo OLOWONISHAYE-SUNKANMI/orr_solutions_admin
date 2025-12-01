@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --color-background: #0d223c;
+  --color-foreground: hsl(0, 0%, 7%);
+  --color-primary: #0ec277;
+  --color-secondary: #1d5e65;
+  --color-lemon: #5ef558;
+  --color-green: #0ec277;
+  --color-card: #204460;
+  --color-card-light: #2D597D;
+  --gradient-primary: linear-gradient(135deg, #28b026, #03f6ca);
+}
+
+.dark {
+  --color-background: #191919;
+  --color-foreground: #ffffff;
+  --color-primary: #0ec277;
+  --color-secondary: #1d5e65;
+  --color-lemon: #5ef558;
+  --color-green: #0ec277;
+  --color-card: #2c2c2c;
+  --gradient-primary: linear-gradient(135deg, #28b026, #03f6ca);
+
+}
+
+body {
+  background-color: var(--color-background);
+ 
+  color: var(--color-foreground);
+  transition: background-color 0.3s ease;
+}
+.star {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+  background-size: 300px 300px, 400px 400px;
+  background-position: 0 0, 150px 150px;
+}
+
+
+/* --------------------------------------------------------------------------
+  CSS variable utilities (fallbacks)
+
+  These provide convenient class names that map to your CSS variables so you
+  can use `bg-card`, `bg-background`, `text-foreground`, `bg-gradient-primary`,
+  etc. even if the Tailwind build pipeline isn't generating them during
+  debugging. They are lightweight and safe to keep alongside Tailwind.
+--------------------------------------------------------------------------- */
+
+.bg-background { background-color: var(--color-background); }
+.bg-card { background-color: var(--color-card); }
+.bg-card-light { background-color: var(--color-card-light); }
+.bg-primary { background-color: var(--color-primary); }
+.border-primary { border-color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-lemon { background-color: var(--color-lemon); }
+
+.text-foreground { color: var(--color-foreground); }
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+
+.bg-gradient-primary { background-image: var(--gradient-primary); }
+
+/* Glowing border effect matching SVG color */
+.glow-border {
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 0 20px rgba(14, 194, 119, 0.6), inset 0 0 20px rgba(14, 194, 119, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-border:hover {
+  box-shadow: 0 0 30px rgba(14, 194, 119, 0.8), inset 0 0 20px rgba(14, 194, 119, 0.2);
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .star {
+    background-size: 200px 200px, 250px 250px;
+    background-position: 0 0, 100px 100px;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+
