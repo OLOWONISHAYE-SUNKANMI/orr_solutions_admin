@@ -48,9 +48,10 @@ function page() {
       try {
         setLoading(true);
         const dashboardMetrics = await dashboardAPI.getOverview() as DashboardMetrics;
-        const content = await contentAPI.listContent({ limit: 5 }) as ContentListItem[];
+        const contentResponse = await contentAPI.listContent({ limit: 5 }) as any;
         setMetrics(dashboardMetrics);
-        setRecentContent(content);
+        // Handle both array response and object with results
+        setRecentContent(Array.isArray(contentResponse) ? contentResponse : (contentResponse.results || []));
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         setError("Failed to load dashboard data");
@@ -138,7 +139,7 @@ function page() {
               </div>
             )}
 
-            <div>
+            {/* <div>
               <h2 className="text-2xl font-semibold text-white mb-4">Quick Actions</h2>
               <div className="flex items-center gap-3">
                 <button className="text-white bg-white/20 hover:bg-white/30 p-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg">
@@ -148,7 +149,7 @@ function page() {
                   Upload Media
                 </button>
               </div>
-            </div>
+            </div> */}
             <div>
               <h2 className="text-2xl font-semibold text-white mb-4">Recent Content</h2>
               <div className="overflow-x-auto border border-primary/30 rounded-xl shadow-lg bg-gradient-to-br from-white/15 to-white/5">

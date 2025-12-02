@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
-import enUS from "date-fns/locale/en-US";
+import { enUS } from "date-fns/locale/en-US";
 import { MoreVertical, Loader } from "lucide-react";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -12,9 +12,7 @@ import type { Meeting } from "@/app/services/types";
 
 function page() {
   const [date, setDate] = useState(new Date());
-  const [view, setView] = useState<"month" | "week" | "day" | "agenda">(
-    "month"
-  );
+  const [view, setView] = useState<View>("month");
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +35,9 @@ function page() {
     const fetchMeetings = async () => {
       try {
         setLoading(true);
-        const meetingsList = await meetingAPI.listMeetings() as Meeting[];
-        setMeetings(meetingsList);
+        const response = await meetingAPI.listMeetings() as any;
+        // Handle both array response and object with results
+        setMeetings(Array.isArray(response) ? response : (response.results || []));
       } catch (err) {
         console.error("Failed to fetch meetings:", err);
         setError("Failed to load meetings");
@@ -76,8 +75,8 @@ function page() {
     try {
       await meetingAPI.performAction(meetingId, "confirm");
       // Refresh meetings
-      const updated = await meetingAPI.listMeetings() as Meeting[];
-      setMeetings(updated);
+      const response = await meetingAPI.listMeetings() as any;
+      setMeetings(Array.isArray(response) ? response : (response.results || []));
       setSelectedEvent(null);
     } catch (err) {
       console.error("Failed to approve meeting:", err);
@@ -88,8 +87,8 @@ function page() {
     try {
       await meetingAPI.performAction(meetingId, "decline");
       // Refresh meetings
-      const updated = await meetingAPI.listMeetings() as Meeting[];
-      setMeetings(updated);
+      const response = await meetingAPI.listMeetings() as any;
+      setMeetings(Array.isArray(response) ? response : (response.results || []));
       setSelectedEvent(null);
     } catch (err) {
       console.error("Failed to decline meeting:", err);

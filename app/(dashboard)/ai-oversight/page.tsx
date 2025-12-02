@@ -80,10 +80,11 @@ export default function AIOversightPage() {
     const fetchConversations = async () => {
       try {
         setLoading(true);
-        const convos = await aiOversightAPI.listConversations({
+        const response = await aiOversightAPI.listConversations({
           escalated: filterEscalated !== "all" ? filterEscalated === "escalated" : undefined,
-        }) as AIConversationListItem[];
-        setConversations(convos);
+        }) as any;
+        // Handle both array response and object with results
+        setConversations(Array.isArray(response) ? response : (response.results || []));
       } catch (err) {
         console.error("Failed to fetch conversations:", err);
         setError("Failed to load conversations");

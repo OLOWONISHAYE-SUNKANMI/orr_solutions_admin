@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "../../../lib/hooks/auth";
+import { authAPI } from "../../services/api";
 
 export default function Page() {
   
@@ -16,6 +18,27 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { login } = useAuthStore();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response: any = await authAPI.login(formData.email, formData.password);
+      if (response.success && response.data) {
+        login(response.data.accessToken, response.data.user);
+        router.push("/");
+      } else {
+        setError(response.message || "Login failed");
+      }
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   return (
@@ -87,14 +110,17 @@ export default function Page() {
             Sign in to your dashboard
           </p>
 
-          <form className="space-y-7">
+          <form className="space-y-7" onSubmit={handleSubmit}>
+            {error && (
+              <div className="text-red-500 text-sm text-center">{error}</div>
+            )}
             <input
-              type="email"
-              placeholder="Email"
+              type="text"
+              placeholder="Username"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               className="w-full border-b-1 border-gray-300 px-6 py-5 focus:outline-none text-white"
-              required
+              // required
             />
           <div className="relative">
               <input

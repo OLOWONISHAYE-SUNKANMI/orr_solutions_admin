@@ -96,10 +96,11 @@ export default function NotificationsPage() {
     const fetchNotifications = async () => {
       try {
         setLoading(true);
-        const notifs = await notificationAPI.listNotifications({
+        const response = await notificationAPI.listNotifications({
           is_read: filterRead !== "all" ? filterRead === "read" : undefined,
-        }) as Notification[];
-        setNotifications(notifs);
+        }) as any;
+        // Handle both array response and object with results
+        setNotifications(Array.isArray(response) ? response : (response.results || []));
       } catch (err) {
         console.error("Failed to fetch notifications:", err);
         setError("Failed to load notifications");

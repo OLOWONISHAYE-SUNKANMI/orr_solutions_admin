@@ -19,13 +19,14 @@ function page() {
       try {
         setLoading(true);
         const [rolesData, usersData, systemData] = await Promise.all([
-          settingsAPI.listRoles() as Promise<AdminRoleData[]>,
-          settingsAPI.listUsers() as Promise<AdminUser[]>,
-          settingsAPI.getSystemSettings() as Promise<Record<string, any>>,
+          settingsAPI.listRoles(),
+          settingsAPI.listUsers(),
+          settingsAPI.getSystemSettings(),
         ]);
-        setRoles(rolesData);
-        setUsers(usersData);
-        setSystemSettings(systemData);
+        // Handle both array response and object with results
+        setRoles(Array.isArray(rolesData) ? rolesData : ((rolesData as any).results || []));
+        setUsers(Array.isArray(usersData) ? usersData : ((usersData as any).results || []));
+        setSystemSettings(systemData as Record<string, any>);
       } catch (err) {
         console.error("Failed to fetch settings:", err);
         setError("Failed to load settings");

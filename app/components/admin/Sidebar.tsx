@@ -12,9 +12,11 @@ import {
   MessageSquare,
   Bell,
   Lock,
+  LogOut,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ForwardRefExoticComponent, RefAttributes, useState } from "react";
+import { useAuthStore } from "../../../lib/hooks/auth";
 type ItemType = {
   icon: ForwardRefExoticComponent<
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
@@ -26,14 +28,14 @@ type ItemType = {
 
 const navigationItems: ItemType[] = [
   { icon: Home, label: "Dashboard", active: true, value: "" },
-  // { icon: Users, label: "Client Management", active: false, value: "client-management" }, // TODO: Add API integration
+  { icon: Users, label: "Client Management", active: false, value: "client-management" }, // TODO: Add API integration
   {
     icon: Ticket,
     label: "Tickets",
     active: false,
     value: "tickets",
   },
-  // { icon: FileText, label: "Content Management", active: false, value: "content-management" }, // TODO: Add API integration
+  { icon: FileText, label: "Content Management", active: false, value: "content-management" }, // TODO: Add API integration
   {
     icon: Calendar,
     label: "Schedule Meetings",
@@ -65,9 +67,16 @@ const navigationItems: ItemType[] = [
 export default function Sidebar() {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const router = useRouter();
+  const { logout } = useAuthStore();
+
   function handleNavigation(item: ItemType) {
     setActiveItem(item.label);
-    router.push(`/admin/${item.value}`);
+    router.push(`/${item.value}`);
+  }
+
+  function handleLogout() {
+    logout();
+    router.push("/auth/login");
   }
 
   return (
@@ -103,6 +112,16 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="mt-auto pt-4">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors cursor-pointer text-foreground/70 hover:bg-card hover:text-foreground"
+        >
+          <LogOut size={20} />
+          <span>Logout</span>
+        </button>
+      </div>
     </div>
   );
 }

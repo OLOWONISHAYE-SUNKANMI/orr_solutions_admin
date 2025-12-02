@@ -50,7 +50,7 @@ function page() {
               <button className="text-white bg-white/20 p-3 rounded-xl">
                 Create Post
               </button>
-              <Link href="/admin/content-management/new">
+              <Link href="content-management/new">
                 <button className="text-white bg-primary p-3 rounded-xl">
                   Upload Media
                 </button>

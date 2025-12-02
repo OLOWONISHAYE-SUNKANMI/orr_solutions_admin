@@ -106,11 +106,12 @@ export default function TicketsPage() {
     const fetchTickets = async () => {
       try {
         setLoading(true);
-        const ticketsList = await ticketAPI.listTickets({
+        const response = await ticketAPI.listTickets({
           status: filterStatus !== "all" ? filterStatus : undefined,
           priority: filterPriority !== "all" ? filterPriority : undefined,
-        }) as TicketListItem[];
-        setTickets(ticketsList);
+        }) as any;
+        // Handle both array response and object with results
+        setTickets(Array.isArray(response) ? response : (response.results || []));
       } catch (err) {
         console.error("Failed to fetch tickets:", err);
         setError("Failed to load tickets");

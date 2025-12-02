@@ -1,6 +1,10 @@
 import React from 'react'
 
-export default function Message({senderId}) {
+interface MessageProps {
+  senderId: string | number;
+}
+
+export default function Message({senderId}: MessageProps) {
   return (
     <div>Message</div>
   )

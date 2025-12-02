@@ -285,23 +285,49 @@ export interface Notification {
   related_client_info?: string;
 }
 
+export interface LoginResponse {
+  success: boolean;
+  status: number;
+  message: string;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+    user: AdminUser;
+  };
+}
+
 export interface AdminUser {
   id: number;
   username: string;
   email: string;
   first_name: string;
   last_name: string;
-  full_name: string;
-  role: number;
+  full_name?: string;
+  user_type: string;
+  role?: number;
   role_name: string;
-  department: string;
-  phone: string;
-  is_active: boolean;
-  last_login_ip: string;
-  last_login: string;
-  date_joined: string;
-  created_at: string;
-  updated_at: string;
+  role_display: string;
+  department?: string;
+  phone?: string;
+  is_active?: boolean;
+  last_login_ip?: string;
+  last_login?: string;
+  date_joined?: string;
+  created_at?: string;
+  updated_at?: string;
+  permissions?: {
+    can_manage_users: boolean;
+    can_view_all_clients: boolean;
+    can_edit_clients: boolean;
+    can_manage_tickets: boolean;
+    can_manage_meetings: boolean;
+    can_create_content: boolean;
+    can_publish_content: boolean;
+    can_view_analytics: boolean;
+    can_view_billing: boolean;
+    can_manage_settings: boolean;
+    can_view_ai_logs: boolean;
+  };
 }
 
 export interface AdminRoleData {
