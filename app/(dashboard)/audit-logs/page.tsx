@@ -119,15 +119,15 @@ export default function AuditLogsPage() {
       <div className="min-h-screen text-white relative overflow-hidden star">
         <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
 
-        <div className="relative z-10 p-8">
-          <div className="bg-card backdrop-blur-sm rounded-2xl p-8 flex flex-col gap-8 border border-white/10 shadow-2xl">
+        <div className="relative z-10 p-4 md:p-8">
+          <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
-                <h1 className="text-4xl font-bold text-white">Audit & Compliance</h1>
-                <p className="text-gray-400 text-sm mt-2">System activity logs and compliance tracking</p>
+                <h1 className="text-2xl md:text-4xl font-bold text-white">Audit & Compliance</h1>
+                <p className="text-gray-400 text-xs md:text-sm mt-2">System activity logs and compliance tracking</p>
               </div>
-              <button className="bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+              <button className="bg-primary hover:bg-primary/80 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm w-full md:w-auto justify-center">
                 <Download size={18} />
                 Export Logs
               </button>

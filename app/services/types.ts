@@ -402,3 +402,37 @@ export interface QuickSearchSuggestion {
   title: string;
   subtitle?: string;
 }
+
+// ============================================================================
+// BILLING & PAYMENT TYPES
+// ============================================================================
+
+export interface BillingHistoryItem {
+  id: number;
+  reference_id: string;
+  transaction_date: string;
+  client_name: string;
+  client_email: string;
+  amount: string;
+  status: "pending" | "completed" | "cancelled" | "refunded";
+  payment_method: string;
+  description?: string;
+}
+
+export interface PricingPlan {
+  id: number;
+  name: string;
+  description: string;
+  price: string;
+  billing_cycle: "monthly" | "yearly" | "one_time";
+  features: string[];
+  is_active: boolean;
+  stripe_price_id?: string;
+}
+
+export interface PaymentStats {
+  total_revenue: string;
+  pending_amount: string;
+  completed_transactions: number;
+  pending_transactions: number;
+}

@@ -13,15 +13,28 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, requiredPermission }: ProtectedRouteProps) {
   const router = useRouter();
-  const { user, token, setUser, logout } = useAuthStore();
+  const { user, token, setUser, logout, login } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  // Wait for Zustand to rehydrate
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
 
   useEffect(() => {
+    // Don't check until hydration is complete
+    if (!hasHydrated) return;
+
     const checkAuth = async () => {
       setIsChecking(true);
 
-      // No token, redirect to login
-      if (!token) {
+      // Check localStorage directly in case store hasn't rehydrated yet
+      const storedToken = localStorage.getItem('auth-token');
+      const currentToken = token || storedToken;
+
+      // No token anywhere, redirect to login
+      if (!currentToken) {
         router.push('/login');
         return;
       }
@@ -30,9 +43,15 @@ export default function ProtectedRoute({ children, requiredPermission }: Protect
       if (!user) {
         try {
           const userData = await authAPI.getCurrentUser() as AdminUser;
-          setUser(userData);
-        } catch (error) {
+          // If we got the token from localStorage but not from store, sync them
+          if (storedToken && !token) {
+            login(storedToken, userData);
+          } else {
+            setUser(userData);
+          }
+        } catch (error: any) {
           console.error('Failed to fetch user:', error);
+          // Token is invalid or expired, log out the user
           logout();
           router.push('/login');
           return;
@@ -43,9 +62,17 @@ export default function ProtectedRoute({ children, requiredPermission }: Protect
       if (requiredPermission && user) {
         try {
           await authAPI.checkPermission(requiredPermission);
-        } catch (error) {
-          console.error('Permission denied:', error);
-          router.push('/dashboard');
+        } catch (error: any) {
+          console.error('Permission check failed:', error);
+          // If it's a 401/403, token is invalid/expired
+          if (error.message?.includes('401') || error.message?.includes('403') || error.message?.includes('Unauthorized')) {
+            console.log('Token expired or invalid, logging out');
+            logout();
+            router.push('/login');
+            return;
+          }
+          // Otherwise, just redirect to dashboard (permission denied)
+          router.push('/');
           return;
         }
       }
@@ -54,7 +81,7 @@ export default function ProtectedRoute({ children, requiredPermission }: Protect
     };
 
     checkAuth();
-  }, [token, requiredPermission, router]);
+  }, [hasHydrated, token, user, requiredPermission, router, setUser, logout, login]);
 
   if (isChecking) {
     return (

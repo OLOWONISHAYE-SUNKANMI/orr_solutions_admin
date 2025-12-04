@@ -5,67 +5,6 @@ import { Bell, Ticket, Calendar, AlertCircle, MessageSquare, Settings, Trash2, C
 import { notificationAPI } from "@/app/services";
 import type { Notification } from "@/app/services/types";
 
-const sampleNotifications: Notification[] = [
-  {
-    id: 1,
-    notification_type: "ticket_created",
-    title: "New Ticket Created",
-    message: "TKT-005: AI chat not responding - Assigned to you",
-    is_read: false,
-    created_at: "2024-11-28T15:55:00Z",
-    related_object_info: "TKT-005",
-    related_ticket_info: "High priority ticket from Mike Brown",
-  },
-  {
-    id: 2,
-    notification_type: "meeting_assigned",
-    title: "Meeting Request",
-    message: "John Doe requested a meeting for Nov 30 at 2:00 PM",
-    is_read: false,
-    created_at: "2024-11-28T14:55:00Z",
-    related_object_info: "MTG-001",
-    related_meeting_info: "Discovery meeting with John Doe",
-  },
-  {
-    id: 3,
-    notification_type: "ticket_assigned",
-    title: "Ticket Assigned",
-    message: "TKT-003 has been assigned to you by Sarah Johnson",
-    is_read: true,
-    created_at: "2024-11-28T13:55:00Z",
-    related_object_info: "TKT-003",
-    related_ticket_info: "Meeting reschedule request",
-  },
-  {
-    id: 4,
-    notification_type: "system_alert",
-    title: "System Update",
-    message: "Calendar sync integration is experiencing issues",
-    is_read: true,
-    created_at: "2024-11-28T12:55:00Z",
-    related_object_info: "SYS-001",
-  },
-  {
-    id: 5,
-    notification_type: "ticket_created",
-    title: "AI Chat Flagged",
-    message: "CHAT-002 marked as 'needs improvement' by admin",
-    is_read: true,
-    created_at: "2024-11-28T11:55:00Z",
-    related_object_info: "CHAT-002",
-  },
-  {
-    id: 6,
-    notification_type: "meeting_confirmed",
-    title: "Meeting Confirmed",
-    message: "Your meeting with Jane Smith has been confirmed for Nov 29",
-    is_read: true,
-    created_at: "2024-11-27T15:55:00Z",
-    related_object_info: "MTG-002",
-    related_meeting_info: "Follow-up meeting with Jane Smith",
-  },
-];
-
 const typeIcons: Record<string, any> = {
   ticket_created: Ticket,
   ticket_assigned: Ticket,
@@ -87,7 +26,7 @@ const typeColors: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(sampleNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filterRead, setFilterRead] = useState<"all" | "unread" | "read">("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

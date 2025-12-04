@@ -13,6 +13,7 @@ import {
   Bell,
   Lock,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ForwardRefExoticComponent, RefAttributes, useState } from "react";
@@ -42,29 +43,46 @@ const navigationItems: ItemType[] = [
     active: false,
     value: "schedule-meetings",
   },
-  {
-    icon: MessageSquare,
-    label: "AI & Chat Oversight",
-    active: false,
-    value: "ai-oversight",
-  },
+  // {
+  //   icon: MessageSquare,
+  //   label: "AI & Chat Oversight",
+  //   active: false,
+  //   value: "ai-oversight",
+  // },
   {
     icon: BarChart3,
-    label: "Analytics & Reporting",
+    label: "SEO & Analytics",
     active: false,
     value: "seo-and-analytics",
   },
   // { icon: Lock, label: "Audit & Compliance", active: false, value: "audit-logs" }, // TODO: Add API integration
+  {
+    icon: CreditCard,
+    label: "Payment Management",
+    active: false,
+    value: "payment-management",
+  },
   {
     icon: Bell,
     label: "Notifications",
     active: false,
     value: "notifications",
   },
+  {
+    icon: BarChart3,
+    label: "Analytics & Reporting",
+    active: false,
+    value: "analytics-reporting",
+  },
   { icon: Settings2, label: "Settings", active: false, value: "settings" },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const router = useRouter();
   const { logout } = useAuthStore();
@@ -72,6 +90,7 @@ export default function Sidebar() {
   function handleNavigation(item: ItemType) {
     setActiveItem(item.label);
     router.push(`/${item.value}`);
+    onClose();
   }
 
   function handleLogout() {
@@ -80,48 +99,64 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="w-64 bg-card min-h-screen p-4">
-      <div className="flex items-center gap-3 text-foreground">
-        <div className="justify-start flex items-start">
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        className={`
+          fixed md:static inset-y-0 left-0 z-40
+          w-64 bg-card min-h-screen p-4 flex flex-col
+          transform transition-transform duration-300 ease-in-out 
+          ${isOpen ? 'translate-x-0 overflow-y-scroll' : '-translate-x-full md:translate-x-0'}
+        `}
+      >
+        <div className="flex items-center justify-center mb-6 mt-12 md:mt-0">
           <img
             src="/images/logo.svg"
             alt="ORR Solutions"
-            className="w-32 h-32 ml-10"
+            className="w-24 h-24"
           />
         </div>
+
+        <nav className="space-y-2 text-white flex-1">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeItem === item.label;
+
+            return (
+              <button
+                key={item.label}
+                onClick={() => handleNavigation(item)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors cursor-pointer text-sm ${
+                  isActive
+                    ? "bg-primary text-white"
+                    : "text-foreground/70 hover:bg-card-light hover:text-foreground"
+                }`}
+              >
+                <Icon size={20} />
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors cursor-pointer text-foreground/70 hover:bg-card-light hover:text-red-400"
+          >
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
-
-      <nav className="space-y-2 text-white">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeItem === item.label;
-
-          return (
-            <button
-              key={item.label}
-              onClick={() => handleNavigation(item)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors cursor-pointer ${
-                isActive
-                  ? "bg-primary text-white"
-                  : "text-foreground/70 hover:bg-card hover:text-foreground"
-              }`}
-            >
-              <Icon size={20} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto pt-4">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors cursor-pointer text-foreground/70 hover:bg-card hover:text-foreground"
-        >
-          <LogOut size={20} />
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
+    </>
   );
 }

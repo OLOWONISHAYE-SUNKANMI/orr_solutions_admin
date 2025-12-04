@@ -35,8 +35,16 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage',
       partialize: (state) => ({ user: state.user, token: state.token }),
       onRehydrateStorage: () => (state) => {
+        // Ensure token is synced with localStorage after rehydration
         if (state?.token) {
-          state.isAuthenticated = true;
+          const storedToken = localStorage.getItem('auth-token');
+          if (storedToken && storedToken === state.token) {
+            state.isAuthenticated = true;
+          } else if (storedToken) {
+            // localStorage has token but store doesn't, use localStorage version
+            state.token = storedToken;
+            state.isAuthenticated = true;
+          }
         }
       },
     }

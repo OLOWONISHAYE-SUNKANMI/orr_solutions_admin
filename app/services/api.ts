@@ -21,7 +21,7 @@ async function apiCall<T>(
     ...(token && { "Authorization": `Bearer ${token}` }),
     ...options.headers,
   };
-
+  console.log(headers)
   try {
     const response = await fetch(url, {
       ...options,
@@ -30,7 +30,20 @@ async function apiCall<T>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `API Error: ${response.status} ${response.statusText}`);
+      const errorMessage = errorData.message || `API Error: ${response.status} ${response.statusText}`;
+      
+      // Handle 401 Unauthorized - token expired or invalid
+      if (response.status === 401) {
+        console.warn('Unauthorized access - token may be expired or invalid');
+        // Clear auth data and redirect to login
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-token');
+          localStorage.removeItem('auth-storage');
+          window.location.href = '/login';
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return await response.json();
@@ -497,4 +510,55 @@ export const ticketAPI = {
 
   getStats: () =>
     apiCall("/admin-portal/v1/tickets/stats/"),
+};
+
+// ============================================================================
+// BILLING & PAYMENT ENDPOINTS
+// ============================================================================
+
+export const billingAPI = {
+  getHistory: (filters?: Record<string, any>) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(
+      `/admin-portal/v1/billing-history/${queryString ? `?${queryString}` : ""}`
+    );
+  },
+
+  getStats: () =>
+    apiCall("/admin-portal/v1/billing-history/stats/"),
+
+  getPricingPlans: () =>
+    apiCall("/admin-portal/v1/pricing-plans/"),
+
+  createCheckoutSession: (planId: number, clientId: number) =>
+    apiCall("/admin-portal/v1/payments/create-checkout/", {
+      method: "POST",
+      body: JSON.stringify({ plan_id: planId, client_id: clientId }),
+    }),
+
+  changePlan: (subscriptionId: string, newPlanId: number) =>
+    apiCall("/admin-portal/v1/subscriptions/change-plan/", {
+      method: "POST",
+      body: JSON.stringify({ subscription_id: subscriptionId, new_plan_id: newPlanId }),
+    }),
+
+  pauseSubscription: (subscriptionId: string) =>
+    apiCall("/admin-portal/v1/subscriptions/pause/", {
+      method: "POST",
+      body: JSON.stringify({ subscription_id: subscriptionId }),
+    }),
+
+  getPortalSession: (clientId: number) =>
+    apiCall("/admin-portal/v1/subscriptions/portal/", {
+      method: "POST",
+      body: JSON.stringify({ client_id: clientId }),
+    }),
 };
