@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+// import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -75,17 +75,13 @@ export default function Page() {
               className="w-32 h-32 mt-5 ml-10" />
           </div>
 
-          <div className="px-10 mt-18 flex flex-row item-center justify-center text-center"> 
-              <ChevronLeft className="my-0" /> 
-              <Link href={"/"} className="text-sm font-poppins font-regular">Back to Hompage</Link>
-          </div>
         </div>
 
 
         <div className="absolute bottom-10 w-full px-6 text-start">
           <p className="text-[48px] font-poppins font-extrabold text-[32px] md:text-[48px] lg:text-[48px] xl:text-[40px] ml-5 mx-auto">
-            <span className="text-[#86FF22] ">ORR Solutions</span> - Listen. <br />
-            Solve. Optimise.
+            <span className="text-[#86FF22] ">ORR Solutions</span>  <br />
+           Listen. Solve. Optimise.
           </p>
         </div>
       </div>
