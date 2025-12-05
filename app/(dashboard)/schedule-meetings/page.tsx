@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
 import { MoreVertical } from "lucide-react";
@@ -22,9 +22,7 @@ interface Event {
 
 function page() {
   const [date, setDate] = useState(new Date(2022, 0, 1)); // January 2022
-  const [view, setView] = useState<"month" | "week" | "day" | "agenda">(
-    "month"
-  );
+  const [view, setView] = useState<View>("month");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   const locales = {
@@ -157,7 +155,7 @@ function page() {
                     </button>
                     <select
                       value={view}
-                      onChange={(e) => setView(e.target.value as any)}
+                      onChange={(e) => setView(e.target.value as View)}
                       className="bg-white/10 hover:bg-white/20 text-xs border border-white/30 rounded-lg px-5 mx-10 sm:px-3 py-2 text-white cursor-pointer transition-all duration-200"
                     >
                       <option className="bg-gray-800" value="month">
@@ -188,18 +186,13 @@ function page() {
                   endAccessor="end"
                   style={{ height: "100%" }}
                   view={view}
-                  onView={(vw: any) => {
-                    // react-big-calendar may emit views like "work_week" not present in our narrowed state type.
-                    const v = String(vw);
-                    if (v === "work_week") {
-                    setView("week");
-                    return;
+                  onView={(vw: View) => {
+                    // react-big-calendar may emit views like "work_week"; normalize to "week"
+                    if (vw === "work_week") {
+                      setView("week");
+                      return;
                     }
-                    if (v === "month" || v === "week" || v === "day" || v === "agenda") {
-                    setView(v as "month" | "week" | "day" | "agenda");
-                    return;
-                    }
-                    setView("month");
+                    setView(vw);
                   }}
                   date={date}
                   onNavigate={(newDate: Date) => setDate(newDate)}
