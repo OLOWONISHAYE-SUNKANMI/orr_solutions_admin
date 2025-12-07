@@ -562,3 +562,37 @@ export const billingAPI = {
       body: JSON.stringify({ client_id: clientId }),
     }),
 };
+
+// ============================================================================
+// CMS API ENDPOINTS
+// ============================================================================
+
+export const cmsAPI = {
+  getUserRole: async () => {
+    const userData = await apiCall("/admin-portal/v1/auth/me/");
+    console.log('Current User Role:', userData?.role || userData?.user?.role);
+    console.log('Current User Permissions:', userData?.permissions || userData?.user?.permissions);
+    console.log('Full User Data:', userData);
+    return userData;
+  },
+
+  getContent: (contentType: string) =>
+    apiCall(`/admin-portal/v1/cms/${contentType}/`),
+
+  updateContent: (contentType: string, data: Record<string, any>) =>
+    apiCall(`/admin-portal/v1/cms/${contentType}/`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  uploadImage: (formData: FormData) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    return fetch(`${BASE_URL}/admin-portal/v1/cms/upload-image/`, {
+      method: "POST",
+      headers: {
+        ...(token && { "Authorization": `Bearer ${token}` }),
+      },
+      body: formData,
+    }).then(res => res.json());
+  },
+};
