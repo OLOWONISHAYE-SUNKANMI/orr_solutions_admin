@@ -568,8 +568,8 @@ export const billingAPI = {
 // ============================================================================
 
 export const cmsAPI = {
-  getUserRole: async () => {
-    const userData = await apiCall("/admin-portal/v1/auth/me/");
+  getUserRole: async (): Promise<any> => {
+    const userData = await apiCall<any>("/admin-portal/v1/auth/me/");
     console.log('Current User Role:', userData?.role || userData?.user?.role);
     console.log('Current User Permissions:', userData?.permissions || userData?.user?.permissions);
     console.log('Full User Data:', userData);

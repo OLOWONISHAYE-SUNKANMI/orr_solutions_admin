@@ -105,9 +105,9 @@ export default function ContentManagement() {
             <EditableText
               content={content?.homepage?.hero_title || "ORR Solutions – Listen. Solve. Optimise."}
               onSave={async (newTitle) => {
-                await cmsAPI.updateContent('homepage', { hero_title: newTitle });
-                setContent(prev => ({ ...prev, homepage: { ...prev.homepage, hero_title: newTitle } }));
-              }}
+                  await cmsAPI.updateContent('homepage', { hero_title: newTitle });
+                  setContent((prev: any) => ({ ...prev, homepage: { ...prev.homepage, hero_title: newTitle } }));
+                }}
               tag="h1"
               className="text-white font-extrabold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl leading-tight"
               placeholder="Enter hero title..."
@@ -116,9 +116,9 @@ export default function ContentManagement() {
             <EditableText
               content={content?.homepage?.hero_subtitle || "Your business GP for complex systems — digital and living."}
               onSave={async (newSubtitle) => {
-                await cmsAPI.updateContent('homepage', { hero_subtitle: newSubtitle });
-                setContent(prev => ({ ...prev, homepage: { ...prev.homepage, hero_subtitle: newSubtitle } }));
-              }}
+                  await cmsAPI.updateContent('homepage', { hero_subtitle: newSubtitle });
+                  setContent((prev: any) => ({ ...prev, homepage: { ...prev.homepage, hero_subtitle: newSubtitle } }));
+                }}
               tag="p"
               className="text-slate-200 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed"
               placeholder="Enter hero subtitle..."
@@ -131,7 +131,7 @@ export default function ContentManagement() {
                   content={content?.homepage?.hero_cta_text || "Book your free initial consultation"}
                   onSave={async (newCTA) => {
                     await cmsAPI.updateContent('homepage', { hero_cta_text: newCTA });
-                    setContent(prev => ({ ...prev, homepage: { ...prev.homepage, hero_cta_text: newCTA } }));
+                    setContent((prev: any) => ({ ...prev, homepage: { ...prev.homepage, hero_cta_text: newCTA } }));
                   }}
                   tag="span"
                   className=""
@@ -152,7 +152,7 @@ export default function ContentManagement() {
           content={content?.approachSection?.title || "Supporting Copy"}
           onSave={async (newTitle) => {
             await cmsAPI.updateContent('approach-section', { title: newTitle });
-            setContent(prev => ({ ...prev, approachSection: { ...prev.approachSection, title: newTitle } }));
+            setContent((prev: any) => ({ ...prev, approachSection: { ...prev.approachSection, title: newTitle } }));
           }}
           tag="h2"
           className="text-white text-3xl md:text-5xl font-semibold text-center mb-10 font-poppins w-full flex justify-center py-7"
@@ -178,7 +178,7 @@ export default function ContentManagement() {
               content={content?.approachSection?.paragraph_1 || "Just like a skilled general practitioner, we start from your story not our framework."}
               onSave={async (newText) => {
                 await cmsAPI.updateContent('approach-section', { paragraph_1: newText });
-                setContent(prev => ({ ...prev, approachSection: { ...prev.approachSection, paragraph_1: newText } }));
+                setContent((prev: any) => ({ ...prev, approachSection: { ...prev.approachSection, paragraph_1: newText } }));
               }}
               tag="p"
               className="text-white/90 leading-relaxed text-[25px] font-poppins mb-10"
@@ -192,7 +192,7 @@ export default function ContentManagement() {
               content={content?.approachSection?.paragraph_2 || "We're not a lone consultant — we're a central coordination layer with a distributed network behind it."}
               onSave={async (newText) => {
                 await cmsAPI.updateContent('approach-section', { paragraph_2: newText });
-                setContent(prev => ({ ...prev, approachSection: { ...prev.approachSection, paragraph_2: newText } }));
+                setContent((prev: any) => ({ ...prev, approachSection: { ...prev.approachSection, paragraph_2: newText } }));
               }}
               tag="p"
               className="text-white/90 leading-relaxed text-[25px] font-poppins mb-10"
@@ -206,7 +206,7 @@ export default function ContentManagement() {
               content={content?.approachSection?.paragraph_3 || "We fix what's slowing you down, strengthen systems around how your people actually work."}
               onSave={async (newText) => {
                 await cmsAPI.updateContent('approach-section', { paragraph_3: newText });
-                setContent(prev => ({ ...prev, approachSection: { ...prev.approachSection, paragraph_3: newText } }));
+                setContent((prev: any) => ({ ...prev, approachSection: { ...prev.approachSection, paragraph_3: newText } }));
               }}
               tag="p"
               className="text-white/90 leading-relaxed text-[25px] font-poppins"
@@ -226,7 +226,7 @@ export default function ContentManagement() {
             content={content?.businessSystemSection?.title || "Businesses as a Living System"}
             onSave={async (newTitle) => {
               await cmsAPI.updateContent('business-system-section', { title: newTitle });
-              setContent(prev => ({ ...prev, businessSystemSection: { ...prev.businessSystemSection, title: newTitle } }));
+              setContent((prev: any) => ({ ...prev, businessSystemSection: { ...prev.businessSystemSection, title: newTitle } }));
             }}
             tag="h2"
             className="text-white text-4xl font-poppins sm:text-2xl md:text-3xl lg:text-5xl font-extrabold leading-snug"
@@ -236,7 +236,7 @@ export default function ContentManagement() {
             content={content?.businessSystemSection?.subtitle || "Think of your organisation like a body"}
             onSave={async (newSubtitle) => {
               await cmsAPI.updateContent('business-system-section', { subtitle: newSubtitle });
-              setContent(prev => ({ ...prev, businessSystemSection: { ...prev.businessSystemSection, subtitle: newSubtitle } }));
+              setContent((prev: any) => ({ ...prev, businessSystemSection: { ...prev.businessSystemSection, subtitle: newSubtitle } }));
             }}
             tag="p"
             className="text-white font-poppins font-light text-[15px] sm:text-xl md:text-2xl mt-2"
@@ -260,7 +260,7 @@ export default function ContentManagement() {
                       onSave={async (newImageUrl) => {
                         const fieldName = `card_${cardNum}_image`;
                         await cmsAPI.updateContent('business-system-section', { [fieldName]: newImageUrl });
-                        setContent(prev => ({ 
+                        setContent((prev: any) => ({ 
                           ...prev, 
                           businessSystemSection: { 
                             ...prev.businessSystemSection, 
@@ -279,7 +279,7 @@ export default function ContentManagement() {
                       onSave={async (newTitle) => {
                         const fieldName = `card_${cardNum}_title`;
                         await cmsAPI.updateContent('business-system-section', { [fieldName]: newTitle });
-                        setContent(prev => ({ 
+                        setContent((prev: any) => ({ 
                           ...prev, 
                           businessSystemSection: { 
                             ...prev.businessSystemSection, 
@@ -298,7 +298,7 @@ export default function ContentManagement() {
                       onSave={async (newDesc) => {
                         const fieldName = `card_${cardNum}_description`;
                         await cmsAPI.updateContent('business-system-section', { [fieldName]: newDesc });
-                        setContent(prev => ({ 
+                        setContent((prev: any) => ({ 
                           ...prev, 
                           businessSystemSection: { 
                             ...prev.businessSystemSection, 
@@ -328,7 +328,7 @@ export default function ContentManagement() {
             content={content?.orrRoleSection?.title || "ORR's Role"}
             onSave={async (newTitle) => {
               await cmsAPI.updateContent('orr-role-section', { title: newTitle });
-              setContent(prev => ({ ...prev, orrRoleSection: { ...prev.orrRoleSection, title: newTitle } }));
+              setContent((prev: any) => ({ ...prev, orrRoleSection: { ...prev.orrRoleSection, title: newTitle } }));
             }}
             tag="h2"
             className="text-3xl md:text-4xl font-bold mb-12 text-center"
@@ -338,7 +338,7 @@ export default function ContentManagement() {
             content={content?.orrRoleSection?.description || "We act like specialist doctors for your business physiology - but we start from your symptoms and your priorities. We check the health of your system, diagnosis issues, and co-design solutions that your people can actually use, keeping everything working together over time."}
             onSave={async (newDesc) => {
               await cmsAPI.updateContent('orr-role-section', { description: newDesc });
-              setContent(prev => ({ ...prev, orrRoleSection: { ...prev.orrRoleSection, description: newDesc } }));
+              setContent((prev: any) => ({ ...prev, orrRoleSection: { ...prev.orrRoleSection, description: newDesc } }));
             }}
             tag="p"
             className="text-gray-300 text-center text-2xl mb-16 max-w-4xl mx-auto"
@@ -357,7 +357,7 @@ export default function ContentManagement() {
             content={content?.messageStrip?.title || "Message Strip"}
             onSave={async (newTitle) => {
               await cmsAPI.updateContent('message-strip', { title: newTitle });
-              setContent(prev => ({ ...prev, messageStrip: { ...prev.messageStrip, title: newTitle } }));
+              setContent((prev: any) => ({ ...prev, messageStrip: { ...prev.messageStrip, title: newTitle } }));
             }}
             tag="h2"
             className="text-2xl sm:text-3xl md:text-4xl font-bold mb-8 sm:mb-10"
@@ -372,7 +372,7 @@ export default function ContentManagement() {
               content={content?.messageStrip?.message || "Businesses thrive like living organisms when all their systems work together *around real human needs*. ORR keeps your 'business physiology' in peak condition — aligning operations, communication, cash flow, compliance, data, and projects around the people you serve"}
               onSave={async (newMessage) => {
                 await cmsAPI.updateContent('message-strip', { message: newMessage });
-                setContent(prev => ({ ...prev, messageStrip: { ...prev.messageStrip, message: newMessage } }));
+                setContent((prev: any) => ({ ...prev, messageStrip: { ...prev.messageStrip, message: newMessage } }));
               }}
               tag="p"
               className="text-[#ffffff] leading-relaxed text-base sm:text-lg md:text-xl lg:text-2xl px-2 sm:px-4 md:px-9"
@@ -396,7 +396,7 @@ export default function ContentManagement() {
               alt="User 1"
               onSave={async (newImageUrl) => {
                 await cmsAPI.updateContent('message-strip', { user_image_1: newImageUrl });
-                setContent(prev => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_1: newImageUrl } }));
+                setContent((prev: any) => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_1: newImageUrl } }));
               }}
               className="rounded-full border-2 xl:border-4 border-[#33FF99] shadow-[0_0_20px_#33FF99] xl:shadow-[0_0_25px_#33FF99] object-cover"
               width={80}
@@ -409,7 +409,7 @@ export default function ContentManagement() {
               alt="User 2"
               onSave={async (newImageUrl) => {
                 await cmsAPI.updateContent('message-strip', { user_image_2: newImageUrl });
-                setContent(prev => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_2: newImageUrl } }));
+                setContent((prev: any) => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_2: newImageUrl } }));
               }}
               className="rounded-full border-2 border-[#33FF99] shadow-[0_0_20px_#33FF99] object-cover"
               width={64}
@@ -422,7 +422,7 @@ export default function ContentManagement() {
               alt="User 3"
               onSave={async (newImageUrl) => {
                 await cmsAPI.updateContent('message-strip', { user_image_3: newImageUrl });
-                setContent(prev => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_3: newImageUrl } }));
+                setContent((prev: any) => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_3: newImageUrl } }));
               }}
               className="rounded-full border-2 xl:border-4 border-[#33FF99] shadow-[0_0_20px_#33FF99] xl:shadow-[0_0_25px_#33FF99] object-cover"
               width={96}
@@ -435,7 +435,7 @@ export default function ContentManagement() {
               alt="User 4"
               onSave={async (newImageUrl) => {
                 await cmsAPI.updateContent('message-strip', { user_image_4: newImageUrl });
-                setContent(prev => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_4: newImageUrl } }));
+                setContent((prev: any) => ({ ...prev, messageStrip: { ...prev.messageStrip, user_image_4: newImageUrl } }));
               }}
               className="rounded-full border-2 xl:border-4 border-[#33FF99] shadow-[0_0_20px_#33FF99] xl:shadow-[0_0_25px_#33FF99] object-cover"
               width={64}
@@ -454,7 +454,7 @@ export default function ContentManagement() {
             content={content?.processSection?.title || "How we work: Five Stages"}
             onSave={async (newTitle) => {
               await cmsAPI.updateContent('process-section', { title: newTitle });
-              setContent(prev => ({ ...prev, processSection: { ...prev.processSection, title: newTitle } }));
+              setContent((prev: any) => ({ ...prev, processSection: { ...prev.processSection, title: newTitle } }));
             }}
             tag="h2"
             className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-center"
@@ -465,7 +465,7 @@ export default function ContentManagement() {
             content={content?.processSection?.subtitle || "Every stage is built around you – your pace, your risk appetite, your resources"}
             onSave={async (newSubtitle) => {
               await cmsAPI.updateContent('process-section', { subtitle: newSubtitle });
-              setContent(prev => ({ ...prev, processSection: { ...prev.processSection, subtitle: newSubtitle } }));
+              setContent((prev: any) => ({ ...prev, processSection: { ...prev.processSection, subtitle: newSubtitle } }));
             }}
             tag="p"
             className="text-gray-300 text-center mb-12 sm:mb-16"
@@ -504,7 +504,7 @@ export default function ContentManagement() {
                       onSave={async (text) => {
                         const fieldName = `stage_${stageNum}_title`;
                         await cmsAPI.updateContent('process-section', { [fieldName]: text });
-                        setContent(prev => ({ ...prev, processSection: { ...prev.processSection, [fieldName]: text } }));
+                        setContent((prev: any) => ({ ...prev, processSection: { ...prev.processSection, [fieldName]: text } }));
                       }}
                       tag="h3"
                       className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3"
@@ -515,7 +515,7 @@ export default function ContentManagement() {
                       onSave={async (text) => {
                         const fieldName = `stage_${stageNum}_description`;
                         await cmsAPI.updateContent('process-section', { [fieldName]: text });
-                        setContent(prev => ({ ...prev, processSection: { ...prev.processSection, [fieldName]: text } }));
+                        setContent((prev: any) => ({ ...prev, processSection: { ...prev.processSection, [fieldName]: text } }));
                       }}
                       tag="p"
                       className="text-gray-300 text-sm sm:text-base leading-relaxed"
@@ -539,7 +539,7 @@ export default function ContentManagement() {
             content={content?.orrReportSection?.title || "What you Get: The ORR Report"}
             onSave={async (newTitle) => {
               await cmsAPI.updateContent('orr-report-section', { title: newTitle });
-              setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, title: newTitle } }));
+              setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, title: newTitle } }));
             }}
             tag="h2"
             className="text-3xl md:text-4xl font-bold mb-4 text-center"
@@ -549,7 +549,7 @@ export default function ContentManagement() {
             content={content?.orrReportSection?.subtitle || "After your first meeting, you receive a decision-ready ORR report designed to be immediately useful inside your organisation."}
             onSave={async (newSubtitle) => {
               await cmsAPI.updateContent('orr-report-section', { subtitle: newSubtitle });
-              setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, subtitle: newSubtitle } }));
+              setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, subtitle: newSubtitle } }));
             }}
             tag="p"
             className="text-gray-300 text-center mb-16 max-w-4xl mx-auto"
@@ -577,7 +577,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_1 || "explain your situation in your language,"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_1: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_1: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_1: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -590,7 +590,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_2 || "highlights key issues and risks that affect your customers and teams"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_2: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_2: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_2: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -603,7 +603,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_3 || "proposes quick fixes and longer-term improvements that respect your constraints"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_3: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_3: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_3: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -616,7 +616,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_4 || "shows where advisory, digital systems/AI, or living-systems work will have most impact"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_4: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_4: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_4: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -637,7 +637,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_1 || "explain your situation in your language,"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_1: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_1: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_1: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -650,7 +650,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_2 || "highlights key issues and risks that affect your customers and teams"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_2: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_2: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_2: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -663,7 +663,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_3 || "proposes quick fixes and longer-term improvements that respect your constraints"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_3: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_3: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_3: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -676,7 +676,7 @@ export default function ContentManagement() {
                     content={content?.orrReportSection?.feature_4 || "shows where advisory, digital systems/AI, or living-systems work will have most impact"}
                     onSave={async (text) => { 
                       await cmsAPI.updateContent('orr-report-section', { feature_4: text });
-                      setContent(prev => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_4: text } }));
+                      setContent((prev: any) => ({ ...prev, orrReportSection: { ...prev.orrReportSection, feature_4: text } }));
                     }}
                     tag="span"
                     className="text-gray-200"
@@ -728,7 +728,7 @@ export default function ContentManagement() {
                       content={faq.question || "FAQ Question"}
                       onSave={async (newQuestion) => {
                         await cmsAPI.updateContent(`faqs/${faq.id}`, { question: newQuestion });
-                        setContent(prev => ({
+                        setContent((prev: any) => ({
                           ...prev,
                           faqs: (prev?.faqs || []).map((f: any) => f.id === faq.id ? { ...f, question: newQuestion } : f)
                         }));
@@ -753,7 +753,7 @@ export default function ContentManagement() {
                           content={faq.answer || "FAQ Answer"}
                           onSave={async (newAnswer) => {
                             await cmsAPI.updateContent(`faqs/${faq.id}`, { answer: newAnswer });
-                            setContent(prev => ({
+                            setContent((prev: any) => ({
                               ...prev,
                               faqs: (prev?.faqs || []).map((f: any) => f.id === faq.id ? { ...f, answer: newAnswer } : f)
                             }));

@@ -84,8 +84,7 @@ export default function EditableText({
   };
 
   if (isEditing) {
-    const inputProps = {
-      ref: inputRef,
+    const baseInputProps = {
       value,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setValue(e.target.value),
       onBlur: handleSave,
@@ -99,7 +98,8 @@ export default function EditableText({
       return (
         <div className="relative">
           <textarea
-            {...inputProps}
+            {...(baseInputProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
             rows={Math.max(3, (value || '').split('\n').length)}
           />
           {isSaving && (
@@ -114,7 +114,8 @@ export default function EditableText({
         <div className="relative">
           <input
             type="text"
-            {...inputProps}
+            {...(baseInputProps as React.InputHTMLAttributes<HTMLInputElement>)}
+            ref={inputRef as React.RefObject<HTMLInputElement>}
           />
           {isSaving && (
             <div className="absolute top-2 right-2 text-blue-500 text-sm">

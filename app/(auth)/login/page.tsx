@@ -137,14 +137,16 @@ export default function Page() {
 
             </div>
 
-            <select className="w-full border-b-1 border-gray-300 px-6 py-5 focus:outline-none text-white" name="" id="">
+         {/* <select className="w-full border-b-1 border-gray-300 px-6 py-5 focus:outline-none text-white" name="" id="">
               <option disabled selected className="text-black" value="">Select role</option>
               <option className="text-black" value="super_admin">Super Admin</option>
               <option className="text-black" value="admin">Admin</option>
               <option className="text-black" value="admin">Admin</option>
               <option className="text-black" value="operator_support">Operator / Support</option>super_admin
               <option className="text-black" value="content_editor">Content Editor</option>
-            </select>
+            </select> */}
+
+          
 
             <div className="flex items-center justify-between mb-6">
               <label className="inline-flex items-center text-sm text-white">
