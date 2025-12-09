@@ -19,7 +19,11 @@ importers:
         version: 3.6.0
       framer-motion:
         specifier: ^12.23.25
+<<<<<<< Updated upstream
         version: 12.23.25(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+=======
+        version: 12.23.25(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+>>>>>>> Stashed changes
       lucide-react:
         specifier: ^0.554.0
         version: 0.554.0(react@18.3.1)
@@ -3204,7 +3208,11 @@ snapshots:
 
   fraction.js@5.3.4: {}
 
+<<<<<<< Updated upstream
   framer-motion@12.23.25(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+=======
+  framer-motion@12.23.25(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+>>>>>>> Stashed changes
     dependencies:
       motion-dom: 12.23.23
       motion-utils: 12.23.6
