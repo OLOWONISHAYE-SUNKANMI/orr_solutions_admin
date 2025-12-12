@@ -27,6 +27,7 @@ const typeColors: Record<string, string> = {
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationStats, setNotificationStats] = useState<any>(null);
   const [filterRead, setFilterRead] = useState<"all" | "unread" | "read">("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +36,15 @@ export default function NotificationsPage() {
     const fetchNotifications = async () => {
       try {
         setLoading(true);
-        const response = await notificationAPI.listNotifications({
-          is_read: filterRead !== "all" ? filterRead === "read" : undefined,
-        }) as any;
+        const [response, stats] = await Promise.all([
+          notificationAPI.listNotifications({
+            is_read: filterRead !== "all" ? filterRead === "read" : undefined,
+          }).catch(() => ({ results: [] })),
+          notificationAPI.getStats().catch(() => null),
+        ]);
         // Handle both array response and object with results
-        setNotifications(Array.isArray(response) ? response : (response.results || []));
+        setNotifications(Array.isArray(response) ? response : ((response as any)?.results || []));
+        setNotificationStats(stats);
       } catch (err) {
         console.error("Failed to fetch notifications:", err);
         setError("Failed to load notifications");

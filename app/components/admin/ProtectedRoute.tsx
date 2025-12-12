@@ -5,17 +5,22 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../lib/hooks/auth';
 import { authAPI } from '../../services/api';
 import { AdminUser } from '@/app/services';
+import { useHasAnyPermission, useCanAccessRoute } from '../../../lib/rbac/hooks';
+import type { Permission } from '../../../lib/rbac/permissions';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredPermission?: string;
+  requiredPermissions?: Permission[]; // User needs ANY of these permissions
 }
 
-export default function ProtectedRoute({ children, requiredPermission }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredPermissions = [] }: ProtectedRouteProps) {
   const router = useRouter();
   const { user, token, setUser, logout, login } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
   const [hasHydrated, setHasHydrated] = useState(false);
+  
+  // Use RBAC hooks (only after user is loaded)
+  const hasRequiredPermission = useHasAnyPermission(requiredPermissions);
 
   // Wait for Zustand to rehydrate
   useEffect(() => {
@@ -58,30 +63,21 @@ export default function ProtectedRoute({ children, requiredPermission }: Protect
         }
       }
 
-      // Check permissions if required
-      if (requiredPermission && user) {
-        try {
-          await authAPI.checkPermission(requiredPermission);
-        } catch (error: any) {
-          console.error('Permission check failed:', error);
-          // If it's a 401/403, token is invalid/expired
-          if (error.message?.includes('401') || error.message?.includes('403') || error.message?.includes('Unauthorized')) {
-            console.log('Token expired or invalid, logging out');
-            logout();
-            router.push('/login');
-            return;
-          }
-          // Otherwise, just redirect to dashboard (permission denied)
-          router.push('/');
-          return;
-        }
-      }
-
       setIsChecking(false);
     };
 
     checkAuth();
-  }, [hasHydrated, token, user, requiredPermission, router, setUser, logout, login]);
+  }, [hasHydrated, token, user, router, setUser, logout, login]);
+
+  // After user is loaded, check permissions
+  useEffect(() => {
+    if (!isChecking && user && requiredPermissions.length > 0) {
+      if (!hasRequiredPermission) {
+        console.warn('User lacks required permissions:', requiredPermissions);
+        router.push('/'); // Redirect to dashboard if no permission
+      }
+    }
+  }, [isChecking, user, hasRequiredPermission, requiredPermissions, router]);
 
   if (isChecking) {
     return (
@@ -93,6 +89,24 @@ export default function ProtectedRoute({ children, requiredPermission }: Protect
 
   if (!token || !user) {
     return null; // Will redirect in useEffect
+  }
+
+  // Check permissions after loading
+  if (requiredPermissions.length > 0 && !hasRequiredPermission) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
+          <button 
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

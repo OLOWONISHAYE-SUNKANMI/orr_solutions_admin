@@ -11,10 +11,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
+          className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors active:bg-white/20"
           aria-label="Toggle menu"
         >
-          <Menu size={24} />
+          <Menu size={24} color="white" strokeWidth={2.5} />
         </button>
         <img
           src="/images/logo.svg"

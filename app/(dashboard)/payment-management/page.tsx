@@ -53,10 +53,25 @@ export default function PaymentManagementPage() {
     }
   };
 
-  const handleExportCSV = () => {
-    // TODO: Implement CSV export
-    alert("CSV export functionality coming soon");
-  };
+  // const handleExportCSV = async () => {
+  //   try {
+  //     await billingAPI.exportData("csv");
+  //     alert("CSV export started successfully");
+  //   } catch (err) {
+  //     console.error("Failed to export CSV:", err);
+  //     alert("Failed to export CSV");
+  //   }
+  // };
+
+  // const handleExportPDF = async () => {
+  //   try {
+  //     await billingAPI.exportData("pdf");
+  //     alert("PDF export started successfully");
+  //   } catch (err) {
+  //     console.error("Failed to export PDF:", err);
+  //     alert("Failed to export PDF");
+  //   }
+  // };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -123,13 +138,13 @@ export default function PaymentManagementPage() {
                 {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} - {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </div>
               <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 md:gap-3">
-                <button 
+                {/* <button 
                   onClick={handleExportCSV}
                   className="text-white bg-primary p-2 md:p-3 rounded-xl text-sm md:text-base flex items-center justify-center gap-2 hover:bg-primary/80 transition-all"
                 >
                   <Download size={16} />
                   Export CSV
-                </button>
+                </button> */}
                 <button className="text-white bg-primary p-2 md:p-3 rounded-xl text-sm md:text-base hover:bg-primary/80 transition-all">
                   Download Invoices
                 </button>

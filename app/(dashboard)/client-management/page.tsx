@@ -23,6 +23,8 @@ const pillarColors: Record<string, string> = {
 export default function page() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientEngagement, setClientEngagement] = useState<any>(null);
+  const [clientStats, setClientStats] = useState<any>(null);
   const [filterStage, setFilterStage] = useState<string>("all");
   const [filterPillar, setFilterPillar] = useState<string>("all");
   const [filterPortalStatus, setFilterPortalStatus] = useState<string>("all");
@@ -59,13 +61,26 @@ export default function page() {
   const fetchClientDetails = async (id: number) => {
     try {
       setDetailsLoading(true);
-      const clientData = await clientAPI.getClient(id) as Client;
+      const [clientData, engagementData] = await Promise.all([
+        clientAPI.getClient(id) as Promise<Client>,
+        clientAPI.getEngagementHistory(id).catch(() => null),
+      ]);
       setSelectedClient(clientData);
+      setClientEngagement(engagementData);
     } catch (err) {
       console.error("Failed to fetch client details:", err);
       setError("Failed to load client details");
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const fetchClientStats = async () => {
+    try {
+      const stats = await clientAPI.getStats().catch(() => null);
+      setClientStats(stats);
+    } catch (err) {
+      console.error("Failed to fetch client stats:", err);
     }
   };
 

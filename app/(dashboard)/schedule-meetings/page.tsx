@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Loader } from "lucide-react";
+import { meetingAPI } from "@/app/services";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "./calendar.css";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -21,9 +22,10 @@ interface Event {
 }
 
 function page() {
-  const [date, setDate] = useState(new Date(2022, 0, 1)); // January 2022
+  const [date, setDate] = useState(new Date()); // Current date
   const [view, setView] = useState<View>("month");
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const locales = {
     "en-US": enUS,
@@ -37,13 +39,13 @@ function page() {
     locales,
   });
 
-  // Sample meeting data with different statuses
-  const events = [
+  // Sample meeting data with different statuses (using current date)
+  const [events, setEvents] = useState<Event[]>([
     {
       id: 1,
-      title: "Festival - First Meeting",
-      start: new Date(2022, 0, 4, 10, 0),
-      end: new Date(2022, 0, 4, 11, 0),
+      title: "First Meeting",
+      start: new Date(new Date().setDate(new Date().getDate() + 1)),
+      end: new Date(new Date().setDate(new Date().getDate() + 1)),
       status: "New",
       clientName: "John Doe",
       meetingType: "first meeting",
@@ -51,9 +53,9 @@ function page() {
     },
     {
       id: 2,
-      title: "Exam - Follow-up",
-      start: new Date(2022, 0, 4, 14, 0),
-      end: new Date(2022, 0, 4, 15, 0),
+      title: "Follow-up Meeting",
+      start: new Date(new Date().setDate(new Date().getDate() + 2)),
+      end: new Date(new Date().setDate(new Date().getDate() + 2)),
       status: "Confirmed",
       clientName: "Jane Smith",
       meetingType: "follow-up",
@@ -61,15 +63,59 @@ function page() {
     },
     {
       id: 3,
-      title: "Eid Festival - First Meeting",
-      start: new Date(2022, 0, 5, 9, 0),
-      end: new Date(2022, 0, 5, 10, 0),
+      title: "Discovery Meeting",
+      start: new Date(new Date().setDate(new Date().getDate() + 3)),
+      end: new Date(new Date().setDate(new Date().getDate() + 3)),
       status: "Rescheduled",
       clientName: "Ahmed Hassan",
-      meetingType: "first meeting",
+      meetingType: "discovery",
       resource: { color: "bg-red-500" },
     },
-  ];
+  ]);
+
+  // Fetch meetings from API on mount
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      try {
+        setLoading(true);
+        const data = await meetingAPI.listMeetings().catch(() => ({ results: [] }));
+        const meetingsList = Array.isArray(data) ? data : ((data as any)?.results || []);
+        
+        // Transform API data to Event format
+        const transformedEvents: Event[] = meetingsList.map((meeting: any) => ({
+          id: meeting.id,
+          title: meeting.title || `Meeting with ${meeting.client_name}`,
+          start: new Date(meeting.confirmed_datetime || meeting.requested_datetime),
+          end: new Date(meeting.confirmed_datetime || meeting.requested_datetime),
+          status: meeting.status,
+          clientName: meeting.client_name,
+          meetingType: meeting.meeting_type,
+          resource: { color: getStatusColor(meeting.status) },
+        }));
+        
+        setEvents(transformedEvents);
+      } catch (err) {
+        console.error("Failed to fetch meetings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMeetings();
+  }, []);
+
+  const getStatusColor = (status: string): string => {
+    switch (status?.toLowerCase()) {
+      case "confirmed":
+        return "bg-green-500";
+      case "rescheduled":
+        return "bg-red-500";
+      case "completed":
+        return "bg-blue-500";
+      default:
+        return "bg-yellow-500";
+    }
+  };
 
   const goToToday = () => {
     setDate(new Date());

@@ -9,11 +9,11 @@ function layout({ children }: { children: React.ReactNode }) {
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-col md:flex-row min-h-screen">
+      <div className="flex flex-col md:flex-row min-h-screen relative">
         <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
         <div className="flex-1 w-full overflow-x-hidden flex flex-col">
-          <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
-          <div className="flex-1">{children}</div>
+          <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+          <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>
     </ProtectedRoute>

@@ -61,18 +61,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button 
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-card rounded-lg shadow-lg"
-        onClick={() => onClose()}
-      >
-        {isOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40" 
+          className="md:hidden fixed inset-0 bg-black/50 z-40" 
           onClick={onClose} 
         />
       )}
@@ -80,7 +72,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside className={`w-64 h-screen bg-card text-white flex flex-col justify-between p-4 flex-shrink-0 overflow-y-auto transition-transform duration-300 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:translate-x-0 fixed lg:relative z-50 lg:z-auto`}>
+      } md:translate-x-0 fixed md:relative z-50 md:z-auto`}>
         <div>
           <div className="flex items-center px-2 mb-8">
             <img src="/images/logo.svg" alt="ORR Solutions" className="w-fit h-auto" />

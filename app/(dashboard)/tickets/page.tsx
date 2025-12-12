@@ -33,10 +33,12 @@ const sourceIcons: Record<TicketSource, React.ReactNode> = {
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<TicketListItem | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState<TicketStatus | "all">("all");
   const [filterPriority, setFilterPriority] = useState<TicketPriority | "all">("all");
   const [filterSource, setFilterSource] = useState<TicketSource | "all">("all");
   const [loading, setLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,6 +62,25 @@ export default function TicketsPage() {
 
     fetchTickets();
   }, [filterStatus, filterPriority, filterSource]);
+
+  const fetchTicketMessages = async (ticketId: number) => {
+    try {
+      setMessagesLoading(true);
+      const messagesData = await ticketAPI.listMessages(ticketId).catch(() => []);
+      const messages = Array.isArray(messagesData) ? messagesData : ((messagesData as any)?.results || []);
+      setTicketMessages(messages);
+    } catch (err) {
+      console.error("Failed to fetch ticket messages:", err);
+      setTicketMessages([]);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const handleSelectTicket = (ticket: TicketListItem) => {
+    setSelectedTicket(ticket);
+    fetchTicketMessages(ticket.id);
+  };
 
   const filteredTickets = tickets.filter((ticket) => {
     const statusMatch = filterStatus === "all" || ticket.status === filterStatus;
