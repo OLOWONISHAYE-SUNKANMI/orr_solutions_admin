@@ -129,7 +129,7 @@ function page() {
   }
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden star">
+    <div className="max-h-screen overflow-y-auto text-white relative overflow-hidden star">
       <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
       <div className="relative z-10 p-4 md:p-8">
         {/* 3-PART OPENING SECTION */}

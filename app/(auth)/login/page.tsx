@@ -112,7 +112,7 @@ export default function Page() {
             )}
             <input
               type="text"
-              placeholder="Username"
+              placeholder="Email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               className="w-full border-b-1 border-gray-300 px-6 py-5 focus:outline-none text-white"
@@ -136,8 +136,6 @@ export default function Page() {
               </button>
 
             </div>
-
-          
 
             <div className="flex items-center justify-between mb-6">
               <label className="inline-flex items-center text-sm text-white">
