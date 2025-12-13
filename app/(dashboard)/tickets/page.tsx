@@ -37,39 +37,59 @@ export default function TicketsPage() {
   const [filterStatus, setFilterStatus] = useState<TicketStatus | "all">("all");
   const [filterPriority, setFilterPriority] = useState<TicketPriority | "all">("all");
   const [filterSource, setFilterSource] = useState<TicketSource | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
+  const [newStatus, setNewStatus] = useState<TicketStatus | "">("");
 
   useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        setLoading(true);
-        const response = await ticketAPI.listTickets({
-          status: filterStatus !== "all" ? filterStatus : undefined,
-          priority: filterPriority !== "all" ? filterPriority : undefined,
-          source: filterSource !== "all" ? filterSource : undefined,
-        }) as any;
-        // Handle both array response and object with results
-        setTickets(Array.isArray(response) ? response : (response.results || []));
-      } catch (err) {
-        console.error("Failed to fetch tickets:", err);
-        setError("Failed to load tickets");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTickets();
-  }, [filterStatus, filterPriority, filterSource]);
+  }, [filterStatus, filterPriority, filterSource, searchQuery]);
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const filters: any = {};
+      if (filterStatus !== "all") filters.status = filterStatus;
+      if (filterPriority !== "all") filters.priority = filterPriority;
+      if (filterSource !== "all") filters.source = filterSource;
+      if (searchQuery) filters.search = searchQuery;
+
+      const response = await ticketAPI.listTickets(filters) as any;
+      const ticketsData = Array.isArray(response) ? response : (response.results || response.data || []);
+      setTickets(Array.isArray(ticketsData) ? ticketsData : []);
+    } catch (err: any) {
+      console.error("Failed to fetch tickets:", err);
+      setError(err.message || "Failed to load tickets");
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchTicketMessages = async (ticketId: number) => {
     try {
       setMessagesLoading(true);
-      const messagesData = await ticketAPI.listMessages(ticketId).catch(() => []);
-      const messages = Array.isArray(messagesData) ? messagesData : ((messagesData as any)?.results || []);
-      setTicketMessages(messages);
-    } catch (err) {
+      
+      const response = await fetch(`http://127.0.0.1:8000/admin-portal/v1/tickets/${ticketId}/messages/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const messagesData = await response.json();
+        const messages = Array.isArray(messagesData) ? messagesData : (messagesData?.results || messagesData?.data || []);
+        setTicketMessages(Array.isArray(messages) ? messages : []);
+      } else {
+        setTicketMessages([]);
+      }
+    } catch (err: any) {
       console.error("Failed to fetch ticket messages:", err);
       setTicketMessages([]);
     } finally {
@@ -82,12 +102,80 @@ export default function TicketsPage() {
     fetchTicketMessages(ticket.id);
   };
 
-  const filteredTickets = tickets.filter((ticket) => {
-    const statusMatch = filterStatus === "all" || ticket.status === filterStatus;
-    const priorityMatch = filterPriority === "all" || ticket.priority === filterPriority;
-    const sourceMatch = filterSource === "all" || ticket.source === filterSource;
-    return statusMatch && priorityMatch && sourceMatch;
-  });
+  const handleStatusChange = async () => {
+    if (!selectedTicket || !newStatus) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      setError(null);
+      
+      // Use direct PATCH update instead of actions
+      const response = await fetch(`http://127.0.0.1:8000/admin-portal/v1/tickets/${selectedTicket.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+      
+      setNewStatus("");
+      fetchTickets();
+      if (selectedTicket) {
+        const updatedTicket = { ...selectedTicket, status: newStatus };
+        setSelectedTicket(updatedTicket);
+      }
+    } catch (err: any) {
+      console.error("Failed to update ticket status:", err);
+      setError(err.message || "Failed to update status");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddMessage = async () => {
+    if (!selectedTicket || !newMessage.trim()) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      // Use direct POST to messages endpoint
+      const response = await fetch(`http://127.0.0.1:8000/admin-portal/v1/tickets/${selectedTicket.id}/messages/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify({ 
+          message: newMessage,
+          is_internal: isInternal 
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+      
+      setNewMessage("");
+      setIsInternal(false);
+      fetchTicketMessages(selectedTicket.id);
+    } catch (err: any) {
+      console.error("Failed to add message:", err);
+      setError(err.message || "Failed to add message");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+
 
   return (
     <div>
@@ -111,6 +199,8 @@ export default function TicketsPage() {
                     <Search className="absolute left-3 top-3 text-gray-500" size={18} />
                     <input
                       type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search tickets..."
                       className="w-full bg-white/10 border border-white/20 pl-10 pr-4 py-3 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200"
                     />
@@ -160,15 +250,26 @@ export default function TicketsPage() {
 
                 {/* Ticket List */}
                 <div className="bg-gradient-to-b from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg max-h-[600px] overflow-y-auto">
-                  <div className="divide-y divide-white/10">
-                    {filteredTickets.map((ticket) => (
-                      <button
-                        key={ticket.id}
-                        onClick={() => setSelectedTicket(ticket)}
-                        className={`w-full p-4 text-left transition-all duration-200 hover:bg-white/10 ${
-                          selectedTicket?.id === ticket.id ? "bg-primary/20 border-l-2 border-primary" : ""
-                        }`}
-                      >
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : tickets.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <MessageSquare size={32} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No tickets found</p>
+                      {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-white/10">
+                      {tickets.map((ticket) => (
+                        <button
+                          key={ticket.id}
+                          onClick={() => handleSelectTicket(ticket)}
+                          className={`w-full p-4 text-left transition-all duration-200 hover:bg-white/10 ${
+                            selectedTicket?.id === ticket.id ? "bg-primary/20 border-l-2 border-primary" : ""
+                          }`}
+                        >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -191,9 +292,10 @@ export default function TicketsPage() {
                           <span className="text-xs text-gray-500">•</span>
                           <span className="text-xs text-gray-500">{new Date(ticket.created_at).toLocaleDateString()}</span>
                         </div>
-                      </button>
-                    ))}
-                  </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -253,21 +355,65 @@ export default function TicketsPage() {
                   <div className="flex-1 flex flex-col gap-4">
                     <h3 className="text-lg font-semibold text-white">Conversation</h3>
                     <div className="bg-white/5 rounded-lg p-4 border border-white/10 space-y-4 max-h-[250px] overflow-y-auto">
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex-shrink-0" />
-                        <div>
-                          <p className="text-sm text-gray-300">Client message</p>
-                          <p className="text-xs text-gray-500 mt-1">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-                          <p className="text-xs text-gray-600 mt-2">Nov 28, 10:30 AM</p>
+                      {messagesLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                         </div>
+                      ) : ticketMessages.length === 0 ? (
+                        <div className="text-center py-4 text-gray-400">
+                          <p className="text-sm">No messages yet</p>
+                        </div>
+                      ) : (
+                        ticketMessages.map((message, index) => (
+                          <div key={index} className={`flex gap-3 ${message.sender_type === 'admin' ? 'justify-end' : ''}`}>
+                            {message.sender_type !== 'admin' && (
+                              <div className="w-8 h-8 bg-blue-500 rounded-full flex-shrink-0" />
+                            )}
+                            <div className={message.sender_type === 'admin' ? 'flex-1 text-right' : ''}>
+                              <p className={`text-sm ${message.sender_type === 'admin' ? 'text-primary' : 'text-gray-300'}`}>
+                                {message.sender_name} {message.is_internal && '(Internal)'}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">{message.message}</p>
+                              <p className="text-xs text-gray-600 mt-2">
+                                {new Date(message.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                            {message.sender_type === 'admin' && (
+                              <div className="w-8 h-8 bg-primary rounded-full flex-shrink-0" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    
+                    {/* Add Message */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="internal"
+                          checked={isInternal}
+                          onChange={(e) => setIsInternal(e.target.checked)}
+                          className="rounded border-white/20 bg-white/10 text-primary focus:ring-primary/50"
+                        />
+                        <label htmlFor="internal" className="text-sm text-gray-400">Internal message</label>
                       </div>
-                      <div className="flex gap-3 justify-end">
-                        <div className="flex-1 text-right">
-                          <p className="text-sm text-primary">Support response</p>
-                          <p className="text-xs text-gray-400 mt-1">Thank you for reaching out. We're looking into this.</p>
-                          <p className="text-xs text-gray-600 mt-2">Nov 28, 11:15 AM</p>
-                        </div>
-                        <div className="w-8 h-8 bg-primary rounded-full flex-shrink-0" />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Type your message..."
+                          className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50"
+                          onKeyPress={(e) => e.key === 'Enter' && handleAddMessage()}
+                        />
+                        <button
+                          onClick={handleAddMessage}
+                          disabled={!newMessage.trim() || actionLoading}
+                          className="bg-primary hover:bg-primary/80 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-all duration-200"
+                        >
+                          Send
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -284,16 +430,24 @@ export default function TicketsPage() {
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-4 border-t border-white/10">
-                    <select className="flex-1 bg-white/10 border border-white/20 px-4 py-2 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50 transition-all duration-200">
-                      <option className="bg-gray-800">Change Status...</option>
-                      <option className="bg-gray-800">New</option>
-                      <option className="bg-gray-800">In Progress</option>
-                      <option className="bg-gray-800">Waiting on Client</option>
-                      <option className="bg-gray-800">Resolved</option>
-                      <option className="bg-gray-800">Archived</option>
+                    <select 
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value as TicketStatus)}
+                      className="flex-1 bg-white/10 border border-white/20 px-4 py-2 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50 transition-all duration-200"
+                    >
+                      <option value="" className="bg-gray-800">Change Status...</option>
+                      <option value="new" className="bg-gray-800">New</option>
+                      <option value="in_progress" className="bg-gray-800">In Progress</option>
+                      <option value="waiting" className="bg-gray-800">Waiting</option>
+                      <option value="resolved" className="bg-gray-800">Resolved</option>
+                      <option value="archived" className="bg-gray-800">Archived</option>
                     </select>
-                    <button className="bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg">
-                      Save Changes
+                    <button 
+                      onClick={handleStatusChange}
+                      disabled={!newStatus || actionLoading}
+                      className="bg-primary hover:bg-primary/80 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      {actionLoading ? 'Updating...' : 'Update Status'}
                     </button>
                   </div>
                 </div>

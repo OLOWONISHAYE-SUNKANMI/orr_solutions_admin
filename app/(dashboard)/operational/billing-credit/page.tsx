@@ -2,7 +2,7 @@
 
 import { DollarSign, CreditCard, TrendingUp, Users, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
-import { billingAPI } from "@/app/services";
+import { billingAPI, BillingHistoryItem } from "@/app/services";
 import type { PaymentStats } from "@/app/services";
 
 export default function BillingCreditOverviewPage() {
@@ -12,30 +12,49 @@ export default function BillingCreditOverviewPage() {
     { label: "Pending Payments", value: "€0.00", icon: CreditCard, color: "text-orange-400" },
     { label: "Completed Transactions", value: "0", icon: TrendingUp, color: "text-purple-400" },
   ]);
+  const [recentTransactions, setRecentTransactions] = useState<BillingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBillingStats = async () => {
+    const fetchBillingData = async () => {
       try {
         setLoading(true);
-        const data = await billingAPI.getStats() as PaymentStats;
+        const [statsResponse, transactionsResponse] = await Promise.all([
+          billingAPI.getAllPaymentStats(),
+          billingAPI.getAllPayments({ limit: 5 }) // Get recent 5 transactions
+        ]);
+        
+        // Handle API response structure
+        console.log('Stats Response:', statsResponse);
+        console.log('Transactions Response:', transactionsResponse);
+        
+        const statsData = (statsResponse as any)?.data || statsResponse;
+        const transactionsData = (transactionsResponse as any)?.data || transactionsResponse;
+        
+        console.log('Processed Stats Data:', statsData);
+        console.log('Processed Transactions Data:', transactionsData);
         
         setStats([
-          { label: "Total Revenue", value: data.total_revenue || "€0.00", icon: DollarSign, color: "text-green-400" },
-          { label: "Pending Payments", value: data.pending_amount || "€0.00", icon: CreditCard, color: "text-orange-400" },
-          { label: "Completed Transactions", value: data.completed_transactions || "0", icon: TrendingUp, color: "text-purple-400" },
-          { label: "Pending Transactions", value: data.pending_transactions || "0", icon: Users, color: "text-blue-400" },
+          { label: "Total Revenue", value: `$${statsData.total_revenue || "0.00"}`, icon: DollarSign, color: "text-green-400" },
+          { label: "Active Subscriptions", value: statsData.active_subscriptions || "0", icon: Users, color: "text-blue-400" },
+          { label: "Pending Payments", value: `$${statsData.pending_amount || "0.00"}`, icon: CreditCard, color: "text-orange-400" },
+          { label: "Completed Transactions", value: statsData.completed_transactions || "0", icon: TrendingUp, color: "text-purple-400" },
         ]);
+        
+        // Ensure transactionsData is an array
+        const transactions = Array.isArray(transactionsData) ? transactionsData : [];
+        console.log('Final transactions array:', transactions);
+        setRecentTransactions(transactions);
       } catch (err) {
-        console.error("Failed to fetch billing stats:", err);
+        console.error("Failed to fetch billing data:", err);
         setError("Failed to load billing data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBillingStats();
+    fetchBillingData();
   }, []);
 
   return (
@@ -78,7 +97,35 @@ export default function BillingCreditOverviewPage() {
 
               <div className="mt-8 bg-white/5 border border-white/10 rounded-xl p-6">
                 <h2 className="text-xl font-semibold text-white mb-4">Recent Transactions</h2>
-                <p className="text-gray-400">Transaction history will be displayed here</p>
+                {recentTransactions.length === 0 ? (
+                  <p className="text-gray-400">No recent transactions found</p>
+                ) : (
+                  <div className="space-y-4">
+                    {recentTransactions.map((transaction, index) => (
+                      <div key={transaction.id || index} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                            <DollarSign className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">{transaction.client_name || 'Unknown Client'}</p>
+                            <p className="text-gray-400 text-sm">{transaction.reference_id}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-semibold">${transaction.amount}</p>
+                          <p className={`text-sm capitalize ${
+                            transaction.status === 'paid' ? 'text-green-400' :
+                            transaction.status === 'pending' ? 'text-yellow-400' :
+                            'text-red-400'
+                          }`}>
+                            {transaction.status}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}

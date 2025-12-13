@@ -1,8 +1,48 @@
 "use client";
 
-import { Calendar, FileText, User } from "lucide-react";
+import { Calendar, FileText, User, Loader, CheckCircle, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { meetingAPI } from "@/app/services";
+
+interface Meeting {
+  id: number;
+  client_name: string;
+  client_email: string;
+  meeting_type: string;
+  confirmed_datetime: string;
+  duration_minutes: number;
+  status: string;
+  agenda?: string;
+  meeting_notes?: string;
+  host?: {
+    first_name: string;
+    last_name: string;
+  };
+}
 
 export default function PastConsultationsPage() {
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPastMeetings = async () => {
+      try {
+        setLoading(true);
+        const response = await meetingAPI.listMeetings({ status: 'completed' });
+        const data = response?.data || response;
+        setMeetings(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to fetch past meetings:', err);
+        setError('Failed to load past meetings');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPastMeetings();
+  }, []);
+
   return (
     <div className="min-h-screen text-white relative overflow-hidden star">
       <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
@@ -14,11 +54,82 @@ export default function PastConsultationsPage() {
             <p className="text-gray-400">Completed consultation sessions</p>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-            <Calendar size={48} className="mx-auto text-blue-400 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Past Consultations</h3>
-            <p className="text-gray-400">Historical consultation records will be displayed here</p>
-          </div>
+          {error && (
+            <div className="mb-6 bg-red-500/20 border border-red-500/50 rounded-lg p-4">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader className="animate-spin text-primary" size={32} />
+            </div>
+          ) : meetings.length === 0 ? (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+              <Calendar size={48} className="mx-auto text-blue-400 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">No Past Consultations</h3>
+              <p className="text-gray-400">No completed consultation sessions found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {meetings.map((meeting) => (
+                <div key={meeting.id} className="bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-blue-500/30 transition-all duration-300">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-6 h-6 text-blue-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{meeting.client_name}</h3>
+                          <p className="text-sm text-gray-400">{meeting.client_email}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                          <Clock className="w-4 h-4" />
+                          <span>{new Date(meeting.confirmed_datetime).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                          <User className="w-4 h-4" />
+                          <span>{meeting.meeting_type} ({meeting.duration_minutes} min)</span>
+                        </div>
+                        {meeting.host && (
+                          <div className="flex items-center gap-2 text-sm text-gray-300">
+                            <User className="w-4 h-4" />
+                            <span>Host: {meeting.host.first_name} {meeting.host.last_name}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {meeting.agenda && (
+                        <div className="bg-white/5 rounded-lg p-3 mb-3">
+                          <p className="text-sm text-gray-300">
+                            <strong>Agenda:</strong> {meeting.agenda}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {meeting.meeting_notes && (
+                        <div className="bg-white/5 rounded-lg p-3">
+                          <p className="text-sm text-gray-300">
+                            <strong>Meeting Notes:</strong> {meeting.meeting_notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="ml-4">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        {meeting.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

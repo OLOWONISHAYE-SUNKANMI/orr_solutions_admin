@@ -179,6 +179,72 @@ export class ClientService {
       throw new Error(error.message || 'Failed to fetch complete profile');
     }
   }
+
+  /**
+   * Get client documents
+   */
+  async getClientDocuments(clientId: number): Promise<any[]> {
+    try {
+      console.log('ClientService: Fetching documents for client ID:', clientId);
+      
+      const documents = await clientAPI.listDocuments(clientId);
+      console.log('ClientService: Documents response:', documents);
+      
+      return Array.isArray(documents) ? documents : (documents.results || []);
+    } catch (error: any) {
+      console.error('ClientService: Error fetching client documents:', error);
+      throw new Error(error.message || 'Failed to fetch client documents');
+    }
+  }
+
+  /**
+   * Upload client document
+   */
+  async uploadClientDocument(clientId: number, formData: FormData): Promise<any> {
+    try {
+      console.log('ClientService: Uploading document for client ID:', clientId);
+      
+      const result = await clientAPI.uploadDocument(clientId, formData);
+      console.log('ClientService: Document upload response:', result);
+      
+      return result;
+    } catch (error: any) {
+      console.error('ClientService: Error uploading document:', error);
+      throw new Error(error.message || 'Failed to upload document');
+    }
+  }
+
+  /**
+   * Update client document
+   */
+  async updateClientDocument(clientId: number, docId: number, data: Record<string, any>): Promise<any> {
+    try {
+      console.log('ClientService: Updating document for client ID:', clientId, 'doc ID:', docId);
+      
+      const result = await clientAPI.partialUpdateDocument(clientId, docId, data);
+      console.log('ClientService: Document update response:', result);
+      
+      return result;
+    } catch (error: any) {
+      console.error('ClientService: Error updating document:', error);
+      throw new Error(error.message || 'Failed to update document');
+    }
+  }
+
+  /**
+   * Delete client document
+   */
+  async deleteClientDocument(clientId: number, docId: number): Promise<void> {
+    try {
+      console.log('ClientService: Deleting document for client ID:', clientId, 'doc ID:', docId);
+      
+      await clientAPI.deleteDocument(clientId, docId);
+      console.log('ClientService: Document deleted successfully');
+    } catch (error: any) {
+      console.error('ClientService: Error deleting document:', error);
+      throw new Error(error.message || 'Failed to delete document');
+    }
+  }
 }
 
 // Export singleton instance

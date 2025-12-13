@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, Filter, Users, FileText, Calendar, Eye, Edit, ToggleLeft, ToggleRight, Loader, X } from "lucide-react";
 import { clientAPI } from "@/app/services";
 import type { ClientListItem, Client } from "@/app/services/types";
+import ClientDocumentsModal from "@/app/components/client/ClientDocumentsModal";
 
 const stageColors: Record<string, string> = {
   discover: "bg-blue-500/30 text-blue-300 border-blue-500/30",
@@ -33,6 +34,7 @@ export default function page() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -41,6 +43,7 @@ export default function page() {
   const fetchClients = async () => {
     try {
       setLoading(true);
+      setError(null);
       const filters: Record<string, any> = {};
       
       if (filterStage !== "all") filters.stage = filterStage;
@@ -48,11 +51,19 @@ export default function page() {
       if (filterPortalStatus !== "all") filters.is_portal_active = filterPortalStatus === "active";
       if (searchQuery) filters.search = searchQuery;
 
+      console.log('Fetching clients with filters:', filters);
       const response = await clientAPI.listClients(filters) as any;
-      setClients(Array.isArray(response) ? response : (response.results || []));
-    } catch (err) {
+      console.log('API response:', response);
+      
+      const clientsData = Array.isArray(response) ? response : (response.results || response.data || []);
+      console.log('Processed clients:', clientsData);
+      
+      setClients(clientsData);
+    } catch (err: any) {
       console.error("Failed to fetch clients:", err);
-      setError("Failed to load clients");
+      setError(err.message || "Failed to load clients");
+      
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -233,6 +244,10 @@ export default function page() {
                       <div className="text-center py-8 text-gray-400">
                         <Users size={32} className="mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No clients found</p>
+                        {error && (
+                          <p className="text-xs text-red-400 mt-2">Error: {error}</p>
+                        )}
+                        <p className="text-xs mt-2">Check browser console for details</p>
                       </div>
                     ) : (
                       clients.map((client) => (
@@ -259,7 +274,7 @@ export default function page() {
 
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-xs px-2 py-0.5 rounded border ${stageColors[client.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
-                              {client.stage.charAt(0).toUpperCase() + client.stage.slice(1)}
+                              {client.stage ? client.stage.charAt(0).toUpperCase() + client.stage.slice(1) : 'Unknown'}
                             </span>
                             <span className={`text-xs ${pillarColors[client.primary_pillar] || "text-gray-400"}`}>
                               {client.primary_pillar === "strategic" ? "Strategic" : 
@@ -308,7 +323,7 @@ export default function page() {
 
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className={`text-sm px-3 py-1 rounded border ${stageColors[selectedClient.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
-                        Stage: {selectedClient.stage.charAt(0).toUpperCase() + selectedClient.stage.slice(1)}
+                        Stage: {selectedClient.stage ? selectedClient.stage.charAt(0).toUpperCase() + selectedClient.stage.slice(1) : 'Unknown'}
                       </span>
                       <span className={`text-sm px-3 py-1 rounded border ${selectedClient.is_portal_active ? "bg-green-500/30 text-green-300 border-green-500/30" : "bg-red-500/30 text-red-300 border-red-500/30"}`}>
                         Portal: {selectedClient.is_portal_active ? "Active" : "Inactive"}
@@ -392,6 +407,13 @@ export default function page() {
                         <Edit size={16} />
                         Edit Client
                       </button>
+                      <button 
+                        onClick={() => setShowDocuments(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200"
+                      >
+                        <FileText size={16} />
+                        Manage Documents
+                      </button>
                       <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200">
                         <Eye size={16} />
                         View Engagement History
@@ -410,6 +432,14 @@ export default function page() {
           </div>
         </div>
       </div>
+
+      {/* Documents Modal */}
+      <ClientDocumentsModal
+        clientId={selectedClient?.id || null}
+        clientName={selectedClient?.full_name || ""}
+        isOpen={showDocuments}
+        onClose={() => setShowDocuments(false)}
+      />
     </div>
   );
 }

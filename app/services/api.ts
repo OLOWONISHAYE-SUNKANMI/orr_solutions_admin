@@ -4,11 +4,56 @@
  * Base URL: /admin-portal/v1/
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://orr-backend-web-latest.onrender.com";
+const BASE_URL = "http://127.0.0.1:8002";
 
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
+
+// Enhanced error handling utility
+interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+  details?: any;
+}
+
+function createApiError(response: Response, errorData: any): ApiError {
+  const baseMessage = errorData?.message || errorData?.detail || `API Error: ${response.status} ${response.statusText}`;
+  
+  return {
+    message: baseMessage,
+    status: response.status,
+    code: errorData?.code || `HTTP_${response.status}`,
+    details: errorData
+  };
+}
+
+function logApiCall(method: string, endpoint: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  console.group(`🌐 [API ${method}] ${endpoint} - ${timestamp}`);
+  if (data && Object.keys(data).length > 0) {
+    console.log('📤 Request Data:', data);
+  }
+  console.groupEnd();
+}
+
+function logApiSuccess(endpoint: string, data: any) {
+  const timestamp = new Date().toISOString();
+  console.group(`✅ [API SUCCESS] ${endpoint} - ${timestamp}`);
+  console.log('📥 Response Data:', data);
+  console.groupEnd();
+}
+
+function logApiError(endpoint: string, error: any) {
+  const timestamp = new Date().toISOString();
+  console.group(`❌ [API ERROR] ${endpoint} - ${timestamp}`);
+  console.error('💥 Error Details:', error);
+  if (error.stack) {
+    console.error('📍 Stack Trace:', error.stack);
+  }
+  console.groupEnd();
+}
 
 async function apiCall<T>(
   endpoint: string,
@@ -16,12 +61,21 @@ async function apiCall<T>(
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+  const method = options.method || 'GET';
+  
   const headers = {
     "Content-Type": "application/json",
     ...(token && { "Authorization": `Bearer ${token}` }),
     ...options.headers,
   };
-  console.log(headers)
+
+  // Log the API call
+  try {
+    logApiCall(method, endpoint, options.body ? JSON.parse(options.body as string) : undefined);
+  } catch (e) {
+    logApiCall(method, endpoint, 'FormData or non-JSON body');
+  }
+  
   try {
     const response = await fetch(url, {
       ...options,
@@ -29,26 +83,83 @@ async function apiCall<T>(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.message || `API Error: ${response.status} ${response.statusText}`;
+      let errorData: any = {};
       
-      // Handle 401 Unauthorized - token expired or invalid
-      if (response.status === 401) {
-        console.warn('Unauthorized access - token may be expired or invalid');
-        // Clear auth data and redirect to login
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth-token');
-          localStorage.removeItem('auth-storage');
-          window.location.href = '/login';
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          errorData = { message: await response.text() };
         }
+      } catch (parseError) {
+        console.warn('Failed to parse error response:', parseError);
+        errorData = { message: `HTTP ${response.status} ${response.statusText}` };
       }
       
-      throw new Error(errorMessage);
+      const apiError = createApiError(response, errorData);
+      
+      // Handle specific HTTP status codes
+      switch (response.status) {
+        case 401:
+          console.warn('🔐 Unauthorized access - token may be expired or invalid');
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-token');
+            localStorage.removeItem('auth-storage');
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login';
+            }
+          }
+          break;
+        case 403:
+          console.warn('🚫 Forbidden - insufficient permissions');
+          break;
+        case 404:
+          console.warn('🔍 Resource not found');
+          break;
+        case 422:
+          console.warn('📝 Validation error - check request data');
+          // Handle specific constraint violations
+          if (errorData.message && errorData.message.includes('duplicate key value violates unique constraint')) {
+            console.error('🔑 Database constraint violation - duplicate entry detected');
+            if (errorData.message.includes('user_id')) {
+              console.error('👤 User ID already exists - this user may already be registered');
+            }
+            if (errorData.message.includes('email')) {
+              console.error('📧 Email already exists - please use a different email');
+            }
+            if (errorData.message.includes('username')) {
+              console.error('👤 Username already exists - please use a different username');
+            }
+          }
+          break;
+        case 429:
+          console.warn('⏱️ Rate limit exceeded - too many requests');
+          break;
+        case 500:
+          console.error('🔥 Internal server error');
+          break;
+        case 502:
+          console.error('🌐 Bad gateway - server is down or unreachable');
+          break;
+        case 503:
+          console.error('⚠️ Service unavailable - server is temporarily down');
+          break;
+        default:
+          console.error(`❓ Unexpected error: ${response.status}`);
+      }
+      
+      logApiError(endpoint, apiError);
+      throw new Error(apiError.message);
     }
 
-    return await response.json();
+    const responseData = await response.json();
+    logApiSuccess(endpoint, responseData);
+    return responseData;
   } catch (error) {
-    console.error(`API Call Failed: ${endpoint}`, error);
+    if (!(error instanceof Error && error.message.includes('API Error'))) {
+      logApiError(endpoint, error);
+    }
     throw error;
   }
 }
@@ -58,14 +169,29 @@ async function apiCall<T>(
 // ============================================================================
 
 export const dashboardAPI = {
-  getOverview: () =>
-    apiCall("/admin-portal/v1/dashboard/overview/"),
+  getOverview: () => {
+    console.log('[API] Fetching dashboard overview');
+    return apiCall("/admin-portal/v1/dashboard/overview/").catch(error => {
+      console.error('[API ERROR] Failed to fetch dashboard overview:', error);
+      throw error;
+    });
+  },
 
-  getQuickStats: () =>
-    apiCall("/admin-portal/v1/dashboard/quick-stats/"),
+  getQuickStats: () => {
+    console.log('[API] Fetching dashboard quick stats');
+    return apiCall("/admin-portal/v1/dashboard/quick-stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch dashboard quick stats:', error);
+      throw error;
+    });
+  },
 
-  getRecentActivity: () =>
-    apiCall("/admin-portal/v1/dashboard/recent-activity/"),
+  getRecentActivity: () => {
+    console.log('[API] Fetching dashboard recent activity');
+    return apiCall("/admin-portal/v1/dashboard/recent-activity/").catch(error => {
+      console.error('[API ERROR] Failed to fetch dashboard recent activity:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -74,21 +200,48 @@ export const dashboardAPI = {
 
 export const aiOversightAPI = {
   listConversations: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/ai-oversight/conversations/?${params}`);
+    console.log('[API] Fetching AI conversations with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/ai-oversight/conversations/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch AI conversations:', error);
+      throw error;
+    });
   },
 
-  getConversation: (id: number) =>
-    apiCall(`/admin-portal/v1/ai-oversight/conversations/${id}/`),
+  getConversation: (id: number) => {
+    console.log(`[API] Fetching AI conversation ${id}`);
+    return apiCall(`/admin-portal/v1/ai-oversight/conversations/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch AI conversation ${id}:`, error);
+      throw error;
+    });
+  },
 
-  performAction: (id: number, action: string, data?: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/ai-oversight/conversations/${id}/actions/`, {
+  performAction: (id: number, action: string, data?: Record<string, any>) => {
+    console.log(`[API] Performing action '${action}' on AI conversation ${id}:`, data);
+    return apiCall(`/admin-portal/v1/ai-oversight/conversations/${id}/actions/`, {
       method: "POST",
       body: JSON.stringify({ action, ...data }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on AI conversation ${id}:`, error);
+      throw error;
+    });
+  },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/ai-oversight/stats/"),
+  getStats: () => {
+    console.log('[API] Fetching AI oversight stats');
+    return apiCall("/admin-portal/v1/ai-oversight/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch AI oversight stats:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -96,20 +249,40 @@ export const aiOversightAPI = {
 // ============================================================================
 
 export const analyticsAPI = {
-  getClientAnalytics: () =>
-    apiCall("/admin-portal/v1/analytics/clients/"),
+  getClientAnalytics: () => {
+    console.log('[API] Fetching client analytics');
+    return apiCall("/admin-portal/v1/analytics/clients/").catch(error => {
+      console.error('[API ERROR] Failed to fetch client analytics:', error);
+      throw error;
+    });
+  },
 
-  getContentAnalytics: () =>
-    apiCall("/admin-portal/v1/analytics/content/"),
+  getContentAnalytics: () => {
+    console.log('[API] Fetching content analytics');
+    return apiCall("/admin-portal/v1/analytics/content/").catch(error => {
+      console.error('[API ERROR] Failed to fetch content analytics:', error);
+      throw error;
+    });
+  },
 
-  getOverview: () =>
-    apiCall("/admin-portal/v1/analytics/overview/"),
+  getOverview: () => {
+    console.log('[API] Fetching analytics overview');
+    return apiCall("/admin-portal/v1/analytics/overview/").catch(error => {
+      console.error('[API ERROR] Failed to fetch analytics overview:', error);
+      throw error;
+    });
+  },
 
-  exportData: (format: "csv" | "pdf", dateRange?: { start: string; end: string }) =>
-    apiCall("/admin-portal/v1/analytics/export/", {
+  exportData: (format: "csv" | "pdf", dateRange?: { start: string; end: string }) => {
+    console.log(`[API] Exporting analytics data in ${format} format:`, dateRange);
+    return apiCall("/admin-portal/v1/analytics/export/", {
       method: "POST",
       body: JSON.stringify({ format, date_range: dateRange }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to export analytics data in ${format} format:`, error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -117,23 +290,46 @@ export const analyticsAPI = {
 // ============================================================================
 
 export const authAPI = {
-  login: (identifier: string, password: string) =>
-    apiCall("/login/", {
+  login: (identifier: string, password: string) => {
+    console.log(`[API] Attempting login for identifier: ${identifier}`);
+    return apiCall("/login/", {
       method: "POST",
-      body: JSON.stringify({ identifier, password }),
-    }),
+      body: JSON.stringify({ username: identifier, password }),
+    }).then(response => {
+      console.log('[API SUCCESS] Login successful');
+      return response;
+    }).catch(error => {
+      console.error('[API ERROR] Login failed:', error);
+      throw error;
+    });
+  },
 
-  getCurrentUser: () =>
-    apiCall("/admin-portal/v1/auth/me/"),
+  getCurrentUser: () => {
+    console.log('[API] Fetching current user');
+    return apiCall("/admin-portal/v1/auth/me/").catch(error => {
+      console.error('[API ERROR] Failed to fetch current user:', error);
+      throw error;
+    });
+  },
 
-  checkPermission: (permission: string) =>
-    apiCall("/admin-portal/v1/auth/check-permission/", {
+  checkPermission: (permission: string) => {
+    console.log(`[API] Checking permission: ${permission}`);
+    return apiCall("/admin-portal/v1/auth/check-permission/", {
       method: "POST",
       body: JSON.stringify({ permission }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to check permission '${permission}':`, error);
+      throw error;
+    });
+  },
 
-  getAvailableRoles: () =>
-    apiCall("/admin-portal/v1/admin-roles/"),
+  getAvailableRoles: () => {
+    console.log('[API] Fetching available roles');
+    return apiCall("/admin-portal/v1/admin-roles/").catch(error => {
+      console.error('[API ERROR] Failed to fetch available roles:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -142,60 +338,168 @@ export const authAPI = {
 
 export const clientAPI = {
   listClients: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/clients/?${params}`);
+    console.log('[API] Fetching clients with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/clients/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch clients:', error);
+      throw error;
+    });
   },
 
-  getClient: (id: number) =>
-    apiCall(`/admin-portal/v1/clients/${id}/`),
+  createClient: (data: Record<string, any>) => {
+    console.log('[API] Creating client:', data);
+    return apiCall("/admin-portal/v1/clients/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create client:', error);
+      throw error;
+    });
+  },
 
-  updateClient: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/clients/${id}/`, {
+  getClient: (id: number) => {
+    console.log(`[API] Fetching client ${id}`);
+    return apiCall(`/admin-portal/v1/clients/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch client ${id}:`, error);
+      throw error;
+    });
+  },
+
+  updateClient: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Updating client ${id}:`, data);
+    return apiCall(`/admin-portal/v1/clients/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update client ${id}:`, error);
+      throw error;
+    });
+  },
 
-  partialUpdateClient: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/clients/${id}/`, {
+  partialUpdateClient: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating client ${id}:`, data);
+    return apiCall(`/admin-portal/v1/clients/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update client ${id}:`, error);
+      throw error;
+    });
+  },
 
-  performAction: (id: number, action: string, data?: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/clients/${id}/actions/`, {
+  performAction: (id: number, action: string, data?: Record<string, any>) => {
+    console.log(`[API] Performing action '${action}' on client ${id}:`, data);
+    return apiCall(`/admin-portal/v1/clients/${id}/actions/`, {
       method: "POST",
       body: JSON.stringify({ action, ...data }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on client ${id}:`, error);
+      throw error;
+    });
+  },
 
-  getEngagementHistory: (id: number) =>
-    apiCall(`/admin-portal/v1/clients/${id}/engagement-history/`),
+  getEngagementHistory: (id: number) => {
+    console.log(`[API] Fetching engagement history for client ${id}`);
+    return apiCall(`/admin-portal/v1/clients/${id}/engagement-history/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch engagement history for client ${id}:`, error);
+      throw error;
+    });
+  },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/clients/stats/"),
+  getCompleteProfile: (id: number) => {
+    console.log(`[API] Fetching complete profile for client ${id}`);
+    return apiCall(`/admin-portal/v1/clients/${id}/complete-profile/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch complete profile for client ${id}:`, error);
+      throw error;
+    });
+  },
+
+  getStats: () => {
+    console.log('[API] Fetching client stats');
+    return apiCall("/admin-portal/v1/clients/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch client stats:', error);
+      throw error;
+    });
+  },
 
   // Documents
-  listDocuments: (clientId: number) =>
-    apiCall(`/admin-portal/v1/clients/${clientId}/documents/`),
+  listDocuments: (clientId: number) => {
+    console.log(`[API] Fetching documents for client ${clientId}`);
+    return apiCall(`/admin-portal/v1/clients/${clientId}/documents/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch documents for client ${clientId}:`, error);
+      throw error;
+    });
+  },
 
-  uploadDocument: (clientId: number, formData: FormData) =>
-    fetch(`${BASE_URL}/admin-portal/v1/clients/${clientId}/documents/`, {
+  uploadDocument: (clientId: number, formData: FormData) => {
+    console.log(`[API] Uploading document for client ${clientId}`);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    return fetch(`${BASE_URL}/admin-portal/v1/clients/${clientId}/documents/`, {
       method: "POST",
+      headers: {
+        ...(token && { "Authorization": `Bearer ${token}` }),
+      },
       body: formData,
-    }).then((res) => res.json()),
+    }).then((res) => {
+      if (!res.ok) {
+        console.error(`[API ERROR] Failed to upload document for client ${clientId}:`, res.status, res.statusText);
+        throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+      }
+      console.log(`[API SUCCESS] Document uploaded for client ${clientId}`);
+      return res.json();
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to upload document for client ${clientId}:`, error);
+      throw error;
+    });
+  },
 
-  getDocument: (clientId: number, docId: number) =>
-    apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`),
+  getDocument: (clientId: number, docId: number) => {
+    console.log(`[API] Fetching document ${docId} for client ${clientId}`);
+    return apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch document ${docId} for client ${clientId}:`, error);
+      throw error;
+    });
+  },
 
-  updateDocument: (clientId: number, docId: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`, {
+  updateDocument: (clientId: number, docId: number, data: Record<string, any>) => {
+    console.log(`[API] Updating document ${docId} for client ${clientId}:`, data);
+    return apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update document ${docId} for client ${clientId}:`, error);
+      throw error;
+    });
+  },
 
-  deleteDocument: (clientId: number, docId: number) =>
-    apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`, {
+  partialUpdateDocument: (clientId: number, docId: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating document ${docId} for client ${clientId}:`, data);
+    return apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update document ${docId} for client ${clientId}:`, error);
+      throw error;
+    });
+  },
+
+  deleteDocument: (clientId: number, docId: number) => {
+    console.log(`[API] Deleting document ${docId} for client ${clientId}`);
+    return apiCall(`/admin-portal/v1/clients/${clientId}/documents/${docId}/`, {
       method: "DELETE",
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to delete document ${docId} for client ${clientId}:`, error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -204,79 +508,150 @@ export const clientAPI = {
 
 export const contentAPI = {
   listContent: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/content/?${params}`);
+    console.log('[API] Fetching content with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/content/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch content:', error);
+      throw error;
+    });
   },
 
-  createContent: (data: Record<string, any>) =>
-    apiCall("/admin-portal/v1/content/", {
+  createContent: (data: FormData | Record<string, any>) => {
+    console.log('[API] Creating content:', data instanceof FormData ? 'FormData with file' : data);
+    if (data instanceof FormData) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      return fetch(`${BASE_URL}/admin-portal/v1/content/`, {
+        method: "POST",
+        headers: {
+          ...(token && { "Authorization": `Bearer ${token}` }),
+        },
+        body: data,
+      }).then(res => {
+        if (!res.ok) {
+          console.error('[API ERROR] Failed to create content with file:', res.status, res.statusText);
+          throw new Error(`Content creation failed: ${res.status} ${res.statusText}`);
+        }
+        console.log('[API SUCCESS] Content created successfully with file');
+        return res.json();
+      }).catch(error => {
+        console.error('[API ERROR] Failed to create content with file:', error);
+        throw error;
+      });
+    }
+    return apiCall("/admin-portal/v1/content/", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create content:', error);
+      throw error;
+    });
+  },
 
-  getContent: (id: number) =>
-    apiCall(`/admin-portal/v1/content/${id}/`),
+  getContent: (id: number) => {
+    console.log(`[API] Fetching content ${id}`);
+    return apiCall(`/admin-portal/v1/content/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  updateContent: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/content/${id}/`, {
+  updateContent: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Updating content ${id}:`, data);
+    return apiCall(`/admin-portal/v1/content/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  partialUpdateContent: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/content/${id}/`, {
+  partialUpdateContent: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating content ${id}:`, data);
+    return apiCall(`/admin-portal/v1/content/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  deleteContent: (id: number) =>
-    apiCall(`/admin-portal/v1/content/${id}/`, {
+  deleteContent: (id: number) => {
+    console.log(`[API] Deleting content ${id}`);
+    return apiCall(`/admin-portal/v1/content/${id}/`, {
       method: "DELETE",
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to delete content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  previewContent: (id: number) =>
-    apiCall(`/admin-portal/v1/content/${id}/preview/`),
+  previewContent: (id: number) => {
+    console.log(`[API] Previewing content ${id}`);
+    return apiCall(`/admin-portal/v1/content/${id}/preview/`).catch(error => {
+      console.error(`[API ERROR] Failed to preview content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  publishContent: (id: number, action: "publish" | "unpublish" | "archive") =>
-    apiCall(`/admin-portal/v1/content/${id}/publish/`, {
+  publishContent: (id: number, action: "publish" | "unpublish" | "archive") => {
+    console.log(`[API] Publishing content ${id} with action:`, action);
+    return apiCall(`/admin-portal/v1/content/${id}/publish/`, {
       method: "POST",
       body: JSON.stringify({ action }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to publish content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  createVersion: (id: number) =>
-    apiCall(`/admin-portal/v1/content/${id}/versions/`, {
+  createVersion: (id: number) => {
+    console.log(`[API] Creating version for content ${id}`);
+    return apiCall(`/admin-portal/v1/content/${id}/versions/`, {
       method: "POST",
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to create version for content ${id}:`, error);
+      throw error;
+    });
+  },
 
-  bulkActions: (action: string, contentIds: number[]) =>
-    apiCall("/admin-portal/v1/content/bulk-actions/", {
+  bulkActions: (action: string, contentIds: number[]) => {
+    console.log(`[API] Performing bulk action '${action}' on content IDs:`, contentIds);
+    return apiCall("/admin-portal/v1/content/bulk-actions/", {
       method: "POST",
       body: JSON.stringify({ action, content_ids: contentIds }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform bulk action '${action}':`, error);
+      throw error;
+    });
+  },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/content/stats/"),
-};
+  getStats: () => {
+    console.log('[API] Fetching content stats');
+    return apiCall("/admin-portal/v1/content/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch content stats:', error);
+      throw error;
+    });
+  },
 
-// ============================================================================
-// COMPLIANCE & DATA MANAGEMENT ENDPOINTS
-// ============================================================================
-
-export const complianceAPI = {
-  getComplianceReport: () =>
-    apiCall("/admin-portal/v1/compliance/compliance-report/"),
-
-  exportClientData: (clientId: number) =>
-    apiCall("/admin-portal/v1/compliance/export-client-data/", {
+  incrementViewCount: (id: number) => {
+    console.log(`[API] Incrementing view count for content ${id}`);
+    return apiCall(`/admin-portal/v1/content/${id}/view/`, {
       method: "POST",
-      body: JSON.stringify({ client_id: clientId }),
-    }),
-
-  deleteClientData: (clientId: number) =>
-    apiCall("/admin-portal/v1/compliance/delete-client-data/", {
-      method: "POST",
-      body: JSON.stringify({ client_id: clientId }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to increment view count for content ${id}:`, error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -285,45 +660,108 @@ export const complianceAPI = {
 
 export const meetingAPI = {
   listMeetings: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/meetings/?${params}`);
+    console.log('[API] Fetching meetings with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/meetings/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch meetings:', error);
+      throw error;
+    });
   },
 
-  getMeeting: (id: number) =>
-    apiCall(`/admin-portal/v1/meetings/${id}/`),
+  createMeeting: (data: Record<string, any>) => {
+    console.log('[API] Creating meeting:', data);
+    return apiCall("/admin-portal/v1/meetings/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create meeting:', error);
+      throw error;
+    });
+  },
 
-  updateMeeting: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/meetings/${id}/`, {
+  getMeeting: (id: number) => {
+    console.log(`[API] Fetching meeting ${id}`);
+    return apiCall(`/admin-portal/v1/meetings/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch meeting ${id}:`, error);
+      throw error;
+    });
+  },
+
+  updateMeeting: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Updating meeting ${id}:`, data);
+    return apiCall(`/admin-portal/v1/meetings/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update meeting ${id}:`, error);
+      throw error;
+    });
+  },
 
-  partialUpdateMeeting: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/meetings/${id}/`, {
+  partialUpdateMeeting: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating meeting ${id}:`, data);
+    return apiCall(`/admin-portal/v1/meetings/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update meeting ${id}:`, error);
+      throw error;
+    });
+  },
 
-  performAction: (id: number, action: "confirm" | "reschedule" | "decline" | "complete" | "cancel", data?: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/meetings/${id}/actions/`, {
+  performAction: (id: number, action: "confirm" | "reschedule" | "decline" | "complete" | "cancel", data?: Record<string, any>) => {
+    console.log(`[API] Performing action '${action}' on meeting ${id}:`, data);
+    return apiCall(`/admin-portal/v1/meetings/${id}/actions/`, {
       method: "POST",
       body: JSON.stringify({ action, ...data }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on meeting ${id}:`, error);
+      throw error;
+    });
+  },
 
-  assignHost: (id: number, hostId: number) =>
-    apiCall(`/admin-portal/v1/meetings/${id}/assign/`, {
+  assignHost: (id: number, hostId: number) => {
+    console.log(`[API] Assigning host ${hostId} to meeting ${id}`);
+    return apiCall(`/admin-portal/v1/meetings/${id}/assign/`, {
       method: "POST",
       body: JSON.stringify({ host_id: hostId }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to assign host to meeting ${id}:`, error);
+      throw error;
+    });
+  },
 
-  getMyMeetings: () =>
-    apiCall("/admin-portal/v1/meetings/my-meetings/"),
+  getMyMeetings: () => {
+    console.log('[API] Fetching my meetings');
+    return apiCall("/admin-portal/v1/meetings/my-meetings/").catch(error => {
+      console.error('[API ERROR] Failed to fetch my meetings:', error);
+      throw error;
+    });
+  },
 
-  getUpcomingMeetings: () =>
-    apiCall("/admin-portal/v1/meetings/upcoming/"),
+  getUpcomingMeetings: () => {
+    console.log('[API] Fetching upcoming meetings');
+    return apiCall("/admin-portal/v1/meetings/upcoming/").catch(error => {
+      console.error('[API ERROR] Failed to fetch upcoming meetings:', error);
+      throw error;
+    });
+  },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/meetings/stats/"),
+  getStats: () => {
+    console.log('[API] Fetching meeting stats');
+    return apiCall("/admin-portal/v1/meetings/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch meeting stats:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -332,27 +770,70 @@ export const meetingAPI = {
 
 export const notificationAPI = {
   listNotifications: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/notifications/?${params}`);
+    console.log('[API] Fetching notifications with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/notifications/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch notifications:', error);
+      throw error;
+    });
   },
 
-  getNotification: (id: number) =>
-    apiCall(`/admin-portal/v1/notifications/${id}/`),
+  createNotification: (data: Record<string, any>) => {
+    console.log('[API] Creating notification:', data);
+    return apiCall("/admin-portal/v1/notifications/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create notification:', error);
+      throw error;
+    });
+  },
 
-  performAction: (id: number, action: "mark_read" | "mark_unread") =>
-    apiCall(`/admin-portal/v1/notifications/${id}/actions/`, {
+  getNotification: (id: number) => {
+    console.log(`[API] Fetching notification ${id}`);
+    return apiCall(`/admin-portal/v1/notifications/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch notification ${id}:`, error);
+      throw error;
+    });
+  },
+
+  performAction: (id: number, action: "mark_read" | "mark_unread") => {
+    console.log(`[API] Performing action '${action}' on notification ${id}`);
+    return apiCall(`/admin-portal/v1/notifications/${id}/actions/`, {
       method: "POST",
       body: JSON.stringify({ action }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on notification ${id}:`, error);
+      throw error;
+    });
+  },
 
-  bulkActions: (action: "mark_all_read" | "delete_read" | "delete_all") =>
-    apiCall("/admin-portal/v1/notifications/bulk-actions/", {
+  bulkActions: (action: "mark_all_read" | "delete_read" | "delete_all") => {
+    console.log(`[API] Performing bulk notification action '${action}'`);
+    return apiCall("/admin-portal/v1/notifications/bulk-actions/", {
       method: "POST",
       body: JSON.stringify({ action }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform bulk notification action '${action}':`, error);
+      throw error;
+    });
+  },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/notifications/stats/"),
+  getStats: () => {
+    console.log('[API] Fetching notification stats');
+    return apiCall("/admin-portal/v1/notifications/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch notification stats:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -361,17 +842,25 @@ export const notificationAPI = {
 
 export const searchAPI = {
   globalSearch: (query: string, type?: "all" | "clients" | "tickets" | "meetings" | "content", limit?: number) => {
+    console.log(`[API] Performing global search for '${query}' with type '${type}' and limit ${limit}`);
     const params = new URLSearchParams({
       q: query,
       ...(type && { type }),
       ...(limit && { limit: limit.toString() }),
     });
-    return apiCall(`/admin-portal/v1/search/global/?${params}`);
+    return apiCall(`/admin-portal/v1/search/global/?${params}`).catch(error => {
+      console.error(`[API ERROR] Failed to perform global search for '${query}':`, error);
+      throw error;
+    });
   },
 
   quickSearch: (query: string) => {
+    console.log(`[API] Performing quick search for '${query}'`);
     const params = new URLSearchParams({ q: query });
-    return apiCall(`/admin-portal/v1/search/quick/?${params}`);
+    return apiCall(`/admin-portal/v1/search/quick/?${params}`).catch(error => {
+      console.error(`[API ERROR] Failed to perform quick search for '${query}':`, error);
+      throw error;
+    });
   },
 };
 
@@ -380,82 +869,160 @@ export const searchAPI = {
 // ============================================================================
 
 export const settingsAPI = {
-  // Audit Logs
   getAuditLogs: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/settings/audit-logs/?${params}`);
+    console.log('[API] Fetching audit logs with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/settings/audit-logs/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch audit logs:', error);
+      throw error;
+    });
   },
 
-  // Roles
-  listRoles: () =>
-    apiCall("/admin-portal/v1/settings/roles/"),
+  listRoles: () => {
+    console.log('[API] Fetching roles');
+    return apiCall("/admin-portal/v1/settings/roles/").catch(error => {
+      console.error('[API ERROR] Failed to fetch roles:', error);
+      throw error;
+    });
+  },
 
-  createRole: (data: Record<string, any>) =>
-    apiCall("/admin-portal/v1/settings/roles/", {
+  createRole: (data: Record<string, any>) => {
+    console.log('[API] Creating role:', data);
+    return apiCall("/admin-portal/v1/settings/roles/", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create role:', error);
+      throw error;
+    });
+  },
 
-  getRole: (id: number) =>
-    apiCall(`/admin-portal/v1/settings/roles/${id}/`),
+  getRole: (id: number) => {
+    console.log(`[API] Fetching role ${id}`);
+    return apiCall(`/admin-portal/v1/settings/roles/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch role ${id}:`, error);
+      throw error;
+    });
+  },
 
-  updateRole: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/settings/roles/${id}/`, {
+  updateRole: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Updating role ${id}:`, data);
+    return apiCall(`/admin-portal/v1/settings/roles/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update role ${id}:`, error);
+      throw error;
+    });
+  },
 
-  partialUpdateRole: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/settings/roles/${id}/`, {
+  partialUpdateRole: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating role ${id}:`, data);
+    return apiCall(`/admin-portal/v1/settings/roles/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update role ${id}:`, error);
+      throw error;
+    });
+  },
 
-  deleteRole: (id: number) =>
-    apiCall(`/admin-portal/v1/settings/roles/${id}/`, {
+  deleteRole: (id: number) => {
+    console.log(`[API] Deleting role ${id}`);
+    return apiCall(`/admin-portal/v1/settings/roles/${id}/`, {
       method: "DELETE",
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to delete role ${id}:`, error);
+      throw error;
+    });
+  },
 
-  // System Settings
-  getSystemSettings: () =>
-    apiCall("/admin-portal/v1/settings/system/"),
+  getSystemSettings: () => {
+    console.log('[API] Fetching system settings');
+    return apiCall("/admin-portal/v1/settings/system/").catch(error => {
+      console.error('[API ERROR] Failed to fetch system settings:', error);
+      throw error;
+    });
+  },
 
-  updateSystemSettings: (data: Record<string, any>) =>
-    apiCall("/admin-portal/v1/settings/system/", {
+  updateSystemSettings: (data: Record<string, any>) => {
+    console.log('[API] Updating system settings:', data);
+    return apiCall("/admin-portal/v1/settings/system/", {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to update system settings:', error);
+      throw error;
+    });
+  },
 
-  // Users
-  listUsers: () =>
-    apiCall("/admin-portal/v1/settings/users/"),
+  listUsers: () => {
+    console.log('[API] Fetching users');
+    return apiCall("/admin-portal/v1/settings/users/").catch(error => {
+      console.error('[API ERROR] Failed to fetch users:', error);
+      throw error;
+    });
+  },
 
-  getUser: (id: number) =>
-    apiCall(`/admin-portal/v1/settings/users/${id}/`),
+  getUser: (id: number) => {
+    console.log(`[API] Fetching user ${id}`);
+    return apiCall(`/admin-portal/v1/settings/users/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch user ${id}:`, error);
+      throw error;
+    });
+  },
 
-  updateUser: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/settings/users/${id}/`, {
+  updateUser: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Updating user ${id}:`, data);
+    return apiCall(`/admin-portal/v1/settings/users/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update user ${id}:`, error);
+      throw error;
+    });
+  },
 
-  partialUpdateUser: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/settings/users/${id}/`, {
+  partialUpdateUser: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating user ${id}:`, data);
+    return apiCall(`/admin-portal/v1/settings/users/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update user ${id}:`, error);
+      throw error;
+    });
+  },
 
-  performUserAction: (id: number, action: "activate" | "deactivate" | "reset_password") =>
-    apiCall(`/admin-portal/v1/settings/users/${id}/actions/`, {
+  performUserAction: (id: number, action: "activate" | "deactivate" | "reset_password") => {
+    console.log(`[API] Performing action '${action}' on user ${id}`);
+    return apiCall(`/admin-portal/v1/settings/users/${id}/actions/`, {
       method: "POST",
       body: JSON.stringify({ action }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on user ${id}:`, error);
+      throw error;
+    });
+  },
 
-  createUser: (data: Record<string, any>) =>
-    apiCall("/admin-portal/v1/settings/users/create/", {
+  createUser: (data: Record<string, any>) => {
+    console.log('[API] Creating user:', data);
+    return apiCall("/admin-portal/v1/settings/users/create/", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create user:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -464,52 +1031,108 @@ export const settingsAPI = {
 
 export const ticketAPI = {
   listTickets: (filters?: Record<string, any>) => {
-    const params = new URLSearchParams(filters || {});
-    return apiCall(`/admin-portal/v1/tickets/?${params}`);
+    console.log('[API] Fetching tickets with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/tickets/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch tickets:', error);
+      throw error;
+    });
   },
 
-  createTicket: (data: Record<string, any>) =>
-    apiCall("/admin-portal/v1/tickets/", {
+  createTicket: (data: Record<string, any>) => {
+    console.log('[API] Creating ticket:', data);
+    return apiCall("/admin-portal/v1/tickets/", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create ticket:', error);
+      throw error;
+    });
+  },
 
-  getTicket: (id: number) =>
-    apiCall(`/admin-portal/v1/tickets/${id}/`),
+  getTicket: (id: number) => {
+    console.log(`[API] Fetching ticket ${id}`);
+    return apiCall(`/admin-portal/v1/tickets/${id}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch ticket ${id}:`, error);
+      throw error;
+    });
+  },
 
-  updateTicket: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/tickets/${id}/`, {
+  updateTicket: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Updating ticket ${id}:`, data);
+    return apiCall(`/admin-portal/v1/tickets/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update ticket ${id}:`, error);
+      throw error;
+    });
+  },
 
-  partialUpdateTicket: (id: number, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/tickets/${id}/`, {
+  partialUpdateTicket: (id: number, data: Record<string, any>) => {
+    console.log(`[API] Partially updating ticket ${id}:`, data);
+    return apiCall(`/admin-portal/v1/tickets/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to partially update ticket ${id}:`, error);
+      throw error;
+    });
+  },
 
-  performAction: (id: number, action: string, data?: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/tickets/${id}/actions/`, {
+  performAction: (id: number, action: string, data?: Record<string, any>) => {
+    console.log(`[API] Performing action '${action}' on ticket ${id}:`, data);
+    return apiCall(`/admin-portal/v1/tickets/${id}/actions/`, {
       method: "POST",
       body: JSON.stringify({ action, ...data }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on ticket ${id}:`, error);
+      throw error;
+    });
+  },
 
-  // Messages
-  listMessages: (ticketId: number) =>
-    apiCall(`/admin-portal/v1/tickets/${ticketId}/messages/`),
+  listMessages: (ticketId: number) => {
+    console.log(`[API] Fetching messages for ticket ${ticketId}`);
+    return apiCall(`/admin-portal/v1/tickets/${ticketId}/messages/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch messages for ticket ${ticketId}:`, error);
+      throw error;
+    });
+  },
 
-  addMessage: (ticketId: number, message: string, isInternal: boolean = false) =>
-    apiCall(`/admin-portal/v1/tickets/${ticketId}/messages/`, {
+  addMessage: (ticketId: number, message: string, isInternal: boolean = false) => {
+    console.log(`[API] Adding message to ticket ${ticketId}:`, { message, isInternal });
+    return apiCall(`/admin-portal/v1/tickets/${ticketId}/messages/`, {
       method: "POST",
       body: JSON.stringify({ message, is_internal: isInternal }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to add message to ticket ${ticketId}:`, error);
+      throw error;
+    });
+  },
 
-  getMyTickets: () =>
-    apiCall("/admin-portal/v1/tickets/my-tickets/"),
+  getMyTickets: () => {
+    console.log('[API] Fetching my tickets');
+    return apiCall("/admin-portal/v1/tickets/my-tickets/").catch(error => {
+      console.error('[API ERROR] Failed to fetch my tickets:', error);
+      throw error;
+    });
+  },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/tickets/stats/"),
+  getStats: () => {
+    console.log('[API] Fetching ticket stats');
+    return apiCall("/admin-portal/v1/tickets/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch ticket stats:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -518,6 +1141,7 @@ export const ticketAPI = {
 
 export const billingAPI = {
   getHistory: (filters?: Record<string, any>) => {
+    console.log('[API] Fetching billing history with filters:', filters);
     const params = new URLSearchParams();
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
@@ -529,38 +1153,98 @@ export const billingAPI = {
     const queryString = params.toString();
     return apiCall(
       `/admin-portal/v1/billing-history/${queryString ? `?${queryString}` : ""}`
-    );
+    ).catch(error => {
+      console.error('[API ERROR] Failed to fetch billing history:', error);
+      throw error;
+    });
   },
 
-  getStats: () =>
-    apiCall("/admin-portal/v1/billing-history/stats/"),
+  getStats: () => {
+    console.log('[API] Fetching billing stats');
+    return apiCall("/admin-portal/v1/billing-history/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch billing stats:', error);
+      throw error;
+    });
+  },
 
-  getPricingPlans: () =>
-    apiCall("/admin-portal/v1/pricing-plans/"),
+  getPricingPlans: () => {
+    console.log('[API] Fetching pricing plans');
+    return apiCall("/admin-portal/v1/pricing-plans/").catch(error => {
+      console.error('[API ERROR] Failed to fetch pricing plans:', error);
+      throw error;
+    });
+  },
 
-  createCheckoutSession: (planId: number, clientId: number) =>
-    apiCall("/admin-portal/v1/payments/create-checkout/", {
+  createCheckoutSession: (planId: number, clientId: number) => {
+    console.log(`[API] Creating checkout session for plan ${planId} and client ${clientId}`);
+    return apiCall("/admin-portal/v1/payments/create-checkout/", {
       method: "POST",
       body: JSON.stringify({ plan_id: planId, client_id: clientId }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to create checkout session for plan ${planId}:`, error);
+      throw error;
+    });
+  },
 
-  changePlan: (subscriptionId: string, newPlanId: number) =>
-    apiCall("/admin-portal/v1/subscriptions/change-plan/", {
+  changePlan: (subscriptionId: string, newPlanId: number) => {
+    console.log(`[API] Changing plan for subscription ${subscriptionId} to plan ${newPlanId}`);
+    return apiCall("/admin-portal/v1/subscriptions/change-plan/", {
       method: "POST",
       body: JSON.stringify({ subscription_id: subscriptionId, new_plan_id: newPlanId }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to change plan for subscription ${subscriptionId}:`, error);
+      throw error;
+    });
+  },
 
-  pauseSubscription: (subscriptionId: string) =>
-    apiCall("/admin-portal/v1/subscriptions/pause/", {
+  pauseSubscription: (subscriptionId: string) => {
+    console.log(`[API] Pausing subscription ${subscriptionId}`);
+    return apiCall("/admin-portal/v1/subscriptions/pause/", {
       method: "POST",
       body: JSON.stringify({ subscription_id: subscriptionId }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to pause subscription ${subscriptionId}:`, error);
+      throw error;
+    });
+  },
 
-  getPortalSession: (clientId: number) =>
-    apiCall("/admin-portal/v1/subscriptions/portal/", {
+  getPortalSession: (clientId: number) => {
+    console.log(`[API] Getting portal session for client ${clientId}`);
+    return apiCall("/admin-portal/v1/subscriptions/portal/", {
       method: "POST",
       body: JSON.stringify({ client_id: clientId }),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to get portal session for client ${clientId}:`, error);
+      throw error;
+    });
+  },
+
+  getAllPayments: (filters?: Record<string, any>) => {
+    console.log('[API] Fetching all payments with filters:', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(
+      `/admin-portal/v1/billing-history/${queryString ? `?${queryString}` : ""}`
+    ).catch(error => {
+      console.error('[API ERROR] Failed to fetch all payments:', error);
+      throw error;
+    });
+  },
+
+  getAllPaymentStats: () => {
+    console.log('[API] Fetching all payment stats');
+    return apiCall("/admin-portal/v1/billing-history/stats/").catch(error => {
+      console.error('[API ERROR] Failed to fetch all payment stats:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -569,23 +1253,40 @@ export const billingAPI = {
 
 export const cmsAPI = {
   getUserRole: async (): Promise<any> => {
-    const userData = await apiCall<any>("/admin-portal/v1/auth/me/");
-    console.log('Current User Role:', userData?.role || userData?.user?.role);
-    console.log('Current User Permissions:', userData?.permissions || userData?.user?.permissions);
-    console.log('Full User Data:', userData);
-    return userData;
+    console.log('[API] Fetching user role and permissions');
+    try {
+      const userData = await apiCall<any>("/admin-portal/v1/auth/me/");
+      console.log('[API SUCCESS] Current User Role:', userData?.role || userData?.user?.role);
+      console.log('[API SUCCESS] Current User Permissions:', userData?.permissions || userData?.user?.permissions);
+      console.log('[API SUCCESS] Full User Data:', userData);
+      return userData;
+    } catch (error) {
+      console.error('[API ERROR] Failed to fetch user role:', error);
+      throw error;
+    }
   },
 
-  getContent: (contentType: string) =>
-    apiCall(`/admin-portal/v1/cms/${contentType}/`),
+  getContent: (contentType: string) => {
+    console.log(`[API] Fetching CMS content for type '${contentType}'`);
+    return apiCall(`/admin-portal/v1/cms/${contentType}/`).catch(error => {
+      console.error(`[API ERROR] Failed to fetch CMS content for type '${contentType}':`, error);
+      throw error;
+    });
+  },
 
-  updateContent: (contentType: string, data: Record<string, any>) =>
-    apiCall(`/admin-portal/v1/cms/${contentType}/`, {
+  updateContent: (contentType: string, data: Record<string, any>) => {
+    console.log(`[API] Updating CMS content for type '${contentType}':`, data);
+    return apiCall(`/admin-portal/v1/cms/${contentType}/`, {
       method: "PUT",
       body: JSON.stringify(data),
-    }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update CMS content for type '${contentType}':`, error);
+      throw error;
+    });
+  },
 
   uploadImage: (formData: FormData) => {
+    console.log('[API] Uploading image to CMS');
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
     return fetch(`${BASE_URL}/admin-portal/v1/cms/upload-image/`, {
       method: "POST",
@@ -593,6 +1294,36 @@ export const cmsAPI = {
         ...(token && { "Authorization": `Bearer ${token}` }),
       },
       body: formData,
-    }).then(res => res.json());
+    }).then(res => {
+      if (!res.ok) {
+        console.error('[API ERROR] Failed to upload image:', res.status, res.statusText);
+        throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+      }
+      console.log('[API SUCCESS] Image uploaded successfully');
+      return res.json();
+    }).catch(error => {
+      console.error('[API ERROR] Failed to upload image:', error);
+      throw error;
+    });
   },
+};
+
+// ============================================================================
+// EXPORT ALL APIS
+// ============================================================================
+
+export default {
+  dashboard: dashboardAPI,
+  aiOversight: aiOversightAPI,
+  analytics: analyticsAPI,
+  auth: authAPI,
+  client: clientAPI,
+  content: contentAPI,
+  meeting: meetingAPI,
+  notification: notificationAPI,
+  search: searchAPI,
+  settings: settingsAPI,
+  ticket: ticketAPI,
+  billing: billingAPI,
+  cms: cmsAPI,
 };

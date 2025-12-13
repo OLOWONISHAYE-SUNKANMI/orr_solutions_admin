@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Edit, Eye, Calendar, FileText, ToggleLeft, ToggleRight, Loader, Save, AlertCircle } from "lucide-react";
 import { clientService } from "@/app/services/clientService";
 import type { Client } from "@/app/services/types";
+import ClientDocumentsModal from "./ClientDocumentsModal";
 
 interface ClientDetailsModalProps {
   client: Client | null;
@@ -32,6 +33,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Client>>({});
+  const [showDocuments, setShowDocuments] = useState(false);
 
   if (!isOpen || !client) return null;
 
@@ -316,6 +318,13 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                     <Edit size={16} />
                     Edit Client
                   </button>
+                  <button 
+                    onClick={() => setShowDocuments(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200"
+                  >
+                    <FileText size={16} />
+                    Manage Documents
+                  </button>
                   <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200">
                     <Eye size={16} />
                     View Engagement History
@@ -326,6 +335,14 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
           </div>
         </div>
       </div>
+
+      {/* Documents Modal */}
+      <ClientDocumentsModal
+        clientId={client?.id || null}
+        clientName={client?.full_name || ""}
+        isOpen={showDocuments}
+        onClose={() => setShowDocuments(false)}
+      />
     </div>
   );
 }
