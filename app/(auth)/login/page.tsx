@@ -148,14 +148,7 @@ export default function Page() {
                 <span className="ml-2">Remember me</span>
               </label>
 
-              <div className="hidden md:flex items-center">
-                <Link
-                  href="/forgot-password"
-                  className="px-6 font-extrabold underline text-md text-[#61FD51] "
-                >
-                  Forgot Password?
-                </Link>
-              </div>
+            
             </div>
             <button
               type="submit"
@@ -164,14 +157,6 @@ export default function Page() {
               {loading ? "Signing In..." : "Login"}
             </button>
 
-                <div className="hidden md:flex items-end  justify-end mt-4 ">
-                <Link
-                  href="/register"
-                  className="px-6 font-extrabold text-md text-[#FFFFFF] "
-                >
-                  New here? <span className="text-[#61FD51] underline">Register</span>
-                </Link>
-              </div>
           </form>
         
         </div>
