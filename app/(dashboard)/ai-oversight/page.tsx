@@ -10,67 +10,10 @@ const qualityColors: Record<string, string> = {
   "needs-improvement": "bg-orange-500/30 text-orange-300 border-orange-500/30",
 };
 
-// Sample data - will be replaced with API calls
-const sampleConversations: AIConversationListItem[] = [
-  {
-    id: 1,
-    session_id: "CHAT-001",
-    client_name: "John Doe",
-    client_email: "john@example.com",
-    summary: "How do I access the design resources?",
-    escalated_to_ticket: false,
-    needs_improvement: false,
-    reviewed_by_name: "Sarah Johnson",
-    created_at: "2024-11-28T10:30:00Z",
-  },
-  {
-    id: 2,
-    session_id: "CHAT-002",
-    client_name: "Jane Smith",
-    client_email: "jane@example.com",
-    summary: "I need help with the deployment checklist",
-    escalated_to_ticket: true,
-    needs_improvement: true,
-    reviewed_by_name: "Mike Brown",
-    created_at: "2024-11-28T09:15:00Z",
-  },
-  {
-    id: 3,
-    session_id: "CHAT-003",
-    client_name: "Ahmed Hassan",
-    client_email: "ahmed@example.com",
-    summary: "What's the difference between stage 2 and 3?",
-    escalated_to_ticket: false,
-    needs_improvement: false,
-    reviewed_by_name: "Lisa Chen",
-    created_at: "2024-11-27T14:45:00Z",
-  },
-  {
-    id: 4,
-    session_id: "CHAT-004",
-    client_name: "Sarah Johnson",
-    client_email: "sarah@example.com",
-    summary: "Can I download the templates offline?",
-    escalated_to_ticket: true,
-    needs_improvement: false,
-    reviewed_by_name: "Tom Wilson",
-    created_at: "2024-11-27T11:20:00Z",
-  },
-  {
-    id: 5,
-    session_id: "CHAT-005",
-    client_name: "Mike Brown",
-    client_email: "mike@example.com",
-    summary: "How do I schedule a meeting with your team?",
-    escalated_to_ticket: false,
-    needs_improvement: false,
-    reviewed_by_name: "Sarah Johnson",
-    created_at: "2024-11-26T15:30:00Z",
-  },
-];
+
 
 export default function AIOversightPage() {
-  const [conversations, setConversations] = useState<AIConversationListItem[]>(sampleConversations);
+  const [conversations, setConversations] = useState<AIConversationListItem[]>([]);
   const [selectedChat, setSelectedChat] = useState<AIConversationListItem | null>(null);
   const [filterEscalated, setFilterEscalated] = useState<"all" | "escalated" | "not-escalated">("all");
   const [loading, setLoading] = useState(false);

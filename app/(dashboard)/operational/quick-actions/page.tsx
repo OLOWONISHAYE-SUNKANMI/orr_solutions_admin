@@ -1,15 +1,45 @@
 "use client";
 
-import { Zap, UserPlus, FileText, Calendar, Mail, Bell } from "lucide-react";
+import { useState } from "react";
+import { Zap, UserPlus, Calendar, Mail } from "lucide-react";
+import AddClientModal from "@/app/components/quick-actions/AddClientModal";
+import ScheduleMeetingModal from "@/app/components/quick-actions/ScheduleMeetingModal";
+import SendMessageModal from "@/app/components/quick-actions/SendMessageModal";
 
 export default function QuickActionsPage() {
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
   const quickActions = [
-    { icon: UserPlus, label: "Add New Client", href: "/client-management", color: "bg-blue-500" },
-    { icon: FileText, label: "Create Content", href: "/content-management/new", color: "bg-green-500" },
-    { icon: Calendar, label: "Schedule Meeting", href: "/schedule-meetings", color: "bg-purple-500" },
-    { icon: Mail, label: "Send Message", href: "/tickets/client-messages", color: "bg-orange-500" },
-    { icon: Bell, label: "Create Announcement", href: "/operational/system-notifications", color: "bg-red-500" },
+    { 
+      id: "add-client",
+      icon: UserPlus, 
+      label: "Add New Client", 
+      description: "Create a new client profile",
+      color: "bg-blue-500" 
+    },
+    { 
+      id: "schedule-meeting",
+      icon: Calendar, 
+      label: "Schedule Meeting", 
+      description: "Book a new client meeting",
+      color: "bg-purple-500" 
+    },
+    { 
+      id: "send-message",
+      icon: Mail, 
+      label: "Send Message", 
+      description: "Create a new ticket or message",
+      color: "bg-orange-500" 
+    },
   ];
+
+  const handleActionClick = (actionId: string) => {
+    setActiveModal(actionId);
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+  };
 
   return (
     <div className="min-h-screen text-white relative overflow-hidden star">
@@ -27,20 +57,35 @@ export default function QuickActionsPage() {
               const Icon = action.icon;
               return (
                 <button
-                  key={action.label}
-                  onClick={() => window.location.href = action.href}
-                  className="bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-all group"
+                  key={action.id}
+                  onClick={() => handleActionClick(action.id)}
+                  className="bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-primary/50 transition-all group text-left"
                 >
                   <div className={`${action.color} w-16 h-16 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                     <Icon size={32} className="text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">{action.label}</h3>
+                  <h3 className="text-lg font-semibold text-white mb-2">{action.label}</h3>
+                  <p className="text-sm text-gray-400">{action.description}</p>
                 </button>
               );
             })}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <AddClientModal 
+        isOpen={activeModal === "add-client"} 
+        onClose={closeModal} 
+      />
+      <ScheduleMeetingModal 
+        isOpen={activeModal === "schedule-meeting"} 
+        onClose={closeModal} 
+      />
+      <SendMessageModal 
+        isOpen={activeModal === "send-message"} 
+        onClose={closeModal} 
+      />
     </div>
   );
 }

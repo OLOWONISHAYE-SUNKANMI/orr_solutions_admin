@@ -64,7 +64,7 @@ export default function ClientList({ clients, selectedClientId, loading, onClien
         >
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{client.username || client.full_name}</p>
+              <p className="text-sm font-semibold text-white truncate">{client.full_name}</p>
               <p className="text-xs text-gray-400 truncate">{client.email}</p>
               <p className="text-xs text-gray-400 truncate">{client.company}</p>
               {client.role && (
@@ -79,10 +79,10 @@ export default function ClientList({ clients, selectedClientId, loading, onClien
           </div>
 
           <div className="flex items-center gap-2 flex-wrap mb-2">
-            <span className={`text-xs px-2 py-0.5 rounded border ${stageColors[client.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
+            <span className={`text-xs px-2 py-0.5 rounded border ${client.stage ? stageColors[client.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30" : "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
               {client.stage ? client.stage.charAt(0).toUpperCase() + client.stage.slice(1) : 'Unknown'}
             </span>
-            <span className={`text-xs ${pillarColors[client.primary_pillar] || "text-gray-400"}`}>
+            <span className={`text-xs ${client.primary_pillar ? pillarColors[client.primary_pillar] || "text-gray-400" : "text-gray-400"}`}>
               {client.primary_pillar === "strategic" ? "Strategic" : 
                client.primary_pillar === "operational" ? "Operational" : 
                client.primary_pillar === "financial" ? "Financial" : 
@@ -91,7 +91,7 @@ export default function ClientList({ clients, selectedClientId, loading, onClien
           </div>
 
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Last active: {formatDate(client.last_activity)}</span>
+            <span>Last active: {formatDate(client.last_activity || "")}</span>
             {client.assigned_admin_name && (
               <span className="text-gray-400">Admin: {client.assigned_admin_name}</span>
             )}

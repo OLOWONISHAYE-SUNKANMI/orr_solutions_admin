@@ -7,9 +7,9 @@ module.exports = {
   ],
   theme: {
     fontFamily: {
-      grotesk: ['Space Grotesk', 'sans-serif'],
-      poppins: ['Poppins', 'sans-serif'],
-      sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui'],
+      grotesk: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+      poppins: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+      sans: ['ui-sans-serif', 'system-ui', 'sans-serif'],
     },
     extend: {
       colors: {

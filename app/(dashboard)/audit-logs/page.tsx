@@ -3,80 +3,7 @@
 import { useState } from "react";
 import { Search, Download, Filter, LogOut, Edit, Lock, Trash2, Eye } from "lucide-react";
 
-const auditLogs = [
-  {
-    id: 1,
-    type: "login",
-    user: "Sarah Johnson",
-    action: "Successful login",
-    timestamp: "2024-11-28 10:30 AM",
-    ipAddress: "192.168.1.100",
-    status: "success",
-  },
-  {
-    id: 2,
-    type: "content",
-    user: "Mike Brown",
-    action: "Published content: 'Deployment Guide'",
-    timestamp: "2024-11-28 09:15 AM",
-    ipAddress: "192.168.1.105",
-    status: "success",
-  },
-  {
-    id: 3,
-    type: "role",
-    user: "Admin - Lisa Chen",
-    action: "Changed user role: John Doe (Editor → Viewer)",
-    timestamp: "2024-11-27 03:45 PM",
-    ipAddress: "192.168.1.110",
-    status: "success",
-  },
-  {
-    id: 4,
-    type: "login",
-    user: "Tom Wilson",
-    action: "Failed login attempt",
-    timestamp: "2024-11-27 02:20 PM",
-    ipAddress: "192.168.1.115",
-    status: "failed",
-  },
-  {
-    id: 5,
-    type: "client",
-    user: "Sarah Johnson",
-    action: "Updated client: Jane Smith (Stage: Diagnose → Design)",
-    timestamp: "2024-11-27 01:10 PM",
-    ipAddress: "192.168.1.100",
-    status: "success",
-  },
-  {
-    id: 6,
-    type: "ticket",
-    user: "Mike Brown",
-    action: "Changed ticket status: TKT-001 (New → In Progress)",
-    timestamp: "2024-11-26 11:50 AM",
-    ipAddress: "192.168.1.105",
-    status: "success",
-  },
-  {
-    id: 7,
-    type: "content",
-    user: "Lisa Chen",
-    action: "Archived content: 'Old FAQ'",
-    timestamp: "2024-11-26 10:30 AM",
-    ipAddress: "192.168.1.110",
-    status: "success",
-  },
-  {
-    id: 8,
-    type: "login",
-    user: "Sarah Johnson",
-    action: "Successful login",
-    timestamp: "2024-11-25 08:00 AM",
-    ipAddress: "192.168.1.100",
-    status: "success",
-  },
-];
+const auditLogs: any[] = [];
 
 const typeIcons: Record<string, any> = {
   login: LogOut,
@@ -95,7 +22,7 @@ const typeColors: Record<string, string> = {
 };
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState(auditLogs);
+  const [logs, setLogs] = useState<any[]>([]);
   const [filterType, setFilterType] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");

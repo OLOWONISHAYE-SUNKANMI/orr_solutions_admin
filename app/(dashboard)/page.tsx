@@ -17,22 +17,21 @@ import type {
   TicketListItem,
 } from "@/app/services/types";
 import {
-  AlertCircle,
-  Bell,
-  Calendar,
-  CheckCircle,
-  Clock,
   FileText,
   Loader,
-  Users,
   Wallet,
-  TrendingUp,
-  ArrowRight
+  Calendar,
+  Bell,
+  Users,
+  AlertCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PermissionGuard from "@/app/components/admin/PermissionGuard";
-import { useRole, useIsSuperAdmin } from "@/lib/rbac";
+import { useRole, useIsSuperAdmin } from "@/lib/rbac/hooks";
+import WelcomeHero from "@/app/components/dashboard/WelcomeHero";
+import QuickActions from "@/app/components/dashboard/QuickActions";
+import ActivityFeed from "@/app/components/dashboard/ActivityFeed";
 
 function page() {
   const router = useRouter();
@@ -71,43 +70,70 @@ function page() {
             dashboardAPI.getOverview().catch(() => null),
             notificationAPI
               .listNotifications({ is_read: false })
-              .catch(() => ({ results: [] })),
+              .catch(() => ({ data: [] })),
             ticketAPI
               .listTickets({ status: "new" })
-              .catch(() => ({ results: [] })),
-            meetingAPI.getUpcomingMeetings().catch(() => ({ results: [] })),
-            contentAPI.listContent({ limit: 5 }).catch(() => ({ results: [] })),
-            billingAPI.getStats().catch(() => null),
+              .catch(() => ({ data: [] })),
+            meetingAPI.getUpcomingMeetings().catch(() => ({ data: [] })),
+            contentAPI.listContent({ limit: 5 }).catch(() => ({ data: [] })),
+            billingAPI.getAllPaymentStats().catch(() => null),
             clientAPI.getStats().catch(() => null),
           ]);
 
-        // Type-safe data extraction
-        setMetrics(
-          metricsData && typeof metricsData === "object" && "active_clients" in metricsData
-            ? (metricsData as DashboardMetrics)
-            : defaultMetrics
-        );
+        // Extract data from API responses
+        console.log('Dashboard API Responses:', {
+          metricsData,
+          notificationsData,
+          ticketsData,
+          meetingsData,
+          contentData,
+          billingStatsData,
+          clientStatsData
+        });
 
-        const extractArray = (data: any): any[] => {
+        const extractData = (response: any) => {
+          if (!response) return null;
+          return response.data || response;
+        };
+
+        const extractArray = (response: any): any[] => {
+          const data = extractData(response);
           if (Array.isArray(data)) return data;
           if (data && typeof data === "object" && "results" in data && Array.isArray(data.results))
             return data.results;
           return [];
         };
 
-        setNotifications(extractArray(notificationsData) as Notification[]);
-        setPendingTickets(extractArray(ticketsData) as TicketListItem[]);
-        setUpcomingMeetings(extractArray(meetingsData) as MeetingListItem[]);
-        setRecentContent(extractArray(contentData) as ContentListItem[]);
+        // Set metrics from API responses
+        const dashboardData = extractData(metricsData);
+        const clientStats = extractData(clientStatsData);
+        const notifications = extractArray(notificationsData);
+        const tickets = extractArray(ticketsData);
+        const meetings = extractArray(meetingsData);
+        const content = extractArray(contentData);
+
+        setMetrics({
+          active_clients: dashboardData?.active_clients || clientStats?.active_clients || 0,
+          pending_tickets: dashboardData?.pending_tickets?.new || tickets.length,
+          upcoming_meetings: dashboardData?.upcoming_meetings || meetings.length,
+          system_notifications: dashboardData?.system_notifications || notifications.length,
+          portal_logins: dashboardData?.portal_logins_7days || 0,
+          ai_chat_sessions: dashboardData?.ai_chat_sessions || 0,
+          escalation_rate: dashboardData?.escalation_rate || 0,
+        });
+
+        setNotifications(notifications as Notification[]);
+        setPendingTickets(tickets as TicketListItem[]);
+        setUpcomingMeetings(meetings as MeetingListItem[]);
+        setRecentContent(content as ContentListItem[]);
         
         // Set wallet balance from billing stats
-        if (billingStatsData && typeof billingStatsData === "object" && "total_revenue" in billingStatsData) {
-          const revenue = billingStatsData.total_revenue;
-          setWalletBalance(typeof revenue === "string" ? parseFloat(revenue.replace(/[^0-9.-]/g, "")) : (typeof revenue === "number" ? revenue : 0));
+        const billingData = extractData(billingStatsData);
+        if (billingData && "total_revenue" in billingData) {
+          const revenue = billingData.total_revenue;
+          setWalletBalance(typeof revenue === "number" ? revenue : (typeof revenue === "string" ? parseFloat(revenue) : 0));
         }
         
-        // Set upcoming consultations based on meetings data
-        const meetings = extractArray(meetingsData) as MeetingListItem[];
         setUpcomingConsultations(meetings.length);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
@@ -135,26 +161,7 @@ function page() {
         {/* 3-PART OPENING SECTION */}
         <div className="space-y-6 mb-8">
           {/* PART 1: WELCOME HERO */}
-          <div className="bg-gradient-to-r from-primary/30 via-primary/20 to-transparent rounded-2xl p-8 md:p-12 border border-primary/30 shadow-2xl">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div className="flex-1">
-                <h1 className="text-3xl md:text-5xl font-bold text-white mb-3">
-                  Welcome back, {role?.replace('_', ' ').toUpperCase()}
-                  {isSuperAdmin && ' 👑'}
-                </h1>
-                <p className="text-gray-300 text-lg mb-4">
-                  You're all set to manage operations and drive client success.
-                </p>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <Clock size={16} />
-                  <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                </div>
-              </div>
-              <div className="hidden md:flex items-center justify-center w-24 h-24 bg-primary/20 rounded-full border border-primary/30">
-                <TrendingUp size={48} className="text-primary" />
-              </div>
-            </div>
-          </div>
+          <WelcomeHero />
 
           {/* PART 2: KEY INSIGHTS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -189,65 +196,8 @@ function page() {
             </div>
           </div>
 
-          {/* PART 3: RECOMMENDED ACTIONS */}
-          <div className="bg-gradient-to-br from-white/15 to-white/5 rounded-xl p-6 border border-white/10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-primary/20 rounded-lg">
-                <ArrowRight size={18} className="text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Recommended Actions</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <PermissionGuard permissions={['can_view_all_clients']}>
-                <button 
-                  onClick={() => router.push("/client-management")}
-                  className="group flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 hover:border-primary/30 transition-all duration-300"
-                >
-                  <Users size={20} className="text-primary group-hover:scale-110 transition-transform" />
-                  <div className="text-left flex-1">
-                    <p className="font-medium text-white text-sm">Review Active Clients</p>
-                    <p className="text-xs text-gray-400">Check client status and engagement</p>
-                  </div>
-                </button>
-              </PermissionGuard>
-              <PermissionGuard permissions={['can_manage_tickets']}>
-                <button 
-                  onClick={() => router.push("/tickets")}
-                  className="group flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 hover:border-primary/30 transition-all duration-300"
-                >
-                  <AlertCircle size={20} className="text-orange-400 group-hover:scale-110 transition-transform" />
-                  <div className="text-left flex-1">
-                    <p className="font-medium text-white text-sm">Handle Support Tickets</p>
-                    <p className="text-xs text-gray-400">Respond to pending requests</p>
-                  </div>
-                </button>
-              </PermissionGuard>
-              <PermissionGuard permissions={['can_manage_meetings']}>
-                <button 
-                  onClick={() => router.push("/consultations")}
-                  className="group flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 hover:border-primary/30 transition-all duration-300"
-                >
-                  <Calendar size={20} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                  <div className="text-left flex-1">
-                    <p className="font-medium text-white text-sm">Schedule Consultations</p>
-                    <p className="text-xs text-gray-400">Manage upcoming meetings</p>
-                  </div>
-                </button>
-              </PermissionGuard>
-              <PermissionGuard permissions={['can_create_content', 'can_publish_content']}>
-                <button 
-                  onClick={() => router.push("/content-management")}
-                  className="group flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 hover:border-primary/30 transition-all duration-300"
-                >
-                  <FileText size={20} className="text-primary group-hover:scale-110 transition-transform" />
-                  <div className="text-left flex-1">
-                    <p className="font-medium text-white text-sm">Manage Content</p>
-                    <p className="text-xs text-gray-400">Create and publish resources</p>
-                  </div>
-                </button>
-              </PermissionGuard>
-            </div>
-          </div>
+          {/* PART 3: QUICK ACTIONS */}
+          <QuickActions />
         </div>
 
         {/* MAIN DASHBOARD CONTENT */}
@@ -260,221 +210,84 @@ function page() {
             </div>
           )}
 
-          {/* Key Metrics - Grid Pattern */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {/* Active Clients Card */}
-              <PermissionGuard permissions={['can_view_all_clients']}>
-                <div className="group relative bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl p-6 border border-primary/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="bg-primary/30 w-14 h-14 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Users className="w-7 h-7 text-primary" />
+          {/* Key Metrics - Enhanced Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* Active Clients */}
+            <PermissionGuard permissions={['can_view_all_clients']}>
+              <div className="group relative bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl p-6 border border-primary/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer" onClick={() => router.push('/client-management')}>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="bg-primary/30 w-12 h-12 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Users className="w-6 h-6 text-primary" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-gray-400 text-sm font-medium">Active Clients</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <p className="text-3xl font-bold text-white">
-                          {metrics.active_clients}
-                        </p>
-                        <span className="text-primary text-xs">Portal active</span>
-                      </div>
-                    </div>
+                    <span className="text-xs text-primary bg-primary/20 px-2 py-1 rounded-full">Active</span>
                   </div>
+                  <p className="text-2xl font-bold text-white mb-1">{metrics.active_clients}</p>
+                  <p className="text-sm text-gray-400">Active Clients</p>
                 </div>
-              </PermissionGuard>
-
-              {/* Pending Tickets Card */}
-              <PermissionGuard permissions={['can_manage_tickets']}>
-                <div className="group relative bg-gradient-to-br from-orange-500/20 to-orange-500/5 rounded-xl p-6 border border-orange-500/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="bg-orange-500/30 w-14 h-14 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <AlertCircle className="w-7 h-7 text-orange-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-gray-400 text-sm font-medium">Pending Tickets</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <p className="text-3xl font-bold text-white">
-                          {metrics.pending_tickets}
-                        </p>
-                        <span className="text-orange-400 text-xs">Awaiting action</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </PermissionGuard>
-
-              {/* Upcoming Meetings Card */}
-              <PermissionGuard permissions={['can_manage_meetings']}>
-                <div className="group relative bg-gradient-to-br from-blue-500/20 to-blue-500/5 rounded-xl p-6 border border-blue-500/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-4">
-                    <div className="bg-blue-500/30 w-14 h-14 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Calendar className="w-7 h-7 text-blue-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-gray-400 text-sm font-medium">Upcoming Meetings</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <p className="text-3xl font-bold text-white">
-                          {metrics.upcoming_meetings}
-                        </p>
-                        <span className="text-blue-400 text-xs">Next 7 days</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </PermissionGuard>
-            </div>
-
-          {/* Two Column Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* left Column - Meetings */}
-            <PermissionGuard permissions={['can_manage_meetings']}>
-              <div className="bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 p-5 md:p-6 hover:border-blue-500/30 transition-all duration-300 group">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30 transition-colors">
-                    <Calendar size={18} className="text-blue-400" />
-                  </div>
-                  Upcoming Meetings
-                </h2>
-                <span className="bg-blue-500/30 text-blue-300 px-3 py-1 rounded-full text-xs font-bold">
-                  {upcomingMeetings.length}
-                </span>
               </div>
-
-              {upcomingMeetings.length > 0 ? (
-                <div className="space-y-2 max-h-[680px] overflow-y-auto">
-                  {upcomingMeetings.slice(0, 10).map((meeting) => (
-                    <div
-                      key={meeting.id}
-                      className="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/5 transition-all duration-200 group/item"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white group-hover/item:text-blue-300 transition-colors">
-                            {meeting.client_name}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {new Date(
-                              meeting.confirmed_datetime || meeting.requested_datetime
-                            ).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {meeting.meeting_type} • {meeting.duration_minutes} min
-                          </p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-300 flex-shrink-0 font-medium">
-                          {meeting.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-sm text-center py-6">
-                  No upcoming meetings
-                </p>
-              )}
-            </div>
             </PermissionGuard>
-            {/* Left Column - Notifications & Tickets */}
 
-            <div className="space-y-6">
-              {/* Pending Notifications Widget */}
-              <div className="bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 p-5 md:p-6 hover:border-primary/30 transition-all duration-300 group">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <div className="p-2 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
-                      <Bell size={18} className="text-primary" />
+            {/* Pending Tickets */}
+            <PermissionGuard permissions={['can_manage_tickets']}>
+              <div className="group relative bg-gradient-to-br from-orange-500/20 to-orange-500/5 rounded-xl p-6 border border-orange-500/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer" onClick={() => router.push('/tickets')}>
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="bg-orange-500/30 w-12 h-12 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <AlertCircle className="w-6 h-6 text-orange-400" />
                     </div>
-                    Notifications
-                  </h2>
-                  <span className="bg-primary/30 text-primary px-3 py-1 rounded-full text-xs font-bold">
-                    {notifications.length}
-                  </span>
-                </div>
-
-                {notifications.length > 0 ? (
-                  <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                    {notifications.slice(0, 5).map((notif, idx) => (
-                      <div
-                        key={notif.id}
-                        className="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/5 transition-all duration-200 flex items-start gap-3 group/item"
-                      >
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0 group-hover/item:scale-150 transition-transform"></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white">{notif.title}</p>
-                          <p className="text-xs text-gray-400 line-clamp-1 mt-1">
-                            {notif.message}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                    <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded-full">Urgent</span>
                   </div>
-                ) : (
-                  <p className="text-gray-400 text-sm text-center py-6">
-                    No pending notifications
-                  </p>
-                )}
+                  <p className="text-2xl font-bold text-white mb-1">{metrics.pending_tickets}</p>
+                  <p className="text-sm text-gray-400">Support Tickets</p>
+                </div>
               </div>
+            </PermissionGuard>
 
-              {/* Pending Tickets Widget */}
-              <PermissionGuard permissions={['can_manage_tickets']}>
-                <div className="bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 p-5 md:p-6 hover:border-orange-500/30 transition-all duration-300 group">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <div className="p-2 bg-orange-500/20 rounded-lg group-hover:bg-orange-500/30 transition-colors">
-                      <AlertCircle size={18} className="text-orange-400" />
+            {/* Upcoming Meetings */}
+            <PermissionGuard permissions={['can_manage_meetings']}>
+              <div className="group relative bg-gradient-to-br from-blue-500/20 to-blue-500/5 rounded-xl p-6 border border-blue-500/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer" onClick={() => router.push('/consultations')}>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="bg-blue-500/30 w-12 h-12 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Calendar className="w-6 h-6 text-blue-400" />
                     </div>
-                    Support Tickets
-                  </h2>
-                  <span className="bg-orange-500/30 text-orange-300 px-3 py-1 rounded-full text-xs font-bold">
-                    {pendingTickets.length}
-                  </span>
-                </div>
-
-                {pendingTickets.length > 0 ? (
-                  <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                    {pendingTickets.slice(0, 5).map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/5 transition-all duration-200 group/item"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white group-hover/item:text-primary transition-colors">
-                              {ticket.ticket_id}
-                            </p>
-                            <p className="text-xs text-gray-400 line-clamp-1 mt-1">
-                              {ticket.subject}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {ticket.client_name}
-                            </p>
-                          </div>
-                          <span className={`text-xs px-2 py-1 rounded font-medium flex-shrink-0 ${
-                            ticket.priority === "urgent"
-                              ? "bg-red-500/20 text-red-300"
-                              : ticket.priority === "high"
-                              ? "bg-orange-500/20 text-orange-300"
-                              : "bg-yellow-500/20 text-yellow-300"
-                          }`}>
-                            {ticket.priority}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                    <span className="text-xs text-blue-300 bg-blue-500/20 px-2 py-1 rounded-full">7 days</span>
                   </div>
-                ) : (
-                  <p className="text-gray-400 text-sm text-center py-6">
-                    No pending tickets
-                  </p>
-                )}
+                  <p className="text-2xl font-bold text-white mb-1">{metrics.upcoming_meetings}</p>
+                  <p className="text-sm text-gray-400">Meetings</p>
+                </div>
               </div>
-              </PermissionGuard>
-            </div>
+            </PermissionGuard>
+
+            {/* Revenue/Wallet */}
+            <PermissionGuard permissions={['can_view_billing']}>
+              <div className="group relative bg-gradient-to-br from-green-500/20 to-green-500/5 rounded-xl p-6 border border-green-500/20 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer" onClick={() => router.push('/analytics/payments-billing')}>
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="bg-green-500/30 w-12 h-12 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Wallet className="w-6 h-6 text-green-400" />
+                    </div>
+                    <span className="text-xs text-green-300 bg-green-500/20 px-2 py-1 rounded-full">€</span>
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-1">€{walletBalance.toFixed(0)}</p>
+                  <p className="text-sm text-gray-400">Revenue</p>
+                </div>
+              </div>
+            </PermissionGuard>
           </div>
+
+          {/* Activity Feed */}
+          <ActivityFeed 
+            notifications={notifications}
+            tickets={pendingTickets}
+            meetings={upcomingMeetings}
+            loading={loading}
+          />
 
           {/* Recent Content Grid */}
           <div className="grid grid-cols-1 gap-6">

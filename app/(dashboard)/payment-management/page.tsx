@@ -36,8 +36,8 @@ export default function PaymentManagementPage() {
       }
       
       const [historyData, statsData] = await Promise.all([
-        billingAPI.getHistory(filters).catch(() => []),
-        billingAPI.getStats().catch(() => null),
+        billingAPI.getAllPayments(filters).catch(() => []),
+        billingAPI.getAllPaymentStats().catch(() => null),
       ]);
       
       setTransactions((historyData as BillingHistoryItem[]) || []);
@@ -131,7 +131,7 @@ export default function PaymentManagementPage() {
             )}
 
             <h1 className="text-2xl md:text-4xl font-bold text-white">
-              Transactions History
+              All Payments (Admin View)
             </h1>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="text-white bg-primary p-2 md:p-3 rounded-xl text-sm md:text-base text-center sm:text-left">

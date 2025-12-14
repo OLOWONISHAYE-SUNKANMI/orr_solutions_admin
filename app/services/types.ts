@@ -22,9 +22,9 @@ export enum Pillar {
   CULTURAL = "cultural",
 }
 
-export type TicketStatus = "new" | "in_progress" | "waiting" | "resolved" | "archived";
+export type TicketStatus = "new" | "processing" | "payment_failed" | "payment_disputed" | "refund_requested" | "refund_processed" | "resolved" | "archived";
 export type TicketPriority = "low" | "normal" | "high" | "urgent";
-export type TicketSource = "ai_escalation" | "manual_request";
+export type TicketSource = "payment_webhook" | "billing_portal" | "subscription_change" | "manual_request" | "client_inquiry";
 
 export enum ContentType {
   FAQ = "faq",
@@ -81,34 +81,35 @@ export interface Client {
   email: string;
   username: string;
   company: string;
-  role: string;
-  stage: ClientStage;
-  primary_pillar: Pillar;
-  secondary_pillars: string;
-  assigned_admin_name: string;
-  internal_notes: string;
+  role?: string | null;
+  stage?: ClientStage | string | null;
+  primary_pillar?: Pillar | string | null;
+  secondary_pillars?: string[] | null;
+  assigned_admin_name?: string | null;
+  internal_notes?: string | null;
   is_portal_active: boolean;
-  last_activity: string;
-  date_joined: string;
-  last_login: string;
+  last_activity?: string | null;
+  date_joined?: string | null;
+  last_login?: string | null;
   created_at: string;
   updated_at: string;
-  tickets_count: number;
-  meetings_count: number;
-  documents_count: number;
+  tickets_count?: number;
+  meetings_count?: number;
+  documents_count?: number;
 }
 
 export interface ClientListItem {
   id: number;
   full_name: string;
   email: string;
+  username?: string;
   company: string;
-  role: string;
-  stage: ClientStage;
-  primary_pillar: Pillar;
-  assigned_admin_name: string;
+  role?: string | null;
+  stage?: ClientStage | string | null;
+  primary_pillar?: Pillar | string | null;
+  assigned_admin_name?: string | null;
   is_portal_active: boolean;
-  last_activity: string;
+  last_activity?: string | null;
   created_at: string;
 }
 

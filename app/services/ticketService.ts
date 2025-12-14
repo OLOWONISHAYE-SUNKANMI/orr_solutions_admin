@@ -48,7 +48,7 @@ export class TicketService {
       if (Array.isArray(response)) {
         tickets = response;
       } else if (response && typeof response === 'object') {
-        tickets = response.results || response.data || [];
+        tickets = (response as any).results || (response as any).data || [];
       }
 
       console.log('TicketService: Processed tickets:', tickets);
@@ -69,7 +69,7 @@ export class TicketService {
       const ticket = await ticketAPI.getTicket(ticketId);
       console.log('TicketService: Ticket details response:', ticket);
       
-      return ticket.data || ticket;
+      return (ticket as any).data || ticket;
     } catch (error: any) {
       console.error('TicketService: Error fetching ticket details:', error);
       throw new Error(error.message || 'Failed to fetch ticket details');
@@ -86,7 +86,7 @@ export class TicketService {
       const ticket = await ticketAPI.createTicket(data);
       console.log('TicketService: Ticket created successfully:', ticket);
       
-      return ticket.data || ticket;
+      return (ticket as any).data || ticket;
     } catch (error: any) {
       console.error('TicketService: Error creating ticket:', error);
       throw new Error(error.message || 'Failed to create ticket');
@@ -103,7 +103,7 @@ export class TicketService {
       const updatedTicket = await ticketAPI.partialUpdateTicket(ticketId, data);
       console.log('TicketService: Ticket updated successfully:', updatedTicket);
       
-      return updatedTicket.data || updatedTicket;
+      return (updatedTicket as any).data || updatedTicket;
     } catch (error: any) {
       console.error('TicketService: Error updating ticket:', error);
       throw new Error(error.message || 'Failed to update ticket');
@@ -133,7 +133,7 @@ export class TicketService {
       console.log('TicketService: Fetching messages for ticket ID:', ticketId);
       
       const response = await ticketAPI.listMessages(ticketId);
-      const messages = response.data || response || [];
+      const messages = (response as any).data || response || [];
       
       console.log('TicketService: Messages response:', messages);
       return Array.isArray(messages) ? messages : [];
@@ -153,7 +153,7 @@ export class TicketService {
       const response = await ticketAPI.addMessage(ticketId, message, isInternal);
       console.log('TicketService: Message added successfully:', response);
       
-      return response.data || response;
+      return (response as any).data || response;
     } catch (error: any) {
       console.error('TicketService: Error adding message:', error);
       throw new Error(error.message || 'Failed to add message');
@@ -168,7 +168,7 @@ export class TicketService {
       console.log('TicketService: Fetching my tickets');
       
       const response = await ticketAPI.getMyTickets();
-      const tickets = response.data || response || [];
+      const tickets = (response as any).data || response || [];
       
       console.log('TicketService: My tickets response:', tickets);
       return Array.isArray(tickets) ? tickets : [];
@@ -188,7 +188,7 @@ export class TicketService {
       const stats = await ticketAPI.getStats();
       console.log('TicketService: Ticket stats response:', stats);
       
-      return stats.data || stats;
+      return (stats as any).data || stats;
     } catch (error: any) {
       console.error('TicketService: Error fetching ticket stats:', error);
       throw new Error(error.message || 'Failed to fetch ticket statistics');

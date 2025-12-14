@@ -14,18 +14,14 @@ export default function SystemNotificationsPage() {
     const fetchNotifications = async () => {
       try {
         setLoading(true);
-        const data = await notificationAPI.listNotifications() as any;
-        const notifList = Array.isArray(data) ? data : (data.results || []);
-        setNotifications(notifList.slice(0, 10));
+        const response = await notificationAPI.listNotifications() as any;
+        const data = response?.data || response;
+        const notifList = Array.isArray(data) ? data : (data?.results || []);
+        setNotifications(notifList);
       } catch (err) {
         console.error("Failed to fetch notifications:", err);
         setError("Failed to load notifications");
-        // Fallback to sample data
-        setNotifications([
-          { id: 1, type: "info", title: "System Update", message: "New features available", created_at: new Date().toISOString() },
-          { id: 2, type: "warning", title: "Maintenance Scheduled", message: "System maintenance scheduled", created_at: new Date().toISOString() },
-          { id: 3, type: "success", title: "Backup Complete", message: "Daily backup completed successfully", created_at: new Date().toISOString() },
-        ]);
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
