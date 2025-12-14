@@ -64,7 +64,7 @@ export default function ClientList({ clients, selectedClientId, loading, onClien
         >
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{client.username || client.full_name}</p>
+              <p className="text-sm font-semibold text-white truncate">{client.full_name}</p>
               <p className="text-xs text-gray-400 truncate">{client.email}</p>
               <p className="text-xs text-gray-400 truncate">{client.company}</p>
               {client.role && (

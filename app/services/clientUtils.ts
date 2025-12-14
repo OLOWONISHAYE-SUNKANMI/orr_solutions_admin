@@ -101,7 +101,7 @@ export function generateUniqueUsername(originalUsername: string): string {
 }
 
 /**
- * Creates a client with automatic retry and unique identifier generation
+ * Creates a client with proper validation
  */
 export async function createClientSafely(clientData: {
   email: string;
@@ -116,28 +116,75 @@ export async function createClientSafely(clientData: {
   is_portal_active?: boolean;
 }): Promise<any> {
   try {
-    // Generate unique identifiers to avoid any conflicts
-    const timestamp = Date.now();
-    const randomSuffix = Math.floor(Math.random() * 10000);
+    // Clean up the data before sending
+    const cleanedData = { ...clientData };
     
-    const emailParts = clientData.email.split('@');
-    const uniqueEmail = `${emailParts[0]}_${timestamp}_${randomSuffix}@${emailParts[1] || 'example.com'}`;
-    const uniqueUsername = `${clientData.username || emailParts[0] || 'user'}_${timestamp}_${randomSuffix}`;
+    // Clean email
+    if (cleanedData.email) {
+      cleanedData.email = cleanedData.email.trim().toLowerCase();
+    }
     
-    const finalClientData = {
-      ...clientData,
-      email: uniqueEmail,
-      username: uniqueUsername
-    };
+    // Clean company name
+    if (cleanedData.company) {
+      cleanedData.company = cleanedData.company.trim();
+    }
     
-    console.log('🚀 Creating client with unique identifiers');
+    // Clean full name
+    if (cleanedData.full_name) {
+      cleanedData.full_name = cleanedData.full_name.trim();
+    }
     
-    const result = await clientAPI.createClient(finalClientData);
+    // Remove username from request - let backend handle it
+    delete cleanedData.username;
+    
+    // Remove empty optional fields
+    Object.keys(cleanedData).forEach(key => {
+      const value = cleanedData[key as keyof typeof cleanedData];
+      if (value === '' || value === null || value === undefined) {
+        // Keep required fields even if empty (let backend handle validation)
+        if (key !== 'email' && key !== 'full_name' && key !== 'company') {
+          delete cleanedData[key as keyof typeof cleanedData];
+        }
+      }
+    });
+    
+    // Ensure required fields are present
+    if (!cleanedData.email || !cleanedData.company) {
+      throw new Error('Missing required fields: email and company are required');
+    }
+    
+    console.log('🚀 Creating client with cleaned data:', cleanedData);
+    
+    const result = await clientAPI.createClient(cleanedData);
     console.log('✅ Client created successfully');
     return result;
     
   } catch (error: any) {
     console.error('❌ Failed to create client:', error);
+    
+    // Handle specific error cases with improved messaging
+    const errorMessage = error.message || error.toString();
+    
+    if (errorMessage.includes('client with this email already exists') || 
+        errorMessage.includes('Email address already exists')) {
+      throw new Error('A client with this email address already exists. Please search the client list to find the existing client or use a different email address.');
+    }
+    
+    if (errorMessage.includes('user already has a client profile') || 
+        errorMessage.includes('This user already has a client profile')) {
+      throw new Error('This user already has a client profile in the system. Please search for the existing client instead of creating a new one.');
+    }
+    
+    if (errorMessage.includes('Username conflict') || 
+        errorMessage.includes('Username already exists')) {
+      throw new Error('Username conflict occurred. The system will auto-generate a unique username.');
+    }
+    
+    if (errorMessage.includes('constraint error') || 
+        errorMessage.includes('Database constraint')) {
+      throw new Error('This client may already exist in the system. Please verify the email address and check the existing client list.');
+    }
+    
     throw error;
   }
 }
@@ -147,6 +194,25 @@ export async function createClientSafely(clientData: {
  */
 export function formatClientError(error: any): string {
   const message = error.message || error.toString();
+  
+  // Handle specific backend error messages
+  if (message.includes('client with this email already exists') || 
+      message.includes('Email address already exists')) {
+    return 'A client with this email address already exists. Please search the client list or use a different email.';
+  }
+  
+  if (message.includes('user already has a client profile') || 
+      message.includes('This user already has a client profile')) {
+    return 'This user already has a client profile. Please search for the existing client.';
+  }
+  
+  if (message.includes('Username conflict')) {
+    return 'Username conflict occurred. The system will handle this automatically.';
+  }
+  
+  if (message.includes('constraint error') || message.includes('Database constraint')) {
+    return 'This client may already exist. Please check the client list first.';
+  }
   
   if (message.includes('duplicate key value violates unique constraint')) {
     if (message.includes('user_id')) {
@@ -161,8 +227,8 @@ export function formatClientError(error: any): string {
     return 'A client with this information already exists. Please check your input.';
   }
   
-  if (message.includes('validation')) {
-    return 'Please check your input data. Some fields may be invalid.';
+  if (message.includes('validation') || message.includes('required')) {
+    return 'Please check your input data. Some required fields may be missing or invalid.';
   }
   
   if (message.includes('network') || message.includes('fetch')) {

@@ -47,7 +47,14 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
     e.preventDefault();
     
     if (!formData.full_name || !formData.email || !formData.company) {
-      setError("Please fill in all required fields");
+      setError("Please fill in all required fields: Full Name, Email, and Company");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError("Please enter a valid email address");
       return;
     }
 
@@ -55,10 +62,14 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
       setLoading(true);
       setError(null);
       
+      console.log('🚀 Submitting form data:', formData);
+      
       const result = await createClientSafely(formData);
       console.log('✅ Client created successfully:', result);
       
       setSuccess(true);
+      
+      // Reset form and close modal after success
       setTimeout(() => {
         setSuccess(false);
         onClose();
@@ -75,11 +86,24 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
           internal_notes: "",
           is_portal_active: true,
         });
-      }, 2000);
+        // Refresh the page to show the new client
+        window.location.reload();
+      }, 1500);
+      
     } catch (err: any) {
-      console.error("Failed to create client:", err);
+      console.error("❌ Failed to create client:", err);
+      console.error("📍 Stack Trace:", err.stack);
+      console.error("[API ERROR] Failed to create client:", err);
+      
       const userFriendlyError = formatClientError(err);
       setError(userFriendlyError);
+      
+      // If it's a duplicate client error, suggest checking existing clients
+      if (userFriendlyError.includes('already exists') || userFriendlyError.includes('already registered')) {
+        setError(`${userFriendlyError} You can search for existing clients in the client list to verify.`);
+      } else if (userFriendlyError.includes('client profile')) {
+        setError(`${userFriendlyError} This may be due to a previous incomplete registration. Please contact support if this persists.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -167,14 +191,16 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-400 mb-2 block">Username</label>
+                <label className="text-xs text-gray-400 mb-2 block">Username (Auto-generated)</label>
                 <input
                   type="text"
                   value={formData.username}
                   onChange={(e) => handleInputChange("username", e.target.value)}
-                  placeholder="Auto-generated from email"
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200"
+                  placeholder="Will be auto-generated from email"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-400 placeholder-gray-600 focus:outline-none transition-all duration-200"
+                  disabled
                 />
+                <p className="text-xs text-gray-500 mt-1">Username will be automatically generated from the email address</p>
               </div>
 
               <div>

@@ -111,8 +111,8 @@ export default function Page() {
               <div className="text-red-500 text-sm text-center">{error}</div>
             )}
             <input
-              type="text"
-              placeholder="Username"
+              type="email"
+              placeholder="Email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               className="w-full border-b-1 border-gray-300 px-6 py-5 focus:outline-none text-white"

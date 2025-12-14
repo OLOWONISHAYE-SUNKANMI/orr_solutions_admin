@@ -3,6 +3,7 @@
 import { Calendar, FileText, User, Loader, CheckCircle, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { meetingAPI } from "@/app/services";
+import Pagination from "@/app/components/common/Pagination";
 
 interface Meeting {
   id: number;
@@ -21,17 +22,19 @@ interface Meeting {
 }
 
 export default function PastConsultationsPage() {
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [allMeetings, setAllMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(7);
 
   useEffect(() => {
     const fetchPastMeetings = async () => {
       try {
         setLoading(true);
         const response = await meetingAPI.listMeetings({ status: 'completed' });
-        const data = response?.data || response;
-        setMeetings(Array.isArray(data) ? data : []);
+        const data = (response as any)?.data || response;
+        setAllMeetings(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Failed to fetch past meetings:', err);
         setError('Failed to load past meetings');
@@ -64,72 +67,100 @@ export default function PastConsultationsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader className="animate-spin text-primary" size={32} />
             </div>
-          ) : meetings.length === 0 ? (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-              <Calendar size={48} className="mx-auto text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No Past Consultations</h3>
-              <p className="text-gray-400">No completed consultation sessions found</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {meetings.map((meeting) => (
-                <div key={meeting.id} className="bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-blue-500/30 transition-all duration-300">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-6 h-6 text-blue-400" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">{meeting.client_name}</h3>
-                          <p className="text-sm text-gray-400">{meeting.client_email}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-300">
-                          <Clock className="w-4 h-4" />
-                          <span>{new Date(meeting.confirmed_datetime).toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-300">
-                          <User className="w-4 h-4" />
-                          <span>{meeting.meeting_type} ({meeting.duration_minutes} min)</span>
-                        </div>
-                        {meeting.host && (
-                          <div className="flex items-center gap-2 text-sm text-gray-300">
-                            <User className="w-4 h-4" />
-                            <span>Host: {meeting.host.first_name} {meeting.host.last_name}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {meeting.agenda && (
-                        <div className="bg-white/5 rounded-lg p-3 mb-3">
-                          <p className="text-sm text-gray-300">
-                            <strong>Agenda:</strong> {meeting.agenda}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {meeting.meeting_notes && (
-                        <div className="bg-white/5 rounded-lg p-3">
-                          <p className="text-sm text-gray-300">
-                            <strong>Meeting Notes:</strong> {meeting.meeting_notes}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="ml-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                        {meeting.status}
-                      </span>
-                    </div>
-                  </div>
+          ) : (() => {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedMeetings = allMeetings.slice(startIndex, endIndex);
+            
+            return allMeetings.length === 0 ? (
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                <Calendar size={48} className="mx-auto text-blue-400 mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Past Consultations</h3>
+                <p className="text-gray-400">No completed consultation sessions found</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <p className="text-sm text-gray-400">
+                    Showing {paginatedMeetings.length} of {allMeetings.length} consultation{allMeetings.length !== 1 ? 's' : ''}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+                
+                <div className="space-y-4 mb-8">
+                  {paginatedMeetings.map((meeting) => (
+                    <div key={meeting.id} className="bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-blue-500/30 transition-all duration-300">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
+                              <CheckCircle className="w-6 h-6 text-blue-400" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-white">{meeting.client_name}</h3>
+                              <p className="text-sm text-gray-400">{meeting.client_email}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="flex items-center gap-2 text-sm text-gray-300">
+                              <Clock className="w-4 h-4" />
+                              <span>{new Date(meeting.confirmed_datetime).toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-300">
+                              <User className="w-4 h-4" />
+                              <span>{meeting.meeting_type} ({meeting.duration_minutes} min)</span>
+                            </div>
+                            {meeting.host && (
+                              <div className="flex items-center gap-2 text-sm text-gray-300">
+                                <User className="w-4 h-4" />
+                                <span>Host: {meeting.host.first_name} {meeting.host.last_name}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {meeting.agenda && (
+                            <div className="bg-white/5 rounded-lg p-3 mb-3">
+                              <p className="text-sm text-gray-300">
+                                <strong>Agenda:</strong> {meeting.agenda}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {meeting.meeting_notes && (
+                            <div className="bg-white/5 rounded-lg p-3">
+                              <p className="text-sm text-gray-300">
+                                <strong>Meeting Notes:</strong> {meeting.meeting_notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="ml-4">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            {meeting.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {allMeetings.length > itemsPerPage && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(allMeetings.length / itemsPerPage)}
+                    totalItems={allMeetings.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={(newItemsPerPage) => {
+                      setItemsPerPage(newItemsPerPage);
+                      setCurrentPage(1);
+                    }}
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>

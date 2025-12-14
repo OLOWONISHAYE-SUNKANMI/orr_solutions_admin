@@ -3,6 +3,7 @@
 import { Users, UserCheck, Loader, Calendar, Mail, Phone } from "lucide-react";
 import { useState, useEffect } from "react";
 import { settingsAPI, meetingAPI } from "@/app/services";
+import Pagination from "@/app/components/common/Pagination";
 
 interface Consultant {
   id: number;
@@ -14,9 +15,11 @@ interface Consultant {
 }
 
 export default function AssignedConsultantsPage() {
-  const [consultants, setConsultants] = useState<Consultant[]>([]);
+  const [allConsultants, setAllConsultants] = useState<Consultant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(7);
 
   useEffect(() => {
     const fetchConsultants = async () => {
@@ -27,8 +30,8 @@ export default function AssignedConsultantsPage() {
           meetingAPI.getStats()
         ]);
         
-        const users = usersResponse?.data || usersResponse || [];
-        const meetingStats = meetingsResponse?.data || meetingsResponse;
+        const users = (usersResponse as any)?.data || usersResponse || [];
+        const meetingStats = (meetingsResponse as any)?.data || meetingsResponse;
         
         // Filter for admin users who can be consultants
         const adminUsers = Array.isArray(users) ? users.filter((user: any) => 
@@ -38,7 +41,7 @@ export default function AssignedConsultantsPage() {
           )
         ) : [];
         
-        setConsultants(adminUsers);
+        setAllConsultants(adminUsers);
       } catch (err) {
         console.error('Failed to fetch consultants:', err);
         setError('Failed to load consultants');
@@ -71,57 +74,85 @@ export default function AssignedConsultantsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader className="animate-spin text-primary" size={32} />
             </div>
-          ) : consultants.length === 0 ? (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-              <UserCheck size={48} className="mx-auto text-purple-400 mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No Consultants Found</h3>
-              <p className="text-gray-400">No consultants available at the moment</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {consultants.map((consultant) => (
-                <div key={consultant.id} className="bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-purple-500/30 transition-all duration-300">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center">
-                      <UserCheck className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">
-                        {consultant.first_name} {consultant.last_name}
-                      </h3>
-                      <p className="text-sm text-gray-400">Consultant</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <Mail className="w-4 h-4" />
-                      <span>{consultant.email}</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-white">
-                          {consultant.assigned_meetings || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Assigned</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-white">
-                          {consultant.completed_meetings || 0}
-                        </div>
-                        <div className="text-xs text-gray-400">Completed</div>
-                      </div>
-                    </div>
-                    
-                    <button className="w-full mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-300 text-sm font-medium transition-colors">
-                      View Assignments
-                    </button>
-                  </div>
+          ) : (() => {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedConsultants = allConsultants.slice(startIndex, endIndex);
+            
+            return allConsultants.length === 0 ? (
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                <UserCheck size={48} className="mx-auto text-purple-400 mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Consultants Found</h3>
+                <p className="text-gray-400">No consultants available at the moment</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <p className="text-sm text-gray-400">
+                    Showing {paginatedConsultants.length} of {allConsultants.length} consultant{allConsultants.length !== 1 ? 's' : ''}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {paginatedConsultants.map((consultant) => (
+                    <div key={consultant.id} className="bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-purple-500/30 transition-all duration-300">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center">
+                          <UserCheck className="w-8 h-8 text-purple-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">
+                            {consultant.first_name} {consultant.last_name}
+                          </h3>
+                          <p className="text-sm text-gray-400">Consultant</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm text-gray-300">
+                          <Mail className="w-4 h-4" />
+                          <span>{consultant.email}</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-white">
+                              {consultant.assigned_meetings || 0}
+                            </div>
+                            <div className="text-xs text-gray-400">Assigned</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-white">
+                              {consultant.completed_meetings || 0}
+                            </div>
+                            <div className="text-xs text-gray-400">Completed</div>
+                          </div>
+                        </div>
+                        
+                        <button className="w-full mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-300 text-sm font-medium transition-colors">
+                          View Assignments
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {allConsultants.length > itemsPerPage && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(allConsultants.length / itemsPerPage)}
+                    totalItems={allConsultants.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={(newItemsPerPage) => {
+                      setItemsPerPage(newItemsPerPage);
+                      setCurrentPage(1);
+                    }}
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>

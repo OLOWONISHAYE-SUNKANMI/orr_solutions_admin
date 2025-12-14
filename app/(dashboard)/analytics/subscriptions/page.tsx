@@ -13,7 +13,7 @@ export default function SubscriptionsPage() {
         const response = await fetch('http://127.0.0.1:8002/admin-portal/v1/subscriptions/management/');
         if (response.ok) {
           const result = await response.json();
-          setData(result);
+          setData(result.data || result);
         } else {
           console.error('API Error:', response.status);
         }

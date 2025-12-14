@@ -11,27 +11,7 @@ interface WorkspaceData {
     support_ticket_users: number;
     document_users: number;
   };
-  content_engagement: {
-    most_accessed_content: Array<{
-      id: number;
-      title: string;
-      content_type: string;
-      view_count: number;
-      stage: string;
-    }>;
-    content_download_stats: {
-      total_downloads: number;
-      downloads_by_type: Record<string, number>;
-      avg_downloads_per_content: number;
-    };
-    content_engagement_by_stage: Record<string, {
-      total_content: number;
-      total_views: number;
-      total_downloads: number;
-      avg_engagement: number;
-    }>;
-    avg_session_duration: number;
-  };
+
   activity_patterns: {
     daily_active_users: Array<{
       date: string;
@@ -136,8 +116,8 @@ export default function WorkspaceUsagePage() {
         if (workspaceRes.ok && adoptionRes.ok) {
           const workspace = await workspaceRes.json();
           const adoption = await adoptionRes.json();
-          setWorkspaceData(workspace);
-          setAdoptionData(adoption);
+          setWorkspaceData(workspace.data || workspace);
+          setAdoptionData(adoption.data || adoption);
         } else {
           console.error('API Error:', workspaceRes.status, adoptionRes.status);
         }
@@ -215,43 +195,7 @@ export default function WorkspaceUsagePage() {
             </div>
           </div>
 
-          {/* Content Engagement */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-4">Content Engagement</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                <h3 className="text-lg font-medium text-white mb-4">Most Accessed Content</h3>
-                <div className="space-y-3">
-                  {workspaceData?.content_engagement.most_accessed_content.slice(0, 5).map((content) => (
-                    <div key={content.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="text-white text-sm">{content.title}</p>
-                        <p className="text-gray-400 text-xs">{content.content_type}</p>
-                      </div>
-                      <span className="text-blue-400 font-bold">{content.view_count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                <h3 className="text-lg font-medium text-white mb-4">Download Statistics</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Total Downloads</span>
-                    <span className="text-green-400 font-bold">{workspaceData?.content_engagement.content_download_stats.total_downloads || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Avg per Content</span>
-                    <span className="text-purple-400 font-bold">{workspaceData?.content_engagement.content_download_stats.avg_downloads_per_content || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Session Duration</span>
-                    <span className="text-orange-400 font-bold">{workspaceData?.content_engagement.avg_session_duration || 0} min</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           {/* Adoption Funnel */}
           {adoptionData && (

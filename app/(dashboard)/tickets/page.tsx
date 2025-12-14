@@ -4,11 +4,15 @@ import { ticketAPI } from "@/app/services";
 import type { TicketListItem, TicketPriority, TicketSource, TicketStatus } from "@/app/services/types";
 import { MessageSquare, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNotificationContext } from "@/lib/contexts/NotificationContext";
 
 const statusColors: Record<TicketStatus, string> = {
   new: "bg-blue-500/30 text-blue-300 border-blue-500/30",
-  in_progress: "bg-primary/30 text-primary border-primary/30",
-  waiting: "bg-yellow-500/30 text-yellow-300 border-yellow-500/30",
+  processing: "bg-primary/30 text-primary border-primary/30",
+  payment_failed: "bg-red-500/30 text-red-300 border-red-500/30",
+  payment_disputed: "bg-orange-500/30 text-orange-300 border-orange-500/30",
+  refund_requested: "bg-yellow-500/30 text-yellow-300 border-yellow-500/30",
+  refund_processed: "bg-purple-500/30 text-purple-300 border-purple-500/30",
   resolved: "bg-green-500/30 text-green-300 border-green-500/30",
   archived: "bg-gray-500/30 text-gray-300 border-gray-500/30",
 };
@@ -21,13 +25,19 @@ const priorityColors: Record<TicketPriority, string> = {
 };
 
 const sourceColors: Record<TicketSource, string> = {
-  ai_escalation: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  manual_request: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  payment_webhook: "bg-green-500/20 text-green-300 border-green-500/30",
+  billing_portal: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  subscription_change: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  manual_request: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  client_inquiry: "bg-gray-500/20 text-gray-300 border-gray-500/30",
 };
 
 const sourceIcons: Record<TicketSource, React.ReactNode> = {
-  ai_escalation: "🤖",
+  payment_webhook: "💳",
+  billing_portal: "🏦",
+  subscription_change: "🔄",
   manual_request: "👤",
+  client_inquiry: "💬",
 };
 
 export default function TicketsPage() {
@@ -45,10 +55,24 @@ export default function TicketsPage() {
   const [newMessage, setNewMessage] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [newStatus, setNewStatus] = useState<TicketStatus | "">("");
+  const [assignableUsers, setAssignableUsers] = useState<any[]>([]);
+  const [newAssignedTo, setNewAssignedTo] = useState<number | "">("");
+  const { success, error: showError } = useNotificationContext();
 
   useEffect(() => {
     fetchTickets();
+    fetchAssignableUsers();
   }, [filterStatus, filterPriority, filterSource, searchQuery]);
+
+  const fetchAssignableUsers = async () => {
+    try {
+      const users = await ticketAPI.getAssignableUsers() as any;
+      const usersData = Array.isArray(users) ? users : (users.results || users.data || []);
+      setAssignableUsers(Array.isArray(usersData) ? usersData : []);
+    } catch (err: any) {
+      console.error("Failed to fetch assignable users:", err);
+    }
+  };
 
   const fetchTickets = async () => {
     try {
@@ -76,7 +100,7 @@ export default function TicketsPage() {
     try {
       setMessagesLoading(true);
       
-      const response = await fetch(`http://127.0.0.1:8000/admin-portal/v1/tickets/${ticketId}/messages/`, {
+      const response = await fetch(`http://127.0.0.1:8002/admin-portal/v1/tickets/${ticketId}/messages/`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
@@ -99,7 +123,37 @@ export default function TicketsPage() {
 
   const handleSelectTicket = (ticket: TicketListItem) => {
     setSelectedTicket(ticket);
+    setNewAssignedTo("");
     fetchTicketMessages(ticket.id);
+  };
+
+  const handleAssignmentChange = async () => {
+    if (!selectedTicket || !newAssignedTo) return;
+    
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      await ticketAPI.partialUpdateTicket(selectedTicket.id, { assigned_to: newAssignedTo });
+      
+      const assignedUser = assignableUsers.find(u => u.id === newAssignedTo);
+      const userName = assignedUser?.full_name || assignedUser?.username || 'Unknown User';
+      
+      success('Ticket Assigned', `Ticket ${selectedTicket.ticket_id} has been assigned to ${userName}`);
+      
+      setNewAssignedTo("");
+      fetchTickets();
+      if (selectedTicket) {
+        const updatedTicket = { ...selectedTicket, assigned_to_name: userName };
+        setSelectedTicket(updatedTicket);
+      }
+    } catch (err: any) {
+      console.error("Failed to update ticket assignment:", err);
+      showError('Assignment Failed', err.message || "Failed to update assignment");
+      setError(err.message || "Failed to update assignment");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleStatusChange = async () => {
@@ -111,7 +165,7 @@ export default function TicketsPage() {
       setError(null);
       
       // Use direct PATCH update instead of actions
-      const response = await fetch(`http://127.0.0.1:8000/admin-portal/v1/tickets/${selectedTicket.id}/`, {
+      const response = await fetch(`http://127.0.0.1:8002/admin-portal/v1/tickets/${selectedTicket.id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +201,7 @@ export default function TicketsPage() {
       setError(null);
       
       // Use direct POST to messages endpoint
-      const response = await fetch(`http://127.0.0.1:8000/admin-portal/v1/tickets/${selectedTicket.id}/messages/`, {
+      const response = await fetch(`http://127.0.0.1:8002/admin-portal/v1/tickets/${selectedTicket.id}/messages/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,8 +269,11 @@ export default function TicketsPage() {
                       >
                         <option value="all" className="bg-gray-800">All Status</option>
                         <option value="new" className="bg-gray-800">New</option>
-                        <option value="in_progress" className="bg-gray-800">In Progress</option>
-                        <option value="waiting" className="bg-gray-800">Waiting</option>
+                        <option value="processing" className="bg-gray-800">Processing Payment</option>
+                        <option value="payment_failed" className="bg-gray-800">Payment Failed</option>
+                        <option value="payment_disputed" className="bg-gray-800">Payment Disputed</option>
+                        <option value="refund_requested" className="bg-gray-800">Refund Requested</option>
+                        <option value="refund_processed" className="bg-gray-800">Refund Processed</option>
                         <option value="resolved" className="bg-gray-800">Resolved</option>
                         <option value="archived" className="bg-gray-800">Archived</option>
                       </select>
@@ -241,8 +298,11 @@ export default function TicketsPage() {
                         className="w-full bg-white/10 border border-white/20 px-3 py-2 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50 transition-all duration-200"
                       >
                         <option value="all" className="bg-gray-800">All Source</option>
-                        <option value="ai_escalation" className="bg-gray-800">AI Escalation</option>
+                        <option value="payment_webhook" className="bg-gray-800">Payment Webhook</option>
+                        <option value="billing_portal" className="bg-gray-800">Billing Portal</option>
+                        <option value="subscription_change" className="bg-gray-800">Subscription Change</option>
                         <option value="manual_request" className="bg-gray-800">Manual Request</option>
+                        <option value="client_inquiry" className="bg-gray-800">Client Inquiry</option>
                       </select>
                     </div>
                   </div>
@@ -341,13 +401,40 @@ export default function TicketsPage() {
                   <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                     <p className="text-xs text-gray-500 mb-2">Assigned To</p>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/50 rounded-full" />
-                      <div className="flex-1">
-                        <p className="text-white font-medium text-sm">{selectedTicket.assigned_to_name}</p>
+                      <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/50 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-medium">
+                          {selectedTicket.assigned_to_name ? 
+                            selectedTicket.assigned_to_name.trim().split(' ').filter(n => n.length > 0).slice(0, 2).map(n => n[0]).join('').toUpperCase() || 'UN'
+                            : 'UN'
+                          }
+                        </span>
                       </div>
-                      <button className="text-primary hover:text-primary/80 text-sm transition-colors">
-                        Change
-                      </button>
+                      <div className="flex-1">
+                        <p className="text-white font-medium text-sm">{selectedTicket.assigned_to_name || 'Unassigned'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select 
+                          value={newAssignedTo}
+                          onChange={(e) => setNewAssignedTo(e.target.value ? parseInt(e.target.value) : "")}
+                          className="bg-white/10 border border-white/20 px-2 py-1 rounded text-xs text-white focus:outline-none focus:border-primary/50"
+                        >
+                          <option value="" className="bg-gray-800">Change assignee...</option>
+                          {assignableUsers.map((user) => (
+                            <option key={user.id} value={user.id} className="bg-gray-800">
+                              {user.full_name || user.username}
+                            </option>
+                          ))}
+                        </select>
+                        {newAssignedTo && (
+                          <button 
+                            onClick={handleAssignmentChange}
+                            disabled={actionLoading}
+                            className="bg-primary hover:bg-primary/80 disabled:opacity-50 text-white px-2 py-1 rounded text-xs transition-all duration-200"
+                          >
+                            {actionLoading ? 'Updating...' : 'Assign'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -364,25 +451,41 @@ export default function TicketsPage() {
                           <p className="text-sm">No messages yet</p>
                         </div>
                       ) : (
-                        ticketMessages.map((message, index) => (
+                        ticketMessages.map((message, index) => {
+                          const getInitials = (name: string) => {
+                            if (!name || typeof name !== 'string' || name.trim() === '') {
+                              return 'U';
+                            }
+                            const words = name.trim().split(' ').filter(word => word.length > 0);
+                            if (words.length === 0) return 'U';
+                            if (words.length === 1) return words[0][0].toUpperCase();
+                            return words.slice(0, 2).map(word => word[0]).join('').toUpperCase();
+                          };
+                          
+                          return (
                           <div key={index} className={`flex gap-3 ${message.sender_type === 'admin' ? 'justify-end' : ''}`}>
                             {message.sender_type !== 'admin' && (
-                              <div className="w-8 h-8 bg-blue-500 rounded-full flex-shrink-0" />
+                              <div className="w-8 h-8 bg-blue-500 rounded-full flex-shrink-0 flex items-center justify-center">
+                                <span className="text-white text-xs font-medium">{getInitials(message.sender_name)}</span>
+                              </div>
                             )}
                             <div className={message.sender_type === 'admin' ? 'flex-1 text-right' : ''}>
                               <p className={`text-sm ${message.sender_type === 'admin' ? 'text-primary' : 'text-gray-300'}`}>
-                                {message.sender_name} {message.is_internal && '(Internal)'}
+                                {message.sender_name || 'Unknown User'} {message.is_internal && '(Internal)'}
                               </p>
-                              <p className="text-xs text-gray-400 mt-1">{message.message}</p>
-                              <p className="text-xs text-gray-600 mt-2">
+                              <p className="text-xs text-gray-200 mt-1">{message.message}</p>
+                              <p className="text-xs text-gray-100 mt-2">
                                 {new Date(message.created_at).toLocaleString()}
                               </p>
                             </div>
                             {message.sender_type === 'admin' && (
-                              <div className="w-8 h-8 bg-primary rounded-full flex-shrink-0" />
+                              <div className="w-8 h-8 bg-primary rounded-full flex-shrink-0 flex items-center justify-center">
+                                <span className="text-white text-xs font-medium">{getInitials(message.sender_name)}</span>
+                              </div>
                             )}
                           </div>
-                        ))
+                        );
+                        })
                       )}
                     </div>
                     
@@ -437,8 +540,11 @@ export default function TicketsPage() {
                     >
                       <option value="" className="bg-gray-800">Change Status...</option>
                       <option value="new" className="bg-gray-800">New</option>
-                      <option value="in_progress" className="bg-gray-800">In Progress</option>
-                      <option value="waiting" className="bg-gray-800">Waiting</option>
+                      <option value="processing" className="bg-gray-800">Processing Payment</option>
+                      <option value="payment_failed" className="bg-gray-800">Payment Failed</option>
+                      <option value="payment_disputed" className="bg-gray-800">Payment Disputed</option>
+                      <option value="refund_requested" className="bg-gray-800">Refund Requested</option>
+                      <option value="refund_processed" className="bg-gray-800">Refund Processed</option>
                       <option value="resolved" className="bg-gray-800">Resolved</option>
                       <option value="archived" className="bg-gray-800">Archived</option>
                     </select>

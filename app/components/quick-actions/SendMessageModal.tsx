@@ -35,7 +35,10 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
 
   const sources = [
     { value: "manual_request", label: "Manual Request" },
-    { value: "ai_escalation", label: "AI Escalation" },
+    { value: "client_inquiry", label: "Client Inquiry" },
+    { value: "payment_webhook", label: "Payment Webhook" },
+    { value: "billing_portal", label: "Billing Portal" },
+    { value: "subscription_change", label: "Subscription Change" },
   ];
 
   useEffect(() => {
@@ -83,12 +86,12 @@ export default function SendMessageModal({ isOpen, onClose }: SendMessageModalPr
       console.log('✅ Ticket created successfully:', ticket);
       
       // If there's a message to send, add it to the ticket
-      if (!formData.is_internal && formData.description) {
+      if (!formData.is_internal && formData.description && ticket?.id) {
         await ticketAPI.addMessage(ticket.id, formData.description, false);
       }
       
       // Add internal notes if provided
-      if (formData.internal_notes) {
+      if (formData.internal_notes && ticket?.id) {
         await ticketAPI.addMessage(ticket.id, formData.internal_notes, true);
       }
       

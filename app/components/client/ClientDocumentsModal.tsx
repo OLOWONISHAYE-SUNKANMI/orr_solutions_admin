@@ -40,7 +40,7 @@ export default function ClientDocumentsModal({ clientId, clientName, isOpen, onC
       setLoading(true);
       setError(null);
       const response = await clientAPI.listDocuments(clientId);
-      setDocuments(Array.isArray(response) ? response : (response.results || []));
+      setDocuments(Array.isArray(response) ? response : ((response as any).results || []));
     } catch (err: any) {
       console.error("Failed to fetch documents:", err);
       setError("Failed to load documents");

@@ -56,12 +56,7 @@ interface ConversionFunnelData {
       potential_reasons: string[];
     }>;
   };
-  conversion_by_source: Record<string, {
-    visitors: number;
-    registrations: number;
-    active_clients: number;
-    conversion_rate: number;
-  }>;
+
 }
 
 interface TimeFunnelData {
@@ -82,44 +77,6 @@ interface TimeFunnelData {
       retention_rate: number;
     }>;
   }>;
-  time_to_conversion: {
-    registration_to_onboarding: {
-      avg_days: number;
-      median_days: number;
-      percentiles: {
-        "25th": number;
-        "75th": number;
-        "90th": number;
-      };
-    };
-    onboarding_to_first_engagement: {
-      avg_days: number;
-      median_days: number;
-      percentiles: {
-        "25th": number;
-        "75th": number;
-        "90th": number;
-      };
-    };
-    registration_to_first_meeting: {
-      avg_days: number;
-      median_days: number;
-      percentiles: {
-        "25th": number;
-        "75th": number;
-        "90th": number;
-      };
-    };
-    first_contact_to_active_client: {
-      avg_days: number;
-      median_days: number;
-      percentiles: {
-        "25th": number;
-        "75th": number;
-        "90th": number;
-      };
-    };
-  };
 }
 
 export default function FunnelReportsPage() {
@@ -138,8 +95,8 @@ export default function FunnelReportsPage() {
         if (conversionRes.ok && timeRes.ok) {
           const conversion = await conversionRes.json();
           const time = await timeRes.json();
-          setConversionData(conversion);
-          setTimeData(time);
+          setConversionData(conversion.data || conversion);
+          setTimeData(time.data || time);
         } else {
           console.error('API Error:', conversionRes.status, timeRes.status);
         }
@@ -349,118 +306,9 @@ export default function FunnelReportsPage() {
             </div>
           )}
 
-          {/* Time to Conversion */}
-          {timeData?.time_to_conversion && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-white mb-4">Time to Conversion Analysis</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Registration to Onboarding</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Average</span>
-                      <span className="text-blue-400">{timeData.time_to_conversion.registration_to_onboarding.avg_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Median</span>
-                      <span className="text-green-400">{timeData.time_to_conversion.registration_to_onboarding.median_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">90th Percentile</span>
-                      <span className="text-purple-400">{timeData.time_to_conversion.registration_to_onboarding.percentiles["90th"]} days</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Onboarding to First Engagement</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Average</span>
-                      <span className="text-blue-400">{timeData.time_to_conversion.onboarding_to_first_engagement.avg_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Median</span>
-                      <span className="text-green-400">{timeData.time_to_conversion.onboarding_to_first_engagement.median_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">90th Percentile</span>
-                      <span className="text-purple-400">{timeData.time_to_conversion.onboarding_to_first_engagement.percentiles["90th"]} days</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Registration to First Meeting</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Average</span>
-                      <span className="text-blue-400">{timeData.time_to_conversion.registration_to_first_meeting.avg_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Median</span>
-                      <span className="text-green-400">{timeData.time_to_conversion.registration_to_first_meeting.median_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">90th Percentile</span>
-                      <span className="text-purple-400">{timeData.time_to_conversion.registration_to_first_meeting.percentiles["90th"]} days</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <h3 className="text-lg font-medium text-white mb-4">First Contact to Active Client</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Average</span>
-                      <span className="text-blue-400">{timeData.time_to_conversion.first_contact_to_active_client.avg_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Median</span>
-                      <span className="text-green-400">{timeData.time_to_conversion.first_contact_to_active_client.median_days} days</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">90th Percentile</span>
-                      <span className="text-purple-400">{timeData.time_to_conversion.first_contact_to_active_client.percentiles["90th"]} days</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Conversion by Source */}
-          {conversionData?.conversion_by_source && (
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-4">Conversion by Traffic Source</h2>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="text-left text-white py-3">Source</th>
-                        <th className="text-left text-white py-3">Visitors</th>
-                        <th className="text-left text-white py-3">Registrations</th>
-                        <th className="text-left text-white py-3">Active Clients</th>
-                        <th className="text-left text-white py-3">Conversion Rate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(conversionData.conversion_by_source).map(([source, data]) => (
-                        <tr key={source} className="border-b border-white/5">
-                          <td className="text-gray-300 py-3 capitalize">{source.replace('_', ' ')}</td>
-                          <td className="text-blue-400 py-3">{data.visitors}</td>
-                          <td className="text-green-400 py-3">{data.registrations}</td>
-                          <td className="text-purple-400 py-3">{data.active_clients}</td>
-                          <td className="text-orange-400 py-3">{data.conversion_rate}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

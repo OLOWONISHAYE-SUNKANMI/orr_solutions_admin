@@ -3,6 +3,7 @@
 import { FileBarChart, CheckCircle, Clock, Loader, FileText, Eye, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { contentAPI } from "@/app/services";
+import Pagination from "@/app/components/common/Pagination";
 
 interface Report {
   id: number;
@@ -19,22 +20,24 @@ interface Report {
 }
 
 export default function ConsultationReportsPage() {
-  const [reports, setReports] = useState<Report[]>([]);
+  const [allReports, setAllReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draftCount, setDraftCount] = useState(0);
   const [publishedCount, setPublishedCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(7);
 
   const handleViewReport = async (reportId: number) => {
     try {
       const response = await contentAPI.getContent(reportId);
-      const reportData = response?.data || response;
+      const reportData = (response as any)?.data || response;
       
       // Increment view count on backend
       try {
         await contentAPI.incrementViewCount(reportId);
         // Update local state to reflect the increment
-        setReports(prevReports => 
+        setAllReports(prevReports => 
           prevReports.map(report => 
             report.id === reportId 
               ? { ...report, view_count: report.view_count + 1 }
@@ -86,10 +89,10 @@ export default function ConsultationReportsPage() {
       try {
         setLoading(true);
         const response = await contentAPI.listContent({ content_type: 'report' });
-        const data = response?.data || response;
+        const data = (response as any)?.data || response;
         const reportsData = Array.isArray(data) ? data : [];
         
-        setReports(reportsData);
+        setAllReports(reportsData);
         setDraftCount(reportsData.filter(r => r.status === 'draft').length);
         setPublishedCount(reportsData.filter(r => r.status === 'published').length);
       } catch (err) {
@@ -142,67 +145,95 @@ export default function ConsultationReportsPage() {
                 </div>
               </div>
 
-              {reports.length === 0 ? (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-                  <FileBarChart size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">No Reports Found</h3>
-                  <p className="text-gray-400">No consultation reports available</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold text-white mb-4">All Reports</h2>
-                  {reports.map((report) => (
-                    <div key={report.id} className="bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-primary/30 transition-all duration-300">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
-                              <FileText className="w-6 h-6 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold text-white">{report.title}</h3>
-                              <p className="text-sm text-gray-400 capitalize">{report.content_type}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div className="flex items-center gap-2 text-sm text-gray-300">
-                              <Calendar className="w-4 h-4" />
-                              <span>Created: {new Date(report.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-300">
-                              <Calendar className="w-4 h-4" />
-                              <span>Updated: {new Date(report.updated_at).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-300">
-                              <Eye className="w-4 h-4" />
-                              <span>{report.view_count} views</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="ml-4 flex flex-col items-end gap-2">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            report.status === 'published' 
-                              ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                              : report.status === 'draft'
-                              ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
-                              : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-                          }`}>
-                            {report.status}
-                          </span>
-                          <button 
-                            onClick={() => handleViewReport(report.id)}
-                            className="px-4 py-2 bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded-lg text-primary text-sm font-medium transition-colors"
-                          >
-                            View Report
-                          </button>
-                        </div>
-                      </div>
+              {(() => {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedReports = allReports.slice(startIndex, endIndex);
+                
+                return allReports.length === 0 ? (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                    <FileBarChart size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-xl font-semibold text-white mb-2">No Reports Found</h3>
+                    <p className="text-gray-400">No consultation reports available</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-semibold text-white">All Reports</h2>
+                      <p className="text-sm text-gray-400">
+                        Showing {paginatedReports.length} of {allReports.length} report{allReports.length !== 1 ? 's' : ''}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
+                    
+                    <div className="space-y-4 mb-8">
+                      {paginatedReports.map((report) => (
+                        <div key={report.id} className="bg-gradient-to-r from-white/10 to-white/5 border border-white/10 rounded-xl p-6 hover:border-primary/30 transition-all duration-300">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                                  <FileText className="w-6 h-6 text-primary" />
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold text-white">{report.title}</h3>
+                                  <p className="text-sm text-gray-400 capitalize">{report.content_type}</p>
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div className="flex items-center gap-2 text-sm text-gray-300">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>Created: {new Date(report.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-300">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>Updated: {new Date(report.updated_at).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-300">
+                                  <Eye className="w-4 h-4" />
+                                  <span>{report.view_count} views</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="ml-4 flex flex-col items-end gap-2">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                report.status === 'published' 
+                                  ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                  : report.status === 'draft'
+                                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                                  : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                              }`}>
+                                {report.status}
+                              </span>
+                              <button 
+                                onClick={() => handleViewReport(report.id)}
+                                className="px-4 py-2 bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded-lg text-primary text-sm font-medium transition-colors"
+                              >
+                                View Report
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {allReports.length > itemsPerPage && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(allReports.length / itemsPerPage)}
+                        totalItems={allReports.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(newItemsPerPage) => {
+                          setItemsPerPage(newItemsPerPage);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

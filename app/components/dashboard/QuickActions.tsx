@@ -14,7 +14,7 @@ export default function QuickActions() {
       icon: Users,
       color: "primary",
       onClick: () => router.push("/client-management"),
-      permission: "can_edit_clients"
+permission: "can_edit_clients" as const
     },
     {
       title: "Create Support Ticket",
@@ -22,7 +22,7 @@ export default function QuickActions() {
       icon: AlertCircle,
       color: "orange-500",
       onClick: () => router.push("/tickets"),
-      permission: "can_manage_tickets"
+permission: "can_manage_tickets" as const
     },
     {
       title: "Schedule Meeting",
@@ -30,7 +30,7 @@ export default function QuickActions() {
       icon: Calendar,
       color: "blue-500",
       onClick: () => router.push("/schedule-meetings"),
-      permission: "can_manage_meetings"
+permission: "can_manage_meetings" as const
     },
     {
       title: "Create Content",
@@ -38,7 +38,7 @@ export default function QuickActions() {
       icon: FileText,
       color: "green-500",
       onClick: () => router.push("/content-management/new"),
-      permission: "can_create_content"
+permission: "can_create_content" as const
     }
   ];
 

@@ -57,8 +57,8 @@ export default function BehaviourAnalyticsPage() {
         if (behaviorRes.ok && journeyRes.ok) {
           const behavior = await behaviorRes.json();
           const journey = await journeyRes.json();
-          setBehaviorData(behavior);
-          setJourneyData(journey);
+          setBehaviorData(behavior.data || behavior);
+          setJourneyData(journey.data || journey);
         } else {
           console.error('API Error:', behaviorRes.status, journeyRes.status);
         }

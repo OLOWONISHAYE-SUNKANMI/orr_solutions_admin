@@ -37,22 +37,48 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
 
   if (!isOpen || !client) return null;
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Never";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString || dateString === 'null' || dateString === 'undefined') return "Never";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Never";
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return "Never";
+    }
   };
 
-  const formatDateTime = (dateString: string) => {
-    if (!dateString) return "Never";
-    const date = new Date(dateString);
-    return date.toLocaleString("en-US", { 
-      month: "short", 
-      day: "numeric", 
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
+  const formatDateTime = (dateString: string | null | undefined) => {
+    if (!dateString || dateString === 'null' || dateString === 'undefined') return "Never";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Never";
+      return date.toLocaleString("en-US", { 
+        month: "short", 
+        day: "numeric", 
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "Never";
+    }
+  };
+
+  const getStageDisplay = (stage: string | null | undefined) => {
+    if (!stage || stage === 'null' || stage === 'undefined') return 'Unknown';
+    return stage.charAt(0).toUpperCase() + stage.slice(1);
+  };
+
+  const getPillarDisplay = (pillar: string | null | undefined) => {
+    if (!pillar || pillar === 'null' || pillar === 'undefined') return 'Unknown';
+    const pillarMap: Record<string, string> = {
+      strategic: "Strategic Vision, Planning & Growth",
+      operational: "Operational Excellence & Processes",
+      financial: "Financial Management & Planning",
+      cultural: "Cultural Transformation & People"
+    };
+    return pillarMap[pillar] || pillar;
   };
 
   const handleEdit = () => {
@@ -130,8 +156,8 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
 
           <div className="flex flex-col gap-6">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className={`text-sm px-3 py-1 rounded border ${stageColors[client.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
-                Stage: {client.stage ? client.stage.charAt(0).toUpperCase() + client.stage.slice(1) : 'Unknown'}
+              <span className={`text-sm px-3 py-1 rounded border ${stageColors[client.stage || ''] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
+                Stage: {getStageDisplay(client.stage)}
               </span>
               <span className={`text-sm px-3 py-1 rounded border ${client.is_portal_active ? "bg-green-500/30 text-green-300 border-green-500/30" : "bg-red-500/30 text-red-300 border-red-500/30"}`}>
                 Portal: {client.is_portal_active ? "Active" : "Inactive"}
@@ -197,9 +223,10 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                       value={editData.role || ""}
                       onChange={(e) => setEditData({ ...editData, role: e.target.value })}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+                      placeholder="Enter role/position"
                     />
                   ) : (
-                    <p className="text-sm font-medium text-white">{client.role}</p>
+                    <p className="text-sm font-medium text-white">{client.role || 'Not specified'}</p>
                   )}
                 </div>
 
@@ -218,7 +245,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                       <option value="grow">Grow</option>
                     </select>
                   ) : (
-                    <p className="text-sm font-medium text-white">{client.stage ? client.stage.charAt(0).toUpperCase() + client.stage.slice(1) : 'Unknown'}</p>
+                    <p className="text-sm font-medium text-white">{getStageDisplay(client.stage)}</p>
                   )}
                 </div>
 
@@ -236,11 +263,8 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                       <option value="cultural">Cultural Transformation & People</option>
                     </select>
                   ) : (
-                    <p className={`text-sm font-medium ${pillarColors[client.primary_pillar] || "text-white"}`}>
-                      {client.primary_pillar === "strategic" ? "Strategic Vision, Planning & Growth" : 
-                       client.primary_pillar === "operational" ? "Operational Excellence & Processes" : 
-                       client.primary_pillar === "financial" ? "Financial Management & Planning" : 
-                       "Cultural Transformation & People"}
+                    <p className={`text-sm font-medium ${pillarColors[client.primary_pillar || ''] || "text-white"}`}>
+                      {getPillarDisplay(client.primary_pillar)}
                     </p>
                   )}
                 </div>
@@ -256,7 +280,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
 
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Date Joined</label>
-                  <p className="text-sm font-medium text-white">{formatDate(client.date_joined)}</p>
+                  <p className="text-sm font-medium text-white">{formatDate(client.date_joined || client.created_at)}</p>
                 </div>
 
                 <div>
@@ -268,6 +292,19 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                   <label className="text-xs text-gray-400 mb-1 block">Last Activity</label>
                   <p className="text-sm font-medium text-white">{formatDateTime(client.last_activity)}</p>
                 </div>
+
+                {client.secondary_pillars && Array.isArray(client.secondary_pillars) && client.secondary_pillars.length > 0 && (
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Secondary Pillars</label>
+                    <div className="flex flex-wrap gap-1">
+                      {client.secondary_pillars.map((pillar, index) => (
+                        <span key={index} className="text-xs px-2 py-1 bg-white/10 rounded border border-white/20 text-gray-300">
+                          {getPillarDisplay(pillar)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -284,7 +321,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
               ) : (
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3 min-h-[100px]">
                   <p className="text-sm text-white whitespace-pre-wrap">
-                    {client.internal_notes || "No internal notes available."}
+                    {client.internal_notes && client.internal_notes.trim() ? client.internal_notes : "No internal notes available."}
                   </p>
                 </div>
               )}

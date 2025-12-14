@@ -4,7 +4,7 @@
  * Base URL: /admin-portal/v1/
  */
 
-const BASE_URL = "http://127.0.0.1:8002";
+const BASE_URL = "https://orr-backend-web-latest.onrender.com";
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -290,11 +290,11 @@ export const analyticsAPI = {
 // ============================================================================
 
 export const authAPI = {
-  login: (identifier: string, password: string) => {
-    console.log(`[API] Attempting login for identifier: ${identifier}`);
+  login: (email: string, password: string) => {
+    console.log(`[API] Attempting login for email: ${email}`);
     return apiCall("/login/", {
       method: "POST",
-      body: JSON.stringify({ username: identifier, password }),
+      body: JSON.stringify({ email, password }),
     }).then(response => {
       console.log('[API SUCCESS] Login successful');
       return response;
@@ -670,10 +670,18 @@ export const meetingAPI = {
       });
     }
     const queryString = params.toString();
-    return apiCall(`/admin-portal/v1/meetings/${queryString ? `?${queryString}` : ''}`).catch(error => {
-      console.error('[API ERROR] Failed to fetch meetings:', error);
-      throw error;
-    });
+    return apiCall(`/admin-portal/v1/meetings/${queryString ? `?${queryString}` : ''}`)
+      .then((response: any) => {
+        // Handle wrapped response format
+        if (response && response.data) {
+          return response.data;
+        }
+        return response;
+      })
+      .catch(error => {
+        console.error('[API ERROR] Failed to fetch meetings:', error);
+        throw error;
+      });
   },
 
   createMeeting: (data: Record<string, any>) => {
@@ -689,10 +697,17 @@ export const meetingAPI = {
 
   getMeeting: (id: number) => {
     console.log(`[API] Fetching meeting ${id}`);
-    return apiCall(`/admin-portal/v1/meetings/${id}/`).catch(error => {
-      console.error(`[API ERROR] Failed to fetch meeting ${id}:`, error);
-      throw error;
-    });
+    return apiCall(`/admin-portal/v1/meetings/${id}/`)
+      .then((response: any) => {
+        if (response && response.data) {
+          return response.data;
+        }
+        return response;
+      })
+      .catch(error => {
+        console.error(`[API ERROR] Failed to fetch meeting ${id}:`, error);
+        throw error;
+      });
   },
 
   updateMeeting: (id: number, data: Record<string, any>) => {
@@ -745,6 +760,38 @@ export const meetingAPI = {
       console.error('[API ERROR] Failed to fetch my meetings:', error);
       throw error;
     });
+  },
+
+  getConfirmedMeetings: (hostId?: number) => {
+    console.log('[API] Fetching confirmed meetings', hostId ? `for host ${hostId}` : '');
+    const params = hostId ? `?host_id=${hostId}` : '';
+    return apiCall(`/admin-portal/v1/meetings/confirmed/${params}`)
+      .then((response: any) => {
+        if (response && response.data) {
+          return response.data;
+        }
+        return response;
+      })
+      .catch(error => {
+        console.error('[API ERROR] Failed to fetch confirmed meetings:', error);
+        throw error;
+      });
+  },
+
+  getRequestedMeetings: (hostId?: number) => {
+    console.log('[API] Fetching requested meetings', hostId ? `for host ${hostId}` : '');
+    const params = hostId ? `?host_id=${hostId}` : '';
+    return apiCall(`/admin-portal/v1/meetings/requested/${params}`)
+      .then((response: any) => {
+        if (response && response.data) {
+          return response.data;
+        }
+        return response;
+      })
+      .catch(error => {
+        console.error('[API ERROR] Failed to fetch requested meetings:', error);
+        throw error;
+      });
   },
 
   getUpcomingMeetings: () => {
@@ -1130,6 +1177,14 @@ export const ticketAPI = {
     console.log('[API] Fetching ticket stats');
     return apiCall("/admin-portal/v1/tickets/stats/").catch(error => {
       console.error('[API ERROR] Failed to fetch ticket stats:', error);
+      throw error;
+    });
+  },
+
+  getAssignableUsers: () => {
+    console.log('[API] Fetching assignable users');
+    return apiCall("/admin-portal/v1/tickets/assignable-users/").catch(error => {
+      console.error('[API ERROR] Failed to fetch assignable users:', error);
       throw error;
     });
   },

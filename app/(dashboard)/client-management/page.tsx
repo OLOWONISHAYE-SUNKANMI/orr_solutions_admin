@@ -5,6 +5,7 @@ import { Search, Filter, Users, FileText, Calendar, Eye, Edit, ToggleLeft, Toggl
 import { clientAPI } from "@/app/services";
 import type { ClientListItem, Client } from "@/app/services/types";
 import ClientDocumentsModal from "@/app/components/client/ClientDocumentsModal";
+import Pagination from "@/app/components/common/Pagination";
 
 const stageColors: Record<string, string> = {
   discover: "bg-blue-500/30 text-blue-300 border-blue-500/30",
@@ -22,7 +23,7 @@ const pillarColors: Record<string, string> = {
 };
 
 export default function page() {
-  const [clients, setClients] = useState<ClientListItem[]>([]);
+  const [allClients, setAllClients] = useState<ClientListItem[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientEngagement, setClientEngagement] = useState<any>(null);
   const [clientStats, setClientStats] = useState<any>(null);
@@ -35,35 +36,36 @@ export default function page() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(7);
 
   useEffect(() => {
     fetchClients();
+  }, []);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
   }, [filterStage, filterPillar, filterPortalStatus, searchQuery]);
 
   const fetchClients = async () => {
     try {
       setLoading(true);
       setError(null);
-      const filters: Record<string, any> = {};
       
-      if (filterStage !== "all") filters.stage = filterStage;
-      if (filterPillar !== "all") filters.primary_pillar = filterPillar;
-      if (filterPortalStatus !== "all") filters.is_portal_active = filterPortalStatus === "active";
-      if (searchQuery) filters.search = searchQuery;
-
-      console.log('Fetching clients with filters:', filters);
-      const response = await clientAPI.listClients(filters) as any;
+      console.log('Fetching all clients');
+      const response = await clientAPI.listClients({}) as any;
       console.log('API response:', response);
       
       const clientsData = Array.isArray(response) ? response : (response.results || response.data || []);
       console.log('Processed clients:', clientsData);
       
-      setClients(clientsData);
+      setAllClients(clientsData);
     } catch (err: any) {
       console.error("Failed to fetch clients:", err);
       setError(err.message || "Failed to load clients");
       
-      setClients([]);
+      setAllClients([]);
     } finally {
       setLoading(false);
     }
@@ -219,6 +221,7 @@ export default function page() {
                           setFilterStage("all");
                           setFilterPillar("all");
                           setFilterPortalStatus("all");
+                          setCurrentPage(1);
                         }}
                         className="text-xs text-primary hover:underline self-end"
                       >
@@ -229,67 +232,111 @@ export default function page() {
                 </div>
 
                 <div className="bg-gradient-to-b from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg flex-1 overflow-hidden flex flex-col">
-                  <div className="p-3 border-b border-white/10">
-                    <p className="text-sm text-gray-400">
-                      {loading ? "Loading..." : `${clients.length} client${clients.length !== 1 ? "s" : ""}`}
-                    </p>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-                    {loading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader className="animate-spin" size={24} />
-                      </div>
-                    ) : clients.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400">
-                        <Users size={32} className="mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No clients found</p>
-                        {error && (
-                          <p className="text-xs text-red-400 mt-2">Error: {error}</p>
-                        )}
-                        <p className="text-xs mt-2">Check browser console for details</p>
-                      </div>
-                    ) : (
-                      clients.map((client) => (
-                        <div
-                          key={client.id}
-                          onClick={() => handleClientClick(client)}
-                          className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                            selectedClient?.id === client.id
-                              ? "bg-primary/20 border-2 border-primary"
-                              : "bg-white/5 border border-white/10 hover:bg-white/10"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">{client.full_name}</p>
-                              <p className="text-xs text-gray-400 truncate">{client.company}</p>
-                            </div>
-                            {client.is_portal_active ? (
-                              <ToggleRight className="text-green-400 flex-shrink-0" size={20} />
-                            ) : (
-                              <ToggleLeft className="text-gray-500 flex-shrink-0" size={20} />
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs px-2 py-0.5 rounded border ${stageColors[client.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
-                              {client.stage ? client.stage.charAt(0).toUpperCase() + client.stage.slice(1) : 'Unknown'}
-                            </span>
-                            <span className={`text-xs ${pillarColors[client.primary_pillar] || "text-gray-400"}`}>
-                              {client.primary_pillar === "strategic" ? "Strategic" : 
-                               client.primary_pillar === "operational" ? "Operational" : 
-                               client.primary_pillar === "financial" ? "Financial" : "Cultural"}
-                            </span>
-                          </div>
-
-                          <div className="mt-2 text-xs text-gray-500">
-                            Last active: {formatDate(client.last_activity)}
-                          </div>
+                  {(() => {
+                    // Filter clients based on current filters
+                    let filteredClients = allClients.filter(client => {
+                      const matchesStage = filterStage === "all" || client.stage === filterStage;
+                      const matchesPillar = filterPillar === "all" || client.primary_pillar === filterPillar;
+                      const matchesPortal = filterPortalStatus === "all" || 
+                        (filterPortalStatus === "active" && client.is_portal_active) ||
+                        (filterPortalStatus === "inactive" && !client.is_portal_active);
+                      const matchesSearch = !searchQuery || 
+                        client.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        client.company.toLowerCase().includes(searchQuery.toLowerCase());
+                      
+                      return matchesStage && matchesPillar && matchesPortal && matchesSearch;
+                    });
+                    
+                    // Paginate filtered clients
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    const paginatedClients = filteredClients.slice(startIndex, endIndex);
+                    
+                    return (
+                      <>
+                        <div className="p-3 border-b border-white/10">
+                          <p className="text-sm text-gray-400">
+                            {loading ? "Loading..." : `${filteredClients.length} client${filteredClients.length !== 1 ? "s" : ""} total`}
+                          </p>
                         </div>
-                      ))
-                    )}
-                  </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                          {loading ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader className="animate-spin" size={24} />
+                            </div>
+                          ) : paginatedClients.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400">
+                              <Users size={32} className="mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No clients found</p>
+                              {error && (
+                                <p className="text-xs text-red-400 mt-2">Error: {error}</p>
+                              )}
+                              <p className="text-xs mt-2">Check browser console for details</p>
+                            </div>
+                          ) : (
+                            paginatedClients.map((client) => (
+                              <div
+                                key={client.id}
+                                onClick={() => handleClientClick(client)}
+                                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                                  selectedClient?.id === client.id
+                                    ? "bg-primary/20 border-2 border-primary"
+                                    : "bg-white/5 border border-white/10 hover:bg-white/10"
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-white truncate">{client.full_name}</p>
+                                    <p className="text-xs text-gray-400 truncate">{client.company}</p>
+                                  </div>
+                                  {client.is_portal_active ? (
+                                    <ToggleRight className="text-green-400 flex-shrink-0" size={20} />
+                                  ) : (
+                                    <ToggleLeft className="text-gray-500 flex-shrink-0" size={20} />
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-xs px-2 py-0.5 rounded border ${stageColors[client.stage] || "bg-gray-500/30 text-gray-300 border-gray-500/30"}`}>
+                                    {client.stage ? client.stage.charAt(0).toUpperCase() + client.stage.slice(1) : 'Unknown'}
+                                  </span>
+                                  <span className={`text-xs ${pillarColors[client.primary_pillar] || "text-gray-400"}`}>
+                                    {client.primary_pillar === "strategic" ? "Strategic" : 
+                                     client.primary_pillar === "operational" ? "Operational" : 
+                                     client.primary_pillar === "financial" ? "Financial" : "Cultural"}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2 text-xs text-gray-500">
+                                  Last active: {formatDate(client.last_activity)}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        
+                        {/* Pagination */}
+                        {filteredClients.length > itemsPerPage && (
+                          <div className="p-3 border-t border-white/10">
+                            <Pagination
+                              currentPage={currentPage}
+                              totalPages={Math.ceil(filteredClients.length / itemsPerPage)}
+                              totalItems={filteredClients.length}
+                              itemsPerPage={itemsPerPage}
+                              onPageChange={(page) => setCurrentPage(page)}
+                              onItemsPerPageChange={(items) => {
+                                setItemsPerPage(items);
+                                setCurrentPage(1);
+                              }}
+                              className="text-white"
+                            />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

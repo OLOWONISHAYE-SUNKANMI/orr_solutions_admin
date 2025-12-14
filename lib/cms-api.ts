@@ -1,6 +1,6 @@
 
 
-const API_BASE_URL = 'http://127.0.0.1:80002';
+const API_BASE_URL = 'https://orr-backend-web-latest.onrender.com';
 
 export class CMSService {
   private getAuthHeaders() {

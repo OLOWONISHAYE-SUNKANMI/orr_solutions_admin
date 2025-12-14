@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, UserPlus, FileText, Calendar, Mail, Bell } from "lucide-react";
+import { Zap, UserPlus, Calendar, Mail } from "lucide-react";
 import AddClientModal from "@/app/components/quick-actions/AddClientModal";
-import CreateContentModal from "@/app/components/quick-actions/CreateContentModal";
 import ScheduleMeetingModal from "@/app/components/quick-actions/ScheduleMeetingModal";
 import SendMessageModal from "@/app/components/quick-actions/SendMessageModal";
-import CreateAnnouncementModal from "@/app/components/quick-actions/CreateAnnouncementModal";
 
 export default function QuickActionsPage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -18,13 +16,6 @@ export default function QuickActionsPage() {
       label: "Add New Client", 
       description: "Create a new client profile",
       color: "bg-blue-500" 
-    },
-    { 
-      id: "create-content",
-      icon: FileText, 
-      label: "Create Content", 
-      description: "Add new content or resources",
-      color: "bg-green-500" 
     },
     { 
       id: "schedule-meeting",
@@ -39,13 +30,6 @@ export default function QuickActionsPage() {
       label: "Send Message", 
       description: "Create a new ticket or message",
       color: "bg-orange-500" 
-    },
-    { 
-      id: "create-announcement",
-      icon: Bell, 
-      label: "Create Announcement", 
-      description: "Send system notification",
-      color: "bg-red-500" 
     },
   ];
 
@@ -94,20 +78,12 @@ export default function QuickActionsPage() {
         isOpen={activeModal === "add-client"} 
         onClose={closeModal} 
       />
-      <CreateContentModal 
-        isOpen={activeModal === "create-content"} 
-        onClose={closeModal} 
-      />
       <ScheduleMeetingModal 
         isOpen={activeModal === "schedule-meeting"} 
         onClose={closeModal} 
       />
       <SendMessageModal 
         isOpen={activeModal === "send-message"} 
-        onClose={closeModal} 
-      />
-      <CreateAnnouncementModal 
-        isOpen={activeModal === "create-announcement"} 
         onClose={closeModal} 
       />
     </div>

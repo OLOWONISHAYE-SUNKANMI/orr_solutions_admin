@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Calendar,
   ChevronDown,
   ChevronRight,
   FileText,
@@ -145,7 +146,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   ]
                 },
                 { label: "Assigned Consultants", href: "/consultations/consultants" },
-                { label: "Reports (drafts/approved)", href: "/consultations/reports" }
+                { label: "Reports (drafts/approved)", href: "/consultations/reports" },
+                { 
+                  label: "Meeting Management", 
+                  href: "/schedule-meetings",
+                  subItems: [
+                    { label: "My Meetings Calendar", href: "/schedule-meetings" },
+                    { label: "Requested Meetings", href: "/schedule-meetings/requested" },
+                    { label: "Confirmed Meetings", href: "/schedule-meetings/confirmed" }
+                  ]
+                }
               ]}
               pathname={pathname}
               subOpen={subOpen}
@@ -160,7 +170,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               open={open.tickets}
               onClick={() => toggle("tickets")}
               items={[
-                { label: "Support Tickets", href: "/tickets" },
+                { label: "All Tickets", href: "/tickets" },
+                { label: "My Tickets", href: "/tickets/my-tickets" },
                 { label: "Client Messages", href: "/tickets/client-messages" },
                 { label: "Internal Comms", href: "/tickets/internal-comms" },
                 { label: "Escalations", href: "/tickets/escalations" }

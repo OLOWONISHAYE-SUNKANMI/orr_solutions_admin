@@ -53,8 +53,8 @@ export default function SectorInsightsPage() {
         if (sectorRes.ok && benchmarkRes.ok) {
           const sector = await sectorRes.json();
           const benchmark = await benchmarkRes.json();
-          setSectorData(sector);
-          setBenchmarkData(benchmark);
+          setSectorData(sector.data || sector);
+          setBenchmarkData(benchmark.data || benchmark);
         } else {
           console.error('API Error:', sectorRes.status, benchmarkRes.status);
         }
@@ -104,13 +104,21 @@ export default function SectorInsightsPage() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-white mb-4">Client Distribution by Sector</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sectorData?.sector_distribution && Object.entries(sectorData.sector_distribution).map(([sector, count]) => (
-                <div key={sector} className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <Building2 className="text-blue-400 mb-2" size={24} />
-                  <h3 className="text-lg font-medium text-white capitalize">{sector.replace('_', ' ')}</h3>
-                  <p className="text-2xl font-bold text-blue-400">{count}</p>
+              {sectorData?.sector_distribution && Object.keys(sectorData.sector_distribution).length > 0 ? (
+                Object.entries(sectorData.sector_distribution).map(([sector, count]) => (
+                  <div key={sector} className="bg-white/5 border border-white/10 rounded-xl p-6">
+                    <Building2 className="text-blue-400 mb-2" size={24} />
+                    <h3 className="text-lg font-medium text-white capitalize">{sector.replace('_', ' ')}</h3>
+                    <p className="text-2xl font-bold text-blue-400">{count}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+                  <Building2 className="text-gray-400 mb-4 mx-auto" size={48} />
+                  <h3 className="text-lg font-medium text-white mb-2">No Sector Data Available</h3>
+                  <p className="text-gray-400">Client sector distribution will appear here once onboarding data is collected.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -118,13 +126,21 @@ export default function SectorInsightsPage() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-white mb-4">Project Stage Distribution</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {sectorData?.stage_distribution && Object.entries(sectorData.stage_distribution).map(([stage, count]) => (
-                <div key={stage} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                  <PieChart className="text-green-400 mb-2" size={20} />
-                  <h3 className="text-sm font-medium text-white capitalize">{stage.replace('_', ' ')}</h3>
-                  <p className="text-xl font-bold text-green-400">{count}</p>
+              {sectorData?.stage_distribution && Object.keys(sectorData.stage_distribution).length > 0 ? (
+                Object.entries(sectorData.stage_distribution).map(([stage, count]) => (
+                  <div key={stage} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <PieChart className="text-green-400 mb-2" size={20} />
+                    <h3 className="text-sm font-medium text-white capitalize">{stage.replace('_', ' ')}</h3>
+                    <p className="text-xl font-bold text-green-400">{count}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+                  <PieChart className="text-gray-400 mb-4 mx-auto" size={48} />
+                  <h3 className="text-lg font-medium text-white mb-2">No Stage Data Available</h3>
+                  <p className="text-gray-400">Project stage distribution will appear here once onboarding data is collected.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -158,10 +174,10 @@ export default function SectorInsightsPage() {
           )}
 
           {/* Sector Performance Comparison */}
-          {benchmarkData?.sector_performance && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-white mb-4">Sector Performance Comparison</h2>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-white mb-4">Sector Performance Comparison</h2>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+              {benchmarkData?.sector_performance && Object.keys(benchmarkData.sector_performance).length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -184,16 +200,22 @@ export default function SectorInsightsPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-8">
+                  <BarChart3 className="text-gray-400 mb-4 mx-auto" size={48} />
+                  <h3 className="text-lg font-medium text-white mb-2">No Performance Data Available</h3>
+                  <p className="text-gray-400">Sector performance comparison will appear here once client data is available.</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Engagement Metrics by Sector */}
-          {sectorData?.engagement_metrics && (
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-4">Engagement Metrics by Sector</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(sectorData.engagement_metrics).map(([sector, metrics]) => (
+          <div>
+            <h2 className="text-xl font-semibold text-white mb-4">Engagement Metrics by Sector</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sectorData?.engagement_metrics && Object.keys(sectorData.engagement_metrics).length > 0 ? (
+                Object.entries(sectorData.engagement_metrics).map(([sector, metrics]) => (
                   <div key={sector} className="bg-white/5 border border-white/10 rounded-xl p-6">
                     <h3 className="text-lg font-medium text-white mb-4 capitalize">{sector.replace('_', ' ')}</h3>
                     <div className="space-y-3">
@@ -211,10 +233,16 @@ export default function SectorInsightsPage() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                ))
+              ) : (
+                <div className="col-span-full bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+                  <Users className="text-gray-400 mb-4 mx-auto" size={48} />
+                  <h3 className="text-lg font-medium text-white mb-2">No Engagement Data Available</h3>
+                  <p className="text-gray-400">Sector engagement metrics will appear here once client activity data is available.</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

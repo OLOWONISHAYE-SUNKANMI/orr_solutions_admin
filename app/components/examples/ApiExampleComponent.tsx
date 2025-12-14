@@ -174,38 +174,8 @@ export default function ApiExampleComponent() {
   };
 
   const testCreateOperations = async () => {
-    try {
-      // Test creating a client
-      const clientResult = await createClient.mutate({
-        full_name: "Test Client",
-        email: "test@example.com",
-        company: "Test Company",
-        stage: "discover",
-        primary_pillar: "strategic"
-      });
-      console.log('✅ Client created:', clientResult);
-
-      // Test creating content
-      const contentResult = await createContent.mutate({
-        title: "Test Content",
-        content: "This is test content",
-        content_type: "article",
-        status: "draft",
-        stage: "discover"
-      });
-      console.log('✅ Content created:', contentResult);
-
-      // Test creating a notification
-      const notificationResult = await createNotification.mutate({
-        notification_type: "system_alert",
-        title: "Test Notification",
-        message: "This is a test notification"
-      });
-      console.log('✅ Notification created:', notificationResult);
-
-    } catch (error) {
-      console.error('❌ Create operations failed:', error);
-    }
+    console.log('⚠️ Create operations disabled - no dummy data will be created');
+    console.log('To test create operations, use the actual forms in the application');
   };
 
   return (
@@ -277,7 +247,7 @@ export default function ApiExampleComponent() {
               <ApiStatus {...userData} />
               <div className="text-sm text-gray-300">
                 <p>Endpoint: <code className="text-primary">/admin-portal/v1/auth/me/</code></p>
-                <p>User: {userData.data?.full_name || userData.data?.username || 'Not loaded'}</p>
+                <p>User: {(userData.data as any)?.full_name || (userData.data as any)?.username || 'Not loaded'}</p>
               </div>
             </ApiSection>
 
@@ -417,9 +387,9 @@ function MyComponent() {
   const handleCreate = async () => {
     try {
       await createClient.mutate({
-        full_name: "John Doe",
-        email: "john@example.com",
-        company: "Acme Corp"
+        full_name: "Client Name",
+        email: "client@company.com",
+        company: "Company Name"
       });
       refetch(); // Refresh the list
     } catch (error) {

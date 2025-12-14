@@ -19,7 +19,7 @@ export default function EscalationsPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://127.0.0.1:8000/admin-portal/v1/tickets/?source=ai_escalation', {
+      const response = await fetch('http://127.0.0.1:8002/admin-portal/v1/tickets/?source=ai_escalation', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }

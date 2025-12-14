@@ -86,8 +86,8 @@ export default function ConsultationMetricsPage() {
         if (consultationRes.ok && schedulingRes.ok) {
           const consultation = await consultationRes.json();
           const scheduling = await schedulingRes.json();
-          setConsultationData(consultation);
-          setSchedulingData(scheduling);
+          setConsultationData(consultation.data || consultation);
+          setSchedulingData(scheduling.data || scheduling);
         } else {
           console.error('API Error:', consultationRes.status, schedulingRes.status);
         }

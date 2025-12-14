@@ -4,6 +4,7 @@ import { DollarSign, CreditCard, TrendingUp, Users, Loader } from "lucide-react"
 import { useState, useEffect } from "react";
 import { billingAPI, BillingHistoryItem } from "@/app/services";
 import type { PaymentStats } from "@/app/services";
+import Pagination from "@/app/components/common/Pagination";
 
 export default function BillingCreditOverviewPage() {
   const [stats, setStats] = useState<any[]>([
@@ -12,9 +13,11 @@ export default function BillingCreditOverviewPage() {
     { label: "Pending Payments", value: "€0.00", icon: CreditCard, color: "text-orange-400" },
     { label: "Completed Transactions", value: "0", icon: TrendingUp, color: "text-purple-400" },
   ]);
-  const [recentTransactions, setRecentTransactions] = useState<BillingHistoryItem[]>([]);
+  const [allTransactions, setAllTransactions] = useState<BillingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(7);
 
   useEffect(() => {
     const fetchBillingData = async () => {
@@ -22,7 +25,7 @@ export default function BillingCreditOverviewPage() {
         setLoading(true);
         const [statsResponse, transactionsResponse] = await Promise.all([
           billingAPI.getAllPaymentStats(),
-          billingAPI.getAllPayments({ limit: 5 }) // Get recent 5 transactions
+          billingAPI.getAllPayments({})
         ]);
         
         // Handle API response structure
@@ -45,7 +48,7 @@ export default function BillingCreditOverviewPage() {
         // Ensure transactionsData is an array
         const transactions = Array.isArray(transactionsData) ? transactionsData : [];
         console.log('Final transactions array:', transactions);
-        setRecentTransactions(transactions);
+        setAllTransactions(transactions);
       } catch (err) {
         console.error("Failed to fetch billing data:", err);
         setError("Failed to load billing data");
@@ -97,35 +100,55 @@ export default function BillingCreditOverviewPage() {
 
               <div className="mt-8 bg-white/5 border border-white/10 rounded-xl p-6">
                 <h2 className="text-xl font-semibold text-white mb-4">Recent Transactions</h2>
-                {recentTransactions.length === 0 ? (
-                  <p className="text-gray-400">No recent transactions found</p>
-                ) : (
-                  <div className="space-y-4">
-                    {recentTransactions.map((transaction, index) => (
-                      <div key={transaction.id || index} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                            <DollarSign className="w-5 h-5 text-primary" />
+                {(() => {
+                  const startIndex = (currentPage - 1) * itemsPerPage;
+                  const endIndex = startIndex + itemsPerPage;
+                  const paginatedTransactions = allTransactions.slice(startIndex, endIndex);
+                  
+                  return allTransactions.length === 0 ? (
+                    <p className="text-gray-400">No recent transactions found</p>
+                  ) : (
+                    <>
+                      <div className="space-y-4 mb-6">
+                        {paginatedTransactions.map((transaction, index) => (
+                          <div key={transaction.id || index} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                <DollarSign className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">{transaction.client_name || 'Unknown Client'}</p>
+                                <p className="text-gray-400 text-sm">{transaction.reference_id}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-white font-semibold">${transaction.amount}</p>
+                              <p className={`text-sm capitalize ${
+                                transaction.status === 'completed' ? 'text-green-400' :
+                                transaction.status === 'pending' ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>
+                                {transaction.status}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-white font-medium">{transaction.client_name || 'Unknown Client'}</p>
-                            <p className="text-gray-400 text-sm">{transaction.reference_id}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-white font-semibold">${transaction.amount}</p>
-                          <p className={`text-sm capitalize ${
-                            transaction.status === 'paid' ? 'text-green-400' :
-                            transaction.status === 'pending' ? 'text-yellow-400' :
-                            'text-red-400'
-                          }`}>
-                            {transaction.status}
-                          </p>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                      
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(allTransactions.length / itemsPerPage)}
+                        totalItems={allTransactions.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        onItemsPerPageChange={(newItemsPerPage) => {
+                          setItemsPerPage(newItemsPerPage);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </>
+                  );
+                })()}
               </div>
             </>
           )}

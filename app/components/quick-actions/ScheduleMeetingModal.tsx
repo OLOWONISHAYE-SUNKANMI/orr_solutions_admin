@@ -22,7 +22,9 @@ export default function ScheduleMeetingModal({ isOpen, onClose }: ScheduleMeetin
     requested_datetime: "",
     duration_minutes: 60,
     agenda: "",
+    meeting_notes: "",
     internal_notes: "",
+    meeting_link: "",
   });
 
   const meetingTypes = [
@@ -77,7 +79,9 @@ export default function ScheduleMeetingModal({ isOpen, onClose }: ScheduleMeetin
         requested_datetime: formData.requested_datetime,
         duration_minutes: formData.duration_minutes,
         agenda: formData.agenda,
+        meeting_notes: formData.meeting_notes,
         internal_notes: formData.internal_notes,
+        meeting_link: formData.meeting_link,
       };
 
       console.log('📅 Creating meeting with data:', meetingData);
@@ -95,7 +99,9 @@ export default function ScheduleMeetingModal({ isOpen, onClose }: ScheduleMeetin
           requested_datetime: "",
           duration_minutes: 60,
           agenda: "",
+          meeting_notes: "",
           internal_notes: "",
+          meeting_link: "",
         });
       }, 2000);
     } catch (err: any) {
@@ -263,13 +269,35 @@ export default function ScheduleMeetingModal({ isOpen, onClose }: ScheduleMeetin
             </div>
 
             <div>
+              <label className="text-xs text-gray-400 mb-2 block">Meeting Notes</label>
+              <textarea
+                value={formData.meeting_notes}
+                onChange={(e) => handleInputChange("meeting_notes", e.target.value)}
+                placeholder="Add any notes about this meeting"
+                rows={3}
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200 resize-none"
+              />
+            </div>
+
+            <div>
               <label className="text-xs text-gray-400 mb-2 block">Internal Notes</label>
               <textarea
                 value={formData.internal_notes}
                 onChange={(e) => handleInputChange("internal_notes", e.target.value)}
-                placeholder="Add any internal notes about this meeting"
+                placeholder="Add any internal notes about this meeting (not visible to client)"
                 rows={3}
                 className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200 resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">Meeting Link</label>
+              <input
+                type="url"
+                value={formData.meeting_link}
+                onChange={(e) => handleInputChange("meeting_link", e.target.value)}
+                placeholder="https://zoom.us/j/... or other meeting link"
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200"
               />
             </div>
 

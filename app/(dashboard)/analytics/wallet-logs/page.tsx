@@ -107,9 +107,9 @@ export default function WalletLogsPage() {
           const logs = await logsRes.json();
           const analytics = await analyticsRes.json();
           const audit = await auditRes.json();
-          setTransactionLogs(logs);
-          setActivityAnalytics(analytics);
-          setAuditTrail(audit);
+          setTransactionLogs(logs.data || logs);
+          setActivityAnalytics(analytics.data || analytics);
+          setAuditTrail(audit.data || audit);
         } else {
           console.error('API Error:', logsRes.status, analyticsRes.status, auditRes.status);
         }

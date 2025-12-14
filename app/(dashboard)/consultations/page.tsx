@@ -23,9 +23,9 @@ export default function ConsultationsPage() {
           settingsAPI.listUsers().catch(() => ({ data: [] }))
         ]);
 
-        const meetingData = meetingStats?.data || meetingStats || {};
-        const contentData = contentResponse?.data || contentResponse || [];
-        const usersData = usersResponse?.data || usersResponse || [];
+        const meetingData = (meetingStats as any)?.data || meetingStats || {};
+        const contentData = (contentResponse as any)?.data || contentResponse || [];
+        const usersData = (usersResponse as any)?.data || usersResponse || [];
 
         setStats({
           scheduled: meetingData.confirmed_meetings || 0,
