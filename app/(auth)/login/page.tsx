@@ -27,13 +27,25 @@ export default function Page() {
 
     try {
       const response: any = await authAPI.login(formData.email, formData.password);
+      
+      // Handle different response formats
       if (response.success && response.data) {
+        // Format from common.auth_views.LoginView
         login(response.data.accessToken, response.data.user);
         router.push("/");
+      } else if (response.data && response.data.accessToken) {
+        // Alternative format
+        login(response.data.accessToken, response.data.user);
+        router.push("/");
+      } else if (response.accessToken) {
+        // Direct format
+        login(response.accessToken, response.user);
+        router.push("/");
       } else {
-        setError(response.message || "Login failed");
+        setError(response.message || "Login failed - Invalid response format");
       }
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || "Login failed");
     } finally {
       setLoading(false);

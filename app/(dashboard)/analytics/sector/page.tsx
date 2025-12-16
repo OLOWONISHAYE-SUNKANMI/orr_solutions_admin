@@ -46,8 +46,8 @@ export default function SectorInsightsPage() {
     const fetchData = async () => {
       try {
         const [sectorRes, benchmarkRes] = await Promise.all([
-          fetch('http://127.0.0.1:8002/admin-portal/v1/sector-insights/sector-analytics/'),
-          fetch('http://127.0.0.1:8002/admin-portal/v1/sector-insights/industry-benchmarks/')
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/sector-insights/sector-analytics/'),
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/sector-insights/industry-benchmarks/')
         ]);
         
         if (sectorRes.ok && benchmarkRes.ok) {

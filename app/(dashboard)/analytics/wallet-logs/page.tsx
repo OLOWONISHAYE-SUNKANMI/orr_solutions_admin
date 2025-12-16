@@ -98,9 +98,9 @@ export default function WalletLogsPage() {
     const fetchData = async () => {
       try {
         const [logsRes, analyticsRes, auditRes] = await Promise.all([
-          fetch('http://127.0.0.1:8002/admin-portal/v1/wallet-logs/transactions/'),
-          fetch('http://127.0.0.1:8002/admin-portal/v1/wallet-logs/activity-analytics/'),
-          fetch('http://127.0.0.1:8002/admin-portal/v1/wallet-logs/audit-trail/')
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/wallet-logs/transactions/'),
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/wallet-logs/activity-analytics/'),
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/wallet-logs/audit-trail/')
         ]);
         
         if (logsRes.ok && analyticsRes.ok && auditRes.ok) {

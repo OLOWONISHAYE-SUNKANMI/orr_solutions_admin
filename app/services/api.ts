@@ -4,7 +4,7 @@
  * Base URL: /admin-portal/v1/
  */
 
-const BASE_URL = "https://orr-backend-web-latest.onrender.com";
+const BASE_URL =  "https://orr-backend-web-latest.onrender.com";
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -292,7 +292,7 @@ export const analyticsAPI = {
 export const authAPI = {
   login: (email: string, password: string) => {
     console.log(`[API] Attempting login for email: ${email}`);
-    return apiCall("/login/", {
+    return apiCall("/api/auth/login/", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }).then(response => {

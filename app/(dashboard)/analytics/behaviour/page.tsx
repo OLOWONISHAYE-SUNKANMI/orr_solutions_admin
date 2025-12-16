@@ -50,8 +50,8 @@ export default function BehaviourAnalyticsPage() {
     const fetchData = async () => {
       try {
         const [behaviorRes, journeyRes] = await Promise.all([
-          fetch('http://127.0.0.1:8002/admin-portal/v1/behavior-analytics/user-behavior/'),
-          fetch('http://127.0.0.1:8002/admin-portal/v1/behavior-analytics/user-journey/')
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/behavior-analytics/user-behavior/'),
+          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/behavior-analytics/user-journey/')
         ]);
         
         if (behaviorRes.ok && journeyRes.ok) {

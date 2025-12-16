@@ -100,7 +100,7 @@ export default function TicketsPage() {
     try {
       setMessagesLoading(true);
       
-      const response = await fetch(`http://127.0.0.1:8002/admin-portal/v1/tickets/${ticketId}/messages/`, {
+      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/${ticketId}/messages/`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
