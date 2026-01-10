@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageSquare, User, Send, Loader } from "lucide-react";
+import { MessageSquare, User, Send, Loader, Clock, CheckCircle } from "lucide-react";
 import { ticketAPI } from "@/app/services";
 import type { TicketListItem } from "@/app/services/types";
 
@@ -9,6 +9,7 @@ export default function ClientMessagesPage() {
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendingReply, setSendingReply] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClientTickets();
@@ -41,6 +42,36 @@ export default function ClientMessagesPage() {
     }
   };
 
+  const sendAutoReply = async (ticketId: string, replyType: string = "initial") => {
+    try {
+      setSendingReply(ticketId);
+      
+      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/${ticketId}/auto-reply/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reply_type: replyType,
+          timeframe: "24 hours"
+        })
+      });
+      
+      if (response.ok) {
+        // Refresh tickets to show updated status
+        await fetchClientTickets();
+      } else {
+        throw new Error(`Failed to send auto-reply`);
+      }
+    } catch (err: any) {
+      console.error("Failed to send auto-reply:", err);
+      setError(err.message || "Failed to send auto-reply");
+    } finally {
+      setSendingReply(null);
+    }
+  };
+
   return (
     <div className="min-h-screen text-white relative overflow-hidden star">
       <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
@@ -49,7 +80,7 @@ export default function ClientMessagesPage() {
         <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 border border-white/10">
           <div className="mb-8">
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Client Messages</h1>
-            <p className="text-gray-400">Direct communication with clients</p>
+            <p className="text-gray-400">Direct communication with clients - Auto-replies enabled</p>
           </div>
 
           {loading ? (
@@ -77,6 +108,12 @@ export default function ClientMessagesPage() {
                         <span className="text-xs px-2 py-1 rounded border bg-blue-500/20 text-blue-300 border-blue-500/30">
                           {ticket.ticket_id}
                         </span>
+                        {ticket.messages_count > 0 && (
+                          <span className="text-xs px-2 py-1 rounded border bg-green-500/20 text-green-300 border-green-500/30 flex items-center gap-1">
+                            <CheckCircle size={12} />
+                            Auto-replied
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-400 mb-2">{ticket.subject}</p>
                       <p className="text-sm text-gray-500">{ticket.client_company}</p>
@@ -101,6 +138,22 @@ export default function ClientMessagesPage() {
                       }`}>
                         {ticket.status.replace('_', ' ').toUpperCase()}
                       </span>
+                      
+                      {ticket.messages_count === 0 && (
+                        <button 
+                          onClick={() => sendAutoReply(ticket.id.toString(), "initial")}
+                          disabled={sendingReply === ticket.id.toString()}
+                          className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                        >
+                          {sendingReply === ticket.id.toString() ? (
+                            <Loader className="animate-spin" size={14} />
+                          ) : (
+                            <Clock size={14} />
+                          )}
+                          Send Auto-Reply
+                        </button>
+                      )}
+                      
                       <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
                         <Send size={14} />
                         Reply

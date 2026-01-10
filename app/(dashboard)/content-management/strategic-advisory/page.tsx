@@ -44,7 +44,7 @@ export default function StrategicAdvisoryAdminPage() {
     try {
       setLoading(true);
       const response = await cmsAPI.getStrategicAdvisoryContent();
-      setContent(response.data);
+      setContent((response as any).data);
     } catch (err: any) {
       setError(err.message || "Failed to fetch Strategic Advisory content");
     } finally {

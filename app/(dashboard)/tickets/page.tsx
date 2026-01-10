@@ -165,7 +165,7 @@ export default function TicketsPage() {
       setError(null);
       
       // Use direct PATCH update instead of actions
-      const response = await fetch(`http://127.0.0.1:8002/admin-portal/v1/tickets/${selectedTicket.id}/`, {
+      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/${selectedTicket.id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ export default function TicketsPage() {
       setError(null);
       
       // Use direct POST to messages endpoint
-      const response = await fetch(`http://127.0.0.1:8002/admin-portal/v1/tickets/${selectedTicket.id}/messages/`, {
+      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/${selectedTicket.id}/messages/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

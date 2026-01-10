@@ -1,45 +1,49 @@
 'use client';
-import { useState, useRef, useEffect, forwardRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AuthService } from '../lib/auth';
 
 interface EditableTextProps {
   content: string;
   onSave: (newContent: string) => Promise<void>;
   className?: string;
-  tag?: 'h1' | 'h2' | 'h3' | 'p' | 'span';
+  tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'span';
   placeholder?: string;
   multiline?: boolean;
+  style?: React.CSSProperties;
 }
 
-const EditableText = forwardRef<HTMLElement, EditableTextProps>(function EditableText({
+function EditableText({
   content,
   onSave,
   className = '',
   tag = 'p',
   placeholder = 'Click to edit...',
-  multiline = false
-}, ref) {
+  multiline = false,
+  style
+}: EditableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(content || '');
   const [isSaving, setIsSaving] = useState(false);
   const [canEdit, setCanEdit] = useState(true); // Always allow editing in admin
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setValue(content || '');
   }, [content]);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
+    if (isEditing) {
       const length = value.length;
-      if (multiline) {
-        (inputRef.current as HTMLTextAreaElement).setSelectionRange(length, length);
-      } else {
-        (inputRef.current as HTMLInputElement).setSelectionRange(length, length);
+      if (multiline && textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(length, length);
+      } else if (!multiline && inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(length, length);
       }
     }
-  }, [isEditing, multiline]);
+  }, [isEditing, multiline, value]);
 
   const handleClick = () => {
     if (canEdit && !isEditing && !isSaving) {
@@ -83,11 +87,11 @@ const EditableText = forwardRef<HTMLElement, EditableTextProps>(function Editabl
     className: `${className} ${canEdit ? 'cursor-pointer hover:bg-blue-500/10 hover:outline hover:outline-1 hover:outline-blue-500 transition-all' : ''} ${isEditing ? 'bg-blue-500/20 outline outline-2 outline-blue-500' : ''}`,
     onClick: handleClick,
     title: canEdit ? 'Click to edit' : undefined,
+    style
   };
 
   if (isEditing) {
     const inputProps = {
-      ref: inputRef,
       value,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setValue(e.target.value),
       onBlur: handleSave,
@@ -102,6 +106,7 @@ const EditableText = forwardRef<HTMLElement, EditableTextProps>(function Editabl
         <div className="relative">
           <textarea
             {...inputProps}
+            ref={textareaRef}
             rows={Math.max(3, (value || '').split('\n').length)}
           />
           {isSaving && (
@@ -116,6 +121,7 @@ const EditableText = forwardRef<HTMLElement, EditableTextProps>(function Editabl
         <div className="relative">
           <input
             type="text"
+            ref={inputRef}
             {...inputProps}
           />
           {isSaving && (
@@ -130,7 +136,7 @@ const EditableText = forwardRef<HTMLElement, EditableTextProps>(function Editabl
 
   const Tag = tag;
   return (
-    <Tag {...editableProps} ref={ref}>
+    <Tag {...editableProps}>
       {content || placeholder}
       {canEdit && !isSaving && (
         <span className="ml-2 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity text-sm">
@@ -144,6 +150,6 @@ const EditableText = forwardRef<HTMLElement, EditableTextProps>(function Editabl
       )}
     </Tag>
   );
-});
+}
 
 export default EditableText;
