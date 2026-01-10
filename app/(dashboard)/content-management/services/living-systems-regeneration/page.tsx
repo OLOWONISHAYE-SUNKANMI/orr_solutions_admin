@@ -93,9 +93,6 @@ export default function LivingSystemsPage() {
     if (updatedData.sections) {
       for (let index = 0; index < updatedData.sections.length; index++) {
         const section = updatedData.sections[index];
-        if (section.title) {
-          await updateContent(`process_step_${index + 1}_title`, section.title);
-        }
         if (section.content?.[0]) {
           await updateContent(`process_step_${index + 1}`, section.content[0]);
         }
@@ -235,15 +232,15 @@ export default function LivingSystemsPage() {
           description={content.process_description}
           sections={[
             {
-              title: content.process_step_1_title || "Listen & Report (Site & System Discovery)",
+              title: "Listen & Report (Site & System Discovery)",
               content: [content.process_step_1]
             },
             {
-              title: content.process_step_2_title || "Decide: Document or Partnership",
+              title: "Decide: Document or Partnership",
               content: [content.process_step_2]
             },
             {
-              title: content.process_step_3_title || "Steward & Evolve (For Clients Who Continue)",
+              title: "Steward & Evolve (For Clients Who Continue)",
               content: [content.process_step_3]
             }
           ]}

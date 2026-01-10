@@ -155,12 +155,12 @@ export default function ResourcesBlogs() {
         </div>
       </div>
       <HeroSection data={data} onSave={handleSave} />
-      <div className="scroll-section"><ContentSection data={data} onSave={handleSave} /></div>
+      <div className="scroll-section"><ContentSection data={data} onSave={(field, value, cardId) => handleSave(field, value, 'card', cardId)} /></div>
     </div>
   );
 }
 
-function HeroSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (field: string, value: string) => void }) {
+function HeroSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (field: string, value: string) => Promise<void> }) {
   const titleRef = useRef(null);
   const p1Ref = useRef(null);
   const p2Ref = useRef(null);
@@ -236,7 +236,7 @@ function HeroSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (fiel
   );
 }
 
-function ContentSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (field: string, value: string) => void }) {
+function ContentSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (field: string, value: string, cardId: number) => Promise<void> }) {
   return (
     <section className="px-6 md:px-16 pb-20">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
@@ -244,7 +244,7 @@ function ContentSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (f
           <ContentCard
             key={card.id}
             card={card}
-            onSave={(field, value) => handleSave(field, value, 'card', card.id)}
+            onSave={(field, value) => onSave(field, value, card.id)}
           />
         ))}
       </div>
@@ -254,7 +254,7 @@ function ContentSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (f
           <ContentCard
             key={card.id}
             card={card}
-            onSave={(field, value) => handleSave(field, value, 'card', card.id)}
+            onSave={(field, value) => onSave(field, value, card.id)}
           />
         ))}
       </div>
@@ -264,7 +264,7 @@ function ContentSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (f
 
 function ContentCard({ card, onSave }: {
   card: ContentCard;
-  onSave: (field: string, value: string) => void;
+  onSave: (field: string, value: string) => Promise<void>;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -345,7 +345,7 @@ function ContentCard({ card, onSave }: {
             />
             <EditableText
               content="..."
-              onSave={(newText) => console.log('Saved ellipsis:', newText)}
+              onSave={async (newText) => { console.log('Saved ellipsis:', newText); }}
               tag="p"
               className="text-gray-400 mt-2"
               placeholder="..."
@@ -357,10 +357,10 @@ function ContentCard({ card, onSave }: {
               <EditableText
                 key={index}
                 content={item}
-                onSave={(newText) => {
+                onSave={async (newText) => {
                   const newContent = Array.isArray(card.content) ? [...card.content] : [card.content];
                   newContent[index] = newText;
-                  onSave('content', JSON.stringify(newContent));
+                  await onSave('content', JSON.stringify(newContent));
                 }}
                 tag="p"
                 className=""

@@ -23,10 +23,10 @@ export default function AuthDebugger() {
   const testLogin = async () => {
     try {
       const result = await auth.login('editor', 'editor123');
-      setTestResults(prev => ({ ...prev, login: 'Success' }));
+      setTestResults((prev: any) => ({ ...prev, login: 'Success' }));
       updateAuthInfo();
     } catch (error) {
-      setTestResults(prev => ({ ...prev, login: `Failed: ${error}` }));
+      setTestResults((prev: any) => ({ ...prev, login: `Failed: ${error}` }));
     }
   };
 
@@ -38,12 +38,12 @@ export default function AuthDebugger() {
       );
       
       if (response.ok) {
-        setTestResults(prev => ({ ...prev, api: 'Success' }));
+        setTestResults((prev: any) => ({ ...prev, api: 'Success' }));
       } else {
-        setTestResults(prev => ({ ...prev, api: `Failed: ${response.status}` }));
+        setTestResults((prev: any) => ({ ...prev, api: `Failed: ${response.status}` }));
       }
     } catch (error) {
-      setTestResults(prev => ({ ...prev, api: `Error: ${error}` }));
+      setTestResults((prev: any) => ({ ...prev, api: `Error: ${error}` }));
     }
   };
 
