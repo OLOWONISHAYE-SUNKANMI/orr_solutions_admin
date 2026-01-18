@@ -3,6 +3,13 @@ import { useEffect, useRef } from "react";
 import NetworkCard from "../strategy_advisory/NetworkCard";
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 interface NetworkCard {
   title: string;
   description: string;
@@ -27,21 +34,22 @@ export default function NetworkAdvantageSection({
   const headerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
 
-  const handleSave = async (content: string, field?: string, index?: number) => {
+  const handleSave = async (content: string | RichTextData, field?: string, index?: number) => {
+    const contentToSave = typeof content === 'string' ? content : content.content;
     if (onUpdate) {
       const updatedData = { title, description, networkCards };
       if (field === 'title') {
-        updatedData.title = content;
+        updatedData.title = contentToSave;
       } else if (field === 'description') {
-        updatedData.description = content;
+        updatedData.description = contentToSave;
       } else if (field === 'card-title' && typeof index === 'number') {
-        updatedData.networkCards[index] = { ...updatedData.networkCards[index], title: content };
+        updatedData.networkCards[index] = { ...updatedData.networkCards[index], title: contentToSave };
       } else if (field === 'card-description' && typeof index === 'number') {
-        updatedData.networkCards[index] = { ...updatedData.networkCards[index], description: content };
+        updatedData.networkCards[index] = { ...updatedData.networkCards[index], description: contentToSave };
       }
       await onUpdate(updatedData);
     }
-    console.log('Saving content:', content);
+    console.log('Saving content:', contentToSave);
   };
 
   useEffect(() => {

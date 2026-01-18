@@ -1,13 +1,10 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
-import { useScrollSplit } from "@/hooks/useScrollSplit";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import EditableText from '../../../components/cms/EditableText';
+import { useState, useEffect } from "react";
 import { CMSService } from '../../../../lib/cms-api';
-
-gsap.registerPlugin(ScrollTrigger);
+import { Save, Loader, Upload } from 'lucide-react';
+import RichTextEditor from '../../../../components/RichTextEditor';
+import { cleanContentObject } from '../../../utils/htmlCleaner';
 
 interface ContentCard {
   id: number;
@@ -38,9 +35,10 @@ interface ResourcesBlogsData {
 }
 
 export default function ResourcesBlogs() {
-  useScrollSplit();
   const [data, setData] = useState<ResourcesBlogsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
   const cmsService = new CMSService();
 
   useEffect(() => {
@@ -49,10 +47,25 @@ export default function ResourcesBlogs() {
         console.log('🔄 Fetching Resources & Blogs data from backend...');
         const response = await cmsService.getResourcesBlogsPageContent();
         console.log('✅ Resources & Blogs API Response:', response);
-        setData(response);
+        
+        // Clean HTML from page content
+        const cleanedPage = cleanContentObject(response.page);
+        
+        // Clean HTML from cards content
+        const cleanedCards = response.cards?.map((card: ContentCard) => {
+          const cleanedCard = cleanContentObject(card);
+          // Also clean the content array if it exists
+          if (cleanedCard.content && Array.isArray(cleanedCard.content)) {
+            cleanedCard.content = cleanedCard.content.map((item: string) => 
+              typeof item === 'string' ? item.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim() : item
+            );
+          }
+          return cleanedCard;
+        }) || [];
+        
+        setData({ page: cleanedPage, cards: cleanedCards });
       } catch (error) {
         console.error('❌ Error fetching Resources & Blogs data:', error);
-        // Fallback to default data if API fails
         setData({
           page: {
             id: 1,
@@ -74,325 +87,343 @@ export default function ResourcesBlogs() {
     fetchData();
   }, []);
 
-  const handleSave = async (field: string, value: string, type: 'page' | 'card' = 'page', cardId?: number) => {
-    if (!data) return;
-    
+  const handleSave = async (section: string, saveData: any) => {
+    setSaving(section);
     try {
-      if (type === 'page') {
-        const updateData = { page: { [field]: value } };
-        
-        await cmsService.updateResourcesBlogsPageContent(updateData);
-        setData({ ...data, page: { ...data.page, [field]: value } });
-      } else if (type === 'card' && cardId) {
-        const updateData = { [field]: value };
-        
-        await cmsService.updateContentCard(cardId, updateData);
-        setData({
-          ...data,
-          cards: data.cards.map(card => 
-            card.id === cardId ? { ...card, [field]: value } : card
-          )
-        });
+      if (section.startsWith('card-')) {
+        const cardId = parseInt(section.split('-')[1]);
+        await cmsService.updateContentCard(cardId, saveData);
+      } else {
+        await cmsService.updateResourcesBlogsPageContent(saveData);
       }
-      console.log('✅ Saved:', field, value);
+      alert('Saved successfully!');
     } catch (error) {
-      console.error('❌ Error saving:', error);
+      console.error('Failed to save:', error);
+      alert('Failed to save');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleImageUpload = async (cardId: number, file: File) => {
+    setUploading(`card-${cardId}`);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'your_upload_preset');
+      
+      const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/your_cloud_name/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const uploadResult = await uploadResponse.json();
+      const imageUrl = uploadResult.secure_url;
+      
+      await cmsService.updateContentCard(cardId, { image_url: imageUrl });
+      alert('Image uploaded successfully!');
+      
+      // Update only the specific card's image URL without refetching all data
+      const newCards = data?.cards?.map((c: ContentCard) => 
+        c.id === cardId ? { ...c, image_url: imageUrl } : c
+      ) || [];
+      setData((prev: any) => ({ ...prev, cards: newCards }));
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleRichTextChange = (section: string, field: string, value: any) => {
+    if (section === 'page') {
+      setData((prev: any) => ({
+        ...prev,
+        page: {
+          ...prev.page,
+          [field]: value
+        }
+      }));
+    } else if (section.startsWith('card-')) {
+      const cardId = parseInt(section.split('-')[1]);
+      const newCards = data?.cards?.map((c: ContentCard) => 
+        c.id === cardId ? { ...c, [field]: value } : c
+      ) || [];
+      setData((prev: any) => ({ ...prev, cards: newCards }));
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="min-h-screen text-white flex items-center justify-center">
-        <div className="text-white text-xl">Error loading content</div>
-      </div>
-    );
-  }
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
 
   return (
-    <div className="min-h-screen text-white">
-      {/* Navigation */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-card rounded-lg p-4 shadow-lg">
-          <h3 className="text-white font-semibold mb-3">Content Sections</h3>
-          <div className="space-y-2">
-            <a href="/content-management/how-we-operate" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              How We Operate
-            </a>
-            <div className="relative group">
-              <a href="/content-management/services" className="block text-[#33FF99] hover:text-white transition-colors text-sm cursor-pointer">
-                Services ▼
-              </a>
-              <div className="absolute left-0 top-6 bg-[#1a3a52] rounded-lg p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 min-w-[200px]">
-                <a href="/content-management/services/living-systems-regeneration" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Living Systems Regeneration
-                </a>
-                <a href="/content-management/services/operational-systems-infrastructure" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Operational Systems Infrastructure
-                </a>
-                <a href="/content-management/services/strategy-advisory-compliant" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Strategy Advisory Compliant
-                </a>
-              </div>
-            </div>
-            <a href="/content-management/resources-blogs" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Resources & Blogs
-            </a>
-            <a href="/content-management/legal-policy" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Legal & Policy
-            </a>
-            <a href="/content-management/contact" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Contact
-            </a>
-          </div>
-        </div>
-      </div>
-      <HeroSection data={data} onSave={handleSave} />
-      <div className="scroll-section"><ContentSection data={data} onSave={(field, value, cardId) => handleSave(field, value, 'card', cardId)} /></div>
-    </div>
-  );
-}
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
 
-function HeroSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (field: string, value: string) => Promise<void> }) {
-  const titleRef = useRef(null);
-  const p1Ref = useRef(null);
-  const p2Ref = useRef(null);
-  const p3Ref = useRef(null);
-  const buttonsRef = useRef(null);
-
-  useEffect(() => {
-    gsap.fromTo(titleRef.current, { opacity: 0, y: -50 }, { opacity: 1, y: 0, duration: 1, ease: "power3.out" });
-    gsap.fromTo(p1Ref.current, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.8, delay: 0.3, ease: "power2.out" });
-    gsap.fromTo(p2Ref.current, { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.8, delay: 0.5, ease: "power2.out" });
-    gsap.fromTo(p3Ref.current, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.8, delay: 0.7, ease: "power2.out" });
-    gsap.fromTo(buttonsRef.current, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.6, delay: 0.9, ease: "back.out(1.7)" });
-  }, []);
-
-  return (
-    <section className="relative px-6 my-20 md:px-16 py-20 min-h-screen flex flex-col items-start justify-center">
-      <EditableText
-        content={data.page.hero_title}
-        onSave={(newText) => onSave('hero_title', newText)}
-        tag="h1"
-        className="text-4xl md:text-6xl font-bold mb-6"
-        placeholder="Enter title..."
-      />
-
-      <EditableText
-        content={data.page.hero_description1}
-        onSave={(newText) => onSave('hero_description1', newText)}
-        tag="p"
-        className="max-w-2xl text-gray-300 text-lg mb-8 leading-relaxed"
-        placeholder="Enter description..."
-        multiline
-      />
-
-      <EditableText
-        content={data.page.hero_description2}
-        onSave={(newText) => onSave('hero_description2', newText)}
-        tag="p"
-        className="max-w-3xl text-gray-300 mb-12 leading-relaxed"
-        placeholder="Enter description..."
-        multiline
-      />
-
-      <EditableText
-        content={data.page.hero_description3}
-        onSave={(newText) => onSave('hero_description3', newText)}
-        tag="p"
-        className="max-w-3xl text-gray-300 mb-12 leading-relaxed"
-        placeholder="Enter description..."
-        multiline
-      />
-
-      <div ref={buttonsRef} className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button className="bg-green-400 text-black px-8 py-3 rounded-full font-semibold hover:bg-green-300 transition-colors">
-          <EditableText
-            content={data.page.hero_button1_text}
-            onSave={(newText) => onSave('hero_button1_text', newText)}
-            tag="span"
-            className=""
-            placeholder="Enter button text..."
-          />
-        </button>
-        <button className="border border-green-400 text-green-400 px-8 py-3 rounded-full font-semibold hover:bg-green-400 hover:text-black transition-colors">
-          <EditableText
-            content={data.page.hero_button2_text}
-            onSave={(newText) => onSave('hero_button2_text', newText)}
-            tag="span"
-            className=""
-            placeholder="Enter button text..."
-          />
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function ContentSection({ data, onSave }: { data: ResourcesBlogsData; onSave: (field: string, value: string, cardId: number) => Promise<void> }) {
-  return (
-    <section className="px-6 md:px-16 pb-20">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-        {data.cards.slice(0, 2).map((card, index) => (
-          <ContentCard
-            key={card.id}
-            card={card}
-            onSave={(field, value) => onSave(field, value, card.id)}
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto mt-8">
-        {data.cards.slice(2, 4).map((card, index) => (
-          <ContentCard
-            key={card.id}
-            card={card}
-            onSave={(field, value) => onSave(field, value, card.id)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ContentCard({ card, onSave }: {
-  card: ContentCard;
-  onSave: (field: string, value: string) => Promise<void>;
-}) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  useEffect(() => {
-    if (!cardRef.current) return;
-
-    gsap.fromTo(cardRef.current,
-      { opacity: 0, rotateY: -15, x: -50 },
-      {
-        opacity: 1,
-        rotateY: 0,
-        x: 0,
-        duration: 1,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: cardRef.current,
-          start: "top 85%",
-          end: "top 15%",
-          toggleActions: "play reverse play reverse"
-        }
-      }
-    );
-  }, []);
-
-  const handleClick = () => {
-    setIsExpanded(!isExpanded);
-    if (!isExpanded) {
-      setTimeout(() => {
-        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }
-  };
-
-  return (
-    <div
-      ref={cardRef}
-      onClick={handleClick}
-      className={`bg-[#1A2B3D] rounded-3xl p-6 border border-gray-700/30 cursor-pointer transition-all duration-300 ${isExpanded ? 'bg-[#1F3247]' : 'hover:bg-[#1A2B3D]/80'
-        }`}
-    >
-      <div className="mb-6">
-        <img
-          src={card.image_url}
-          alt={card.title}
-          className="w-full h-48 object-cover rounded-2xl"
-        />
-      </div>
-
-      <div className="mb-4">
-        <EditableText
-          content={card.badge}
-          onSave={(newText) => onSave('badge', newText)}
-          tag="span"
-          className="bg-green-400 text-black text-xs font-semibold px-3 py-1 rounded-full"
-          placeholder="Enter badge..."
-        />
-      </div>
-
-      <EditableText
-        content={card.title}
-        onSave={(newText) => onSave('title', newText)}
-        tag="h3"
-        className="text-xl font-bold mb-6"
-        placeholder="Enter title..."
-      />
-
-      <div className="text-gray-300 text-sm leading-relaxed">
-        {!isExpanded ? (
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
           <div>
-            <EditableText
-              content={Array.isArray(card.content) ? card.content.slice(0, 2).join(' ') : card.content}
-              onSave={(newText) => onSave('content', JSON.stringify([newText]))}
-              tag="p"
-              className="line-clamp-3"
-              placeholder="Enter content preview..."
-              multiline
-            />
-            <EditableText
-              content="..."
-              onSave={async (newText) => { console.log('Saved ellipsis:', newText); }}
-              tag="p"
-              className="text-gray-400 mt-2"
-              placeholder="..."
-            />
+            <h1 className="text-2xl md:text-4xl font-bold text-white">Resources & Blogs Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage Resources & Blogs page content and cards</p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {(Array.isArray(card.content) ? card.content : [card.content]).map((item, index) => (
-              <EditableText
-                key={index}
-                content={item}
-                onSave={async (newText) => {
-                  const newContent = Array.isArray(card.content) ? [...card.content] : [card.content];
-                  newContent[index] = newText;
-                  await onSave('content', JSON.stringify(newContent));
-                }}
-                tag="p"
-                className=""
-                placeholder="Enter content..."
-                multiline
-              />
-            ))}
-          </div>
-        )}
-      </div>
 
-      {isExpanded && (
-        <div className="flex flex-col gap-3 mt-6">
-          {[card.button1_text, card.button2_text].filter(Boolean).map((button, index) => (
-            <button
-              key={index}
-              className={`px-6 py-3 rounded-full font-semibold transition-colors ${index === 0
-                  ? 'bg-green-400 text-black hover:bg-green-300'
-                  : 'border border-green-400 text-green-400 hover:bg-green-400 hover:text-black'
-                }`}
-            >
-              <EditableText
-                content={button || ''}
-                onSave={(newText) => onSave(index === 0 ? 'button1_text' : 'button2_text', newText)}
-                tag="span"
-                className=""
-                placeholder="Enter button text..."
-              />
-            </button>
+          {/* Page Header Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Page Header</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('page-header', { 
+                page: { 
+                  hero_title: data?.page?.hero_title,
+                  hero_description1: data?.page?.hero_description1,
+                  hero_description2: data?.page?.hero_description2,
+                  hero_description3: data?.page?.hero_description3,
+                  hero_button1_text: data?.page?.hero_button1_text,
+                  hero_button2_text: data?.page?.hero_button2_text,
+                  meta_title: data?.page?.meta_title,
+                  meta_description: data?.page?.meta_description
+                } 
+              }); 
+            }} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Hero Title"
+                  value={data?.page?.hero_title || ''}
+                  onChange={(value) => handleRichTextChange('page', 'hero_title', value)}
+                  placeholder="Enter hero title"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Hero Description 1"
+                  value={data?.page?.hero_description1 || ''}
+                  onChange={(value) => handleRichTextChange('page', 'hero_description1', value)}
+                  placeholder="Enter first description"
+                  rows={3}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Hero Description 2"
+                  value={data?.page?.hero_description2 || ''}
+                  onChange={(value) => handleRichTextChange('page', 'hero_description2', value)}
+                  placeholder="Enter second description"
+                  rows={3}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Hero Description 3"
+                  value={data?.page?.hero_description3 || ''}
+                  onChange={(value) => handleRichTextChange('page', 'hero_description3', value)}
+                  placeholder="Enter third description"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label="Button 1 Text"
+                    value={data?.page?.hero_button1_text || ''}
+                    onChange={(value) => handleRichTextChange('page', 'hero_button1_text', value)}
+                    placeholder="Enter button 1 text"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label="Button 2 Text"
+                    value={data?.page?.hero_button2_text || ''}
+                    onChange={(value) => handleRichTextChange('page', 'hero_button2_text', value)}
+                    placeholder="Enter button 2 text"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Meta Title (SEO)"
+                  value={data?.page?.meta_title || ''}
+                  onChange={(value) => handleRichTextChange('page', 'meta_title', value)}
+                  placeholder="Enter meta title"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Meta Description (SEO)"
+                  value={data?.page?.meta_description || ''}
+                  onChange={(value) => handleRichTextChange('page', 'meta_description', value)}
+                  placeholder="Enter meta description"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'page-header'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'page-header' ? 'Saving...' : 'Save Page Header'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Content Cards */}
+          {(data?.cards || []).map((card: ContentCard, index: number) => (
+            <div key={card.id} className={sectionClass}>
+              <h2 className={titleClass}>Card {index + 1} - {card.title}</h2>
+              <form onSubmit={(e) => { 
+                e.preventDefault(); 
+                handleSave(`card-${card.id}`, card); 
+              }} className="flex flex-col gap-4">
+                
+                {/* Image Upload Section */}
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <label className={labelClass}>Card Image</label>
+                  {card.image_url && (
+                    <div className="mb-4">
+                      <img 
+                        src={card.image_url} 
+                        alt={card.title} 
+                        className="w-full max-w-md h-48 object-cover rounded-lg" 
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(card.id, file);
+                      }}
+                      className="hidden"
+                      id={`card-image-upload-${card.id}`}
+                    />
+                    <label 
+                      htmlFor={`card-image-upload-${card.id}`}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer flex items-center gap-2"
+                    >
+                      {uploading === `card-${card.id}` ? (
+                        <>
+                          <Loader size={16} className="animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={16} />
+                          Upload Image
+                        </>
+                      )}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={card.image_url || ''} 
+                      onChange={(e) => {
+                        const newCards = data?.cards?.map((c: ContentCard) => 
+                          c.id === card.id ? { ...c, image_url: e.target.value } : c
+                        ) || [];
+                        setData((prev: any) => ({ ...prev, cards: newCards }));
+                      }}
+                      placeholder="Or paste image URL"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <RichTextEditor
+                      label="Badge"
+                      value={card.badge || ''}
+                      onChange={(value) => handleRichTextChange(`card-${card.id}`, 'badge', value)}
+                      placeholder="Enter badge text"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className={labelClass}>Order</label>
+                    <input 
+                      type="number" 
+                      value={card.order || ''} 
+                      onChange={(e) => {
+                        const newCards = data?.cards?.map((c: ContentCard) => 
+                          c.id === card.id ? { ...c, order: parseInt(e.target.value) } : c
+                        ) || [];
+                        setData((prev: any) => ({ ...prev, cards: newCards }));
+                      }} 
+                      className={inputClass} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label="Title"
+                    value={card.title || ''}
+                    onChange={(value) => handleRichTextChange(`card-${card.id}`, 'title', value)}
+                    placeholder="Enter card title"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className={labelClass}>Content (JSON array format)</label>
+                  <textarea 
+                    value={JSON.stringify(card.content, null, 2) || ''} 
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value);
+                        const newCards = data?.cards?.map((c: ContentCard) => 
+                          c.id === card.id ? { ...c, content: parsed } : c
+                        ) || [];
+                        setData((prev: any) => ({ ...prev, cards: newCards }));
+                      } catch (err) {
+                        // Invalid JSON, just update the raw value
+                      }
+                    }} 
+                    rows={8} 
+                    className={inputClass}
+                    placeholder='["Paragraph 1", "Paragraph 2", "Paragraph 3"]'
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <RichTextEditor
+                      label="Button 1 Text"
+                      value={card.button1_text || ''}
+                      onChange={(value) => handleRichTextChange(`card-${card.id}`, 'button1_text', value)}
+                      placeholder="Enter button 1 text"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <RichTextEditor
+                      label="Button 2 Text"
+                      value={card.button2_text || ''}
+                      onChange={(value) => handleRichTextChange(`card-${card.id}`, 'button2_text', value)}
+                      placeholder="Enter button 2 text"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" disabled={saving === `card-${card.id}`} className={buttonClass}>
+                    <Save size={18} />
+                    {saving === `card-${card.id}` ? 'Saving...' : `Save Card ${index + 1}`}
+                  </button>
+                </div>
+              </form>
+            </div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

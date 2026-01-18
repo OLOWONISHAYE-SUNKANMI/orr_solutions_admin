@@ -2,6 +2,13 @@
 import { useEffect, useRef } from "react";
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 interface HowWeWorkSectionProps {
   subtitle: string;
   description: string;
@@ -18,35 +25,37 @@ export default function HowWeWorkSection({ subtitle, description, sections, layo
   const headerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const handleSave = async (content: string, field?: string, index?: number) => {
+  const handleSave = async (content: string | RichTextData, field?: string, index?: number) => {
+    const contentToSave = typeof content === 'string' ? content : content.content;
     if (onUpdate) {
       // Update the data and call onUpdate
       const updatedData = { subtitle, description, sections };
       if (field === 'title') {
         // Handle title updates - this is just for the "How we work:" text
-        console.log('Title updated:', content);
+        console.log('Title updated:', contentToSave);
       } else if (field === 'subtitle') {
-        updatedData.subtitle = content;
+        updatedData.subtitle = contentToSave;
       } else if (field === 'description') {
-        updatedData.description = content;
+        updatedData.description = contentToSave;
       } else if (field === 'section-title' && typeof index === 'number') {
-        updatedData.sections[index].title = content;
+        updatedData.sections[index].title = contentToSave;
       } else if (field === 'section-content' && typeof index === 'number') {
         const [sectionIndex, contentIndex] = index.toString().split('-').map(Number);
-        updatedData.sections[sectionIndex].content[contentIndex] = content;
+        updatedData.sections[sectionIndex].content[contentIndex] = contentToSave;
       }
       await onUpdate(updatedData);
     }
-    console.log('Saving content:', content);
+    console.log('Saving content:', contentToSave);
   };
 
-  const handleSectionContentSave = async (content: string, sectionIndex: number, contentIndex: number) => {
+  const handleSectionContentSave = async (content: string | RichTextData, sectionIndex: number, contentIndex: number) => {
+    const contentToSave = typeof content === 'string' ? content : content.content;
     if (onUpdate) {
       const updatedData = { subtitle, description, sections: [...sections] };
-      updatedData.sections[sectionIndex].content[contentIndex] = content;
+      updatedData.sections[sectionIndex].content[contentIndex] = contentToSave;
       await onUpdate(updatedData);
     }
-    console.log('Saving section content:', content);
+    console.log('Saving section content:', contentToSave);
   };
 
   useEffect(() => {

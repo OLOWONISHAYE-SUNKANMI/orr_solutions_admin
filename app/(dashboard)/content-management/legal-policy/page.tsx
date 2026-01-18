@@ -1,13 +1,10 @@
 'use client';
 
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import EditableText from '../../../components/cms/EditableText';
+import { useState, useEffect } from "react";
 import { CMSService } from '../../../../lib/cms-api';
-
-gsap.registerPlugin(ScrollTrigger);
+import { Save, Loader } from 'lucide-react';
+import RichTextEditor from '../../../../components/RichTextEditor';
+import { cleanContentObject } from '../../../utils/htmlCleaner';
 
 interface PolicyItem {
   id: number;
@@ -30,12 +27,9 @@ interface LegalPolicyData {
 }
 
 export default function LegacyPolicy() {
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const descRef = useRef(null);
-  const cardRef = useRef(null);
-  const itemsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [data, setData] = useState<LegalPolicyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
   const cmsService = new CMSService();
 
   useEffect(() => {
@@ -44,10 +38,18 @@ export default function LegacyPolicy() {
         console.log('🔄 Fetching Legal & Policy data from backend...');
         const response = await cmsService.getLegalPolicyPageContent();
         console.log('✅ Legal & Policy API Response:', response);
-        setData(response);
+        
+        // Clean HTML from page content
+        const cleanedPage = cleanContentObject(response.page);
+        
+        // Clean HTML from policy items
+        const cleanedItems = response.items?.map((item: PolicyItem) => 
+          cleanContentObject(item)
+        ) || [];
+        
+        setData({ page: cleanedPage, items: cleanedItems });
       } catch (error) {
         console.error('❌ Error fetching Legal & Policy data:', error);
-        // Fallback to default data if API fails
         setData({
           page: {
             id: 1,
@@ -87,210 +89,167 @@ export default function LegacyPolicy() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (!data) return;
-    
-    const title = titleRef.current;
-    if (title) {
-      const text = title.textContent;
-      title.innerHTML = text!.split('').map((char, i) =>
-        `<span style="display:inline-block;opacity:0">${char === ' ' ? '&nbsp;' : char}</span>`
-      ).join('');
-
-      gsap.to(title.children, {
-        opacity: 1,
-        y: 0,
-        duration: 0.05,
-        stagger: 0.03,
-        ease: "power2.out"
-      });
-    }
-
-    gsap.fromTo(descRef.current,
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 1, delay: 0.5, ease: "power3.out" }
-    );
-
-    gsap.fromTo(cardRef.current,
-      { opacity: 0, scale: 0.9, rotateX: 15 },
-      {
-        opacity: 1, scale: 1, rotateX: 0, duration: 1.2, ease: "power4.out",
-        scrollTrigger: { trigger: cardRef.current, start: "top 80%", toggleActions: "play none none reverse" }
-      }
-    );
-
-    itemsRef.current.forEach((item, i) => {
-      if (item) {
-        const number = item.querySelector('.policy-number');
-        const text = item.querySelector('.policy-text');
-
-        gsap.fromTo(number,
-          { opacity: 0, scale: 0, rotate: -180 },
-          {
-            opacity: 1, scale: 1, rotate: 0, duration: 0.8, ease: "back.out(1.7)",
-            scrollTrigger: { trigger: item, start: "top 85%", toggleActions: "play none none reverse" }
-          }
-        );
-
-        if (text) {
-          const words = text.textContent!.split(' ');
-          text.innerHTML = words.map(word => `<span style="display:inline-block;opacity:0">${word}&nbsp;</span>`).join('');
-
-          gsap.to(text.children, {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            stagger: 0.02,
-            delay: 0.3,
-            ease: "power2.out",
-            scrollTrigger: { trigger: item, start: "top 85%", toggleActions: "play none none reverse" }
-          });
-        }
-      }
-    });
-  }, [data]);
-
-  const handleSave = async (field: string, value: string, type: 'page' | 'item' = 'page', itemId?: number) => {
-    if (!data) return;
-    
+  const handleSave = async (section: string, saveData: any) => {
+    setSaving(section);
     try {
-      if (type === 'page') {
-        const updateData = { page: { [field]: value } };
-        
-        await cmsService.updateLegalPolicyPageContent(updateData);
-        setData({ ...data, page: { ...data.page, [field]: value } });
-      } else if (type === 'item' && itemId) {
-        const updateData = { [field]: value };
-        
-        await cmsService.updatePolicyItem(itemId, updateData);
-        setData({
-          ...data,
-          items: data.items.map(item => 
-            item.id === itemId ? { ...item, [field]: value } : item
-          )
-        });
+      if (section.startsWith('item-')) {
+        const itemId = parseInt(section.split('-')[1]);
+        await cmsService.updatePolicyItem(itemId, saveData);
+      } else {
+        await cmsService.updateLegalPolicyPageContent(saveData);
       }
-      console.log('✅ Saved:', field, value);
+      alert('Saved successfully!');
     } catch (error) {
-      console.error('❌ Error saving:', error);
+      console.error('Failed to save:', error);
+      alert('Failed to save');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleRichTextChange = (section: string, field: string, value: any) => {
+    if (section === 'page') {
+      setData((prev: any) => ({
+        ...prev,
+        page: {
+          ...prev.page,
+          [field]: value
+        }
+      }));
+    } else if (section.startsWith('item-')) {
+      const itemId = parseInt(section.replace('item-', ''));
+      const newItems = data?.items?.map((i: PolicyItem) => 
+        i.id === itemId ? { ...i, [field]: value } : i
+      ) || [];
+      setData((prev: any) => ({ ...prev, items: newItems }));
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen text-foreground star flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="min-h-screen text-foreground star flex items-center justify-center">
-        <div className="text-white text-xl">Error loading content</div>
-      </div>
-    );
-  }
-
-
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
 
   return (
-    <div className="min-h-screen text-foreground star">
-      {/* Navigation */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-card rounded-lg p-4 shadow-lg">
-          <h3 className="text-white font-semibold mb-3">Content Sections</h3>
-          <div className="space-y-2">
-            <a href="/content-management/how-we-operate" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              How We Operate
-            </a>
-            <div className="relative group">
-              <a href="/content-management/services" className="block text-[#33FF99] hover:text-white transition-colors text-sm cursor-pointer">
-                Services ▼
-              </a>
-              <div className="absolute left-0 top-6 bg-[#1a3a52] rounded-lg p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 min-w-[200px]">
-                <a href="/content-management/services/living-systems-regeneration" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Living Systems Regeneration
-                </a>
-                <a href="/content-management/services/operational-systems-infrastructure" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Operational Systems Infrastructure
-                </a>
-                <a href="/content-management/services/strategy-advisory-compliant" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Strategy Advisory Compliant
-                </a>
-              </div>
-            </div>
-            <a href="/content-management/resources-blogs" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Resources & Blogs
-            </a>
-            <a href="/content-management/legal-policy" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Legal & Policy
-            </a>
-            <a href="/content-management/contact" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Contact
-            </a>
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
+
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white">Legal & Policy Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage Legal & Policy page content and policy items</p>
           </div>
-        </div>
-      </div>
-      <section className="pt-32 pb-16 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <EditableText
-            content={data.page.hero_title}
-            onSave={(newText) => handleSave('hero_title', newText)}
-            tag="h1"
-            className="text-5xl font-bold mb-8 text-white"
-            placeholder="Enter title..."
-          />
-          <EditableText
-            content={data.page.hero_description}
-            onSave={(newText) => handleSave('hero_description', newText)}
-            tag="p"
-            className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed"
-            placeholder="Enter description..."
-            multiline
-          />
-        </div>
-      </section>
 
-      <section className="pb-16 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div ref={cardRef} className="bg-card p-4 backdrop-blur-lg relative overflow-hidden rounded-2xl ">
-            <Image
-              src="/bgSvg.svg"
-              alt="background"
-              width={1500}
-              height={1500}
-              className="absolute top-1/2 left-1/2 scale-200 -translate-x-1/2 -translate-y-1/2 rotate-20 opacity-50"
-            />
+          {/* Page Header Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Page Header</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('page-header', { 
+                page: { 
+                  hero_title: data?.page?.hero_title,
+                  hero_description: data?.page?.hero_description,
+                  meta_title: data?.page?.meta_title,
+                  meta_description: data?.page?.meta_description
+                } 
+              }); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Hero Title"
+                value={data?.page?.hero_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'hero_title', value)}
+                placeholder="Enter hero title"
+              />
+              <RichTextEditor
+                label="Hero Description"
+                value={data?.page?.hero_description || ''}
+                onChange={(value) => handleRichTextChange('page', 'hero_description', value)}
+                placeholder="Enter hero description"
+                rows={5}
+              />
+              <RichTextEditor
+                label="Meta Title (SEO)"
+                value={data?.page?.meta_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'meta_title', value)}
+                placeholder="Enter meta title"
+              />
+              <RichTextEditor
+                label="Meta Description (SEO)"
+                value={data?.page?.meta_description || ''}
+                onChange={(value) => handleRichTextChange('page', 'meta_description', value)}
+                placeholder="Enter meta description"
+                rows={3}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'page-header'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'page-header' ? 'Saving...' : 'Save Page Header'}
+                </button>
+              </div>
+            </form>
+          </div>
 
-            <div className="bg-card rounded-2xl p-4 relative">
-              {data.items.map((item, index) => (
-                <div key={item.id} ref={el => { itemsRef.current[index] = el; }} className={`flex gap-6 ${index < data.items.length - 1 ? 'mb-12' : 'pb-8'}`}>
-                  <div className="policy-number text-6xl font-bold text-primary shrink-0">
-                    <EditableText
-                      content={item.number}
-                      onSave={(newText) => handleSave('number', newText, 'item', item.id)}
-                      tag="span"
-                      className=""
-                      placeholder={`0${index + 1}`}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <EditableText
-                      content={item.description}
-                      onSave={(newText) => handleSave('description', newText, 'item', item.id)}
-                      tag="p"
-                      className="policy-text text-gray-300 leading-relaxed break-words overflow-wrap-anywhere"
-                      placeholder="Enter policy text..."
-                      multiline
+          {/* Policy Items */}
+          {(data?.items || []).map((item: PolicyItem, index: number) => (
+            <div key={item.id} className={sectionClass}>
+              <h2 className={titleClass}>Policy Item {index + 1} - {item.number}</h2>
+              <form onSubmit={(e) => { 
+                e.preventDefault(); 
+                handleSave(`item-${item.id}`, item); 
+              }} className="flex flex-col gap-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <RichTextEditor
+                    label="Number"
+                    value={item.number || ''}
+                    onChange={(value) => handleRichTextChange(`item-${item.id}`, 'number', value)}
+                    placeholder="01, 02, 03..."
+                  />
+                  <div className="flex flex-col gap-2">
+                    <label className={labelClass}>Order</label>
+                    <input 
+                      type="number" 
+                      value={item.order || ''} 
+                      onChange={(e) => {
+                        const newItems = data?.items?.map((i: PolicyItem) => 
+                          i.id === item.id ? { ...i, order: parseInt(e.target.value) } : i
+                        ) || [];
+                        setData((prev: any) => ({ ...prev, items: newItems }));
+                      }} 
+                      className={inputClass} 
                     />
                   </div>
                 </div>
-              ))}
+
+                <RichTextEditor
+                  label="Description"
+                  value={item.description || ''}
+                  onChange={(value) => handleRichTextChange(`item-${item.id}`, 'description', value)}
+                  placeholder="Enter policy item description"
+                  rows={6}
+                />
+
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" disabled={saving === `item-${item.id}`} className={buttonClass}>
+                    <Save size={18} />
+                    {saving === `item-${item.id}` ? 'Saving...' : `Save Policy Item ${index + 1}`}
+                  </button>
+                </div>
+              </form>
             </div>
-          </div>
+          ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 }

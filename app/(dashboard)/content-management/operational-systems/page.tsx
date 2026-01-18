@@ -58,7 +58,14 @@ export default function OperationalSystemsAdminPage() {
     try {
       setSaving(true);
       setError(null);
-      await cmsAPI.updateOperationalSystemsContent(content);
+      const updatedContent = await cmsAPI.updateOperationalSystemsContent(content);
+      
+      // Only update content state if the API returns updated data
+      // Otherwise, keep the current content to prevent clearing inputs
+      if (updatedContent && typeof updatedContent === 'object' && 'id' in updatedContent) {
+        setContent(updatedContent as OperationalSystemsContent);
+      }
+      
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {

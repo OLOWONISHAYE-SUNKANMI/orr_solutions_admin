@@ -1,11 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import WhatWeOfferSection from "@/components/shared/WhatWeOfferSection";
-import HowWeWorkSection from "@/components/shared/HowWeWorkSection";
-import NetworkAdvantageSection from "@/components/shared/NetworkAdvantageSection";
-import DigitalSolutionsSection from "@/components/shared/DigitalSolutionsSection";
-import CaseExampleSection from "@/components/shared/CaseExampleSection";
-import EditableText from "@/components/EditableText";
+
+import { useState, useEffect } from "react";
+import { Save, Loader, Upload } from 'lucide-react';
+import RichTextEditor from '../../../../../components/RichTextEditor';
+import { cmsAPI } from '../../../../services/api';
+import { cleanContentObject } from '../../../../utils/htmlCleaner';
 
 interface LivingSystemsContent {
   hero_title: string;
@@ -26,6 +25,7 @@ interface LivingSystemsContent {
   case_challenge: string;
   case_solution: string;
   case_result: string;
+  case_image_url?: string;
   case_image_alt: string;
   cta_title: string;
   cta_description: string;
@@ -33,22 +33,21 @@ interface LivingSystemsContent {
 }
 
 export default function LivingSystemsPage() {
-  const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [content, setContent] = useState<LivingSystemsContent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/living-systems/');
-        if (!response.ok) {
-          throw new Error('Failed to fetch content');
-        }
-        const data = await response.json();
-        setContent(data.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        const data = await cmsAPI.getLivingSystemsContent();
+        const cleanedContent = cleanContentObject((data as any)?.data || data);
+        setContent(cleanedContent);
+      } catch (err: any) {
+        console.error('Failed to fetch content:', err);
+        setError(err?.message || 'Failed to fetch content');
       } finally {
         setLoading(false);
       }
@@ -57,235 +56,384 @@ export default function LivingSystemsPage() {
     fetchContent();
   }, []);
 
-  const updateContent = async (field: string, value: string) => {
+  const handleSave = async (section: string) => {
+    setSaving(section);
     try {
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/living-systems/', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ [field]: value }),
+      // Remove field length validation - let backend handle it
+      await cmsAPI.updateLivingSystemsContent(content!);
+      alert('Saved successfully!');
+    } catch (err: any) {
+      console.error('Failed to update content:', err);
+      const errorMessage = err?.message || 'Failed to save';
+      alert(`Failed to save: ${errorMessage}`);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleRichTextChange = (field: string, value: any) => {
+    setContent((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploading('case-image');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'your_upload_preset');
+      
+      const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/your_cloud_name/image/upload', {
+        method: 'POST',
+        body: formData
       });
       
-      if (response.ok) {
-        setContent(prev => prev ? { ...prev, [field]: value } : null);
-      }
-    } catch (err) {
-      console.error('Failed to update content:', err);
+      const uploadResult = await uploadResponse.json();
+      const imageUrl = uploadResult.secure_url;
+      
+      setContent((prev: any) => ({ ...prev, case_image_url: imageUrl }));
+      alert('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(null);
     }
   };
-
-  const updateOffer = (index: number, field: string, value: string) => {
-    const fieldMap = {
-      0: { title: 'service_1_title', description: 'service_1_description' },
-      1: { title: 'service_2_title', description: 'service_2_description' },
-      2: { title: 'service_3_title', description: 'service_3_description' }
-    };
-    const backendField = fieldMap[index as keyof typeof fieldMap]?.[field as keyof typeof fieldMap[0]];
-    if (backendField) {
-      updateContent(backendField, value);
-    }
-  };
-
-  const updateHowWeWork = async (updatedData: any) => {
-    if (updatedData.subtitle) await updateContent('process_title', updatedData.subtitle);
-    if (updatedData.description) await updateContent('process_description', updatedData.description);
-    if (updatedData.sections) {
-      for (let index = 0; index < updatedData.sections.length; index++) {
-        const section = updatedData.sections[index];
-        if (section.content?.[0]) {
-          await updateContent(`process_step_${index + 1}`, section.content[0]);
-        }
-      }
-    }
-  };
-
-  const updateCaseExample = (updatedData: any) => {
-    if (updatedData.challenge) updateContent('case_challenge', updatedData.challenge);
-    if (updatedData.solution) updateContent('case_solution', updatedData.solution);
-    if (updatedData.result) updateContent('case_result', updatedData.result);
-    if (updatedData.imageAlt) updateContent('case_image_alt', updatedData.imageAlt);
-  };
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-slide-in');
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -30px 0px' }
-    );
-
-    sectionsRef.current.forEach((section) => {
-      if (section) observer.observe(section);
-    });
-
-    return () => observer.disconnect();
-  }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
   if (error || !content) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Content</h1>
-          <p className="text-gray-600">{error}</p>
+          <p className="text-gray-400">{error}</p>
         </div>
       </div>
     );
   }
 
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
+
   return (
-    <div className="min-h-screen py-12 relative overflow-hidden bg-background z-10">
-      <style jsx>{`
-        .animate-slide-in {
-          animation: slideIn 0.6s ease-out forwards;
-        }
-        
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .section-animate {
-          opacity: 1;
-          transform: translateY(0);
-          position: relative;
-          z-index: 10;
-        }
-      `}</style>
-      <div ref={el => { sectionsRef.current[0] = el; }} className="section-animate">
-        <header className="relative z-10 mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-24 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32">
-          <div className="max-w-6xl space-y-6 sm:space-y-8">
-            <h1 className="text-white font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-tight">
-              <EditableText
-                content={content.hero_title}
-                onSave={(value) => updateContent('hero_title', value)}
-                className="text-[#47ff4c]"
-                tag="span"
-              />
-            </h1>
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
 
-            <div className="space-y-4 max-w-4xl">
-              <EditableText
-                content={content.hero_subtitle}
-                onSave={(value) => updateContent('hero_subtitle', value)}
-                className="text-slate-200 text-base sm:text-lg md:text-xl leading-relaxed"
-                tag="p"
-                multiline
-              />
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white">Living Systems Regeneration Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage Living Systems Regeneration page content</p>
+          </div>
 
-              <EditableText
-                content={content.hero_description}
-                onSave={(value) => updateContent('hero_description', value)}
-                className="text-slate-200 text-base sm:text-lg md:text-xl leading-relaxed"
-                tag="p"
-                multiline
+          {/* Hero Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Hero Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('hero'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Hero Title"
+                value={content.hero_title || ''}
+                onChange={(value) => handleRichTextChange('hero_title', value)}
+                placeholder="Enter hero title"
               />
-            </div>
-          </div>
-        </header>
-      </div>
-      <div ref={el => { sectionsRef.current[1] = el; }} className="section-animate">
-        <WhatWeOfferSection 
-          title={content.services_title}
-          offers={[
-            {
-              title: content.service_1_title,
-              description: content.service_1_description,
-              icon: "M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22L6.66 19.7C7.14 19.87 7.64 20 8 20C19 20 22 3 22 3C21 5 14 5.25 9 6.25C4 7.25 2 11.5 2 13.5C2 15.5 3.75 17.25 3.75 17.25C7.5 13.5 12.5 13.5 15.5 13.5C15.5 13.5 16 13.75 16 14.25C16 14.75 15.5 15 15.5 15C12.5 15 7.5 15 3.75 18.75C3.75 18.75 5.25 20.5 8 20.5C11.5 20.5 17 16 17 8Z"
-            },
-            {
-              title: content.service_2_title,
-              description: content.service_2_description,
-              icon: "M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"
-            },
-            {
-              title: content.service_3_title,
-              description: content.service_3_description,
-              icon: "M6.05 8.05C6.05 6.05 7.86 4.05 10.92 4.05S15.8 6.05 15.95 8.05C16.05 8.05 16.05 8.05 16.05 8.05C18.05 8.05 19.95 9.76 19.95 12.05S18.05 16.05 16.05 16.05H6.05C3.76 16.05 2.05 14.05 2.05 12.05S3.76 8.05 6.05 8.05M14.95 11.05L11.95 8.05L8.95 11.05H11.05V14.05H12.95V11.05H14.95Z"
-            }
-          ]}
-          onUpdateOffer={updateOffer}
-          onUpdateTitle={(title) => updateContent('services_title', title)}
-        />
-      </div>
-      <div ref={el => { sectionsRef.current[2] = el; }} className="section-animate">
-        <HowWeWorkSection
-          subtitle={content.process_title}
-          description={content.process_description}
-          sections={[
-            {
-              title: "Listen & Report (Site & System Discovery)",
-              content: [content.process_step_1]
-            },
-            {
-              title: "Decide: Document or Partnership",
-              content: [content.process_step_2]
-            },
-            {
-              title: "Steward & Evolve (For Clients Who Continue)",
-              content: [content.process_step_3]
-            }
-          ]}
-          layout="grid"
-          onUpdate={updateHowWeWork}
-        />
-      </div>
-      <div ref={el => { sectionsRef.current[5] = el; }} className="section-animate">
-        <CaseExampleSection
-          caseExample={{
-            challenge: content.case_challenge,
-            solution: content.case_solution,
-            result: content.case_result
-          }}
-          imageAlt={content.case_image_alt}
-          onUpdate={updateCaseExample}
-        />
-      </div>
-      <div ref={el => { sectionsRef.current[6] = el; }} className="section-animate">
-        <section className="relative z-10 py-24 text-center">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-24">
-            <EditableText
-              content={content.cta_title}
-              onSave={(value) => updateContent('cta_title', value)}
-              className="text-4xl md:text-5xl font-bold text-white mb-8"
-              tag="h2"
-            />
-            <EditableText
-              content={content.cta_description}
-              onSave={(value) => updateContent('cta_description', value)}
-              className="text-slate-200 text-lg mb-12 max-w-3xl mx-auto"
-              tag="p"
-              multiline
-            />
-            <button className="bg-gradient-to-r from-[#47ff4c] to-[#0ec277] text-black px-8 py-4 rounded-full text-lg font-semibold hover:shadow-lg hover:shadow-[#47ff4c]/25 transition-all duration-300 inline-block">
-              <EditableText
-                content={content.cta_button_text}
-                onSave={(value) => updateContent('cta_button_text', value)}
-                className=""
-                tag="span"
+              <RichTextEditor
+                label="Hero Subtitle"
+                value={content.hero_subtitle || ''}
+                onChange={(value) => handleRichTextChange('hero_subtitle', value)}
+                placeholder="Enter hero subtitle"
+                rows={3}
               />
-            </button>
+              <RichTextEditor
+                label="Hero Description"
+                value={content.hero_description || ''}
+                onChange={(value) => handleRichTextChange('hero_description', value)}
+                placeholder="Enter hero description"
+                rows={4}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'hero'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'hero' ? 'Saving...' : 'Save Hero Section'}
+                </button>
+              </div>
+            </form>
           </div>
-        </section>
+
+          {/* Services Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>What We Offer Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('services'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Services Title"
+                value={content.services_title || ''}
+                onChange={(value) => handleRichTextChange('services_title', value)}
+                placeholder="Enter services title"
+              />
+              
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Service 1</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Service 1 Title"
+                    value={content.service_1_title || ''}
+                    onChange={(value) => handleRichTextChange('service_1_title', value)}
+                    placeholder="Enter service 1 title"
+                  />
+                  <RichTextEditor
+                    label="Service 1 Description"
+                    value={content.service_1_description || ''}
+                    onChange={(value) => handleRichTextChange('service_1_description', value)}
+                    placeholder="Enter service 1 description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Service 2</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Service 2 Title"
+                    value={content.service_2_title || ''}
+                    onChange={(value) => handleRichTextChange('service_2_title', value)}
+                    placeholder="Enter service 2 title"
+                  />
+                  <RichTextEditor
+                    label="Service 2 Description"
+                    value={content.service_2_description || ''}
+                    onChange={(value) => handleRichTextChange('service_2_description', value)}
+                    placeholder="Enter service 2 description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Service 3</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Service 3 Title"
+                    value={content.service_3_title || ''}
+                    onChange={(value) => handleRichTextChange('service_3_title', value)}
+                    placeholder="Enter service 3 title"
+                  />
+                  <RichTextEditor
+                    label="Service 3 Description"
+                    value={content.service_3_description || ''}
+                    onChange={(value) => handleRichTextChange('service_3_description', value)}
+                    placeholder="Enter service 3 description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'services'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'services' ? 'Saving...' : 'Save Services Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Process Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>How We Work Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('process'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Process Title"
+                value={content.process_title || ''}
+                onChange={(value) => handleRichTextChange('process_title', value)}
+                placeholder="Enter process title"
+              />
+              <RichTextEditor
+                label="Process Description"
+                value={content.process_description || ''}
+                onChange={(value) => handleRichTextChange('process_description', value)}
+                placeholder="Enter process description"
+                rows={3}
+              />
+              <RichTextEditor
+                label="Process Step 1"
+                value={content.process_step_1 || ''}
+                onChange={(value) => handleRichTextChange('process_step_1', value)}
+                placeholder="Enter process step 1"
+                rows={3}
+              />
+              <RichTextEditor
+                label="Process Step 2"
+                value={content.process_step_2 || ''}
+                onChange={(value) => handleRichTextChange('process_step_2', value)}
+                placeholder="Enter process step 2"
+                rows={3}
+              />
+              <RichTextEditor
+                label="Process Step 3"
+                value={content.process_step_3 || ''}
+                onChange={(value) => handleRichTextChange('process_step_3', value)}
+                placeholder="Enter process step 3"
+                rows={3}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'process'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'process' ? 'Saving...' : 'Save Process Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Case Example Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Case Example Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('case'); 
+            }} className="flex flex-col gap-4">
+              
+              {/* Image Upload Section */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <label className={labelClass}>Case Example Image</label>
+                {content.case_image_url && (
+                  <div className="mb-4">
+                    <img 
+                      src={content.case_image_url} 
+                      alt={content.case_image_alt || 'Case Example'} 
+                      className="w-full max-w-md h-48 object-cover rounded-lg" 
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                    className="hidden"
+                    id="case-image-upload"
+                  />
+                  <label 
+                    htmlFor="case-image-upload"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer flex items-center gap-2"
+                  >
+                    {uploading === 'case-image' ? (
+                      <>
+                        <Loader size={16} className="animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Upload Image
+                      </>
+                    )}
+                  </label>
+                  <input 
+                    type="text" 
+                    value={content.case_image_url || ''} 
+                    onChange={(e) => setContent((prev: any) => ({ ...prev, case_image_url: e.target.value }))}
+                    placeholder="Or paste image URL"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <RichTextEditor
+                label="Case Challenge"
+                value={content.case_challenge || ''}
+                onChange={(value) => handleRichTextChange('case_challenge', value)}
+                placeholder="Enter case challenge"
+                rows={4}
+              />
+              <RichTextEditor
+                label="Case Solution"
+                value={content.case_solution || ''}
+                onChange={(value) => handleRichTextChange('case_solution', value)}
+                placeholder="Enter case solution"
+                rows={4}
+              />
+              <RichTextEditor
+                label="Case Result"
+                value={content.case_result || ''}
+                onChange={(value) => handleRichTextChange('case_result', value)}
+                placeholder="Enter case result"
+                rows={4}
+              />
+              <RichTextEditor
+                label="Case Image Alt Text"
+                value={content.case_image_alt || ''}
+                onChange={(value) => handleRichTextChange('case_image_alt', value)}
+                placeholder="Enter image alt text"
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'case'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'case' ? 'Saving...' : 'Save Case Example'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* CTA Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Call to Action Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('cta'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="CTA Title"
+                value={content.cta_title || ''}
+                onChange={(value) => handleRichTextChange('cta_title', value)}
+                placeholder="Enter CTA title"
+              />
+              <RichTextEditor
+                label="CTA Description"
+                value={content.cta_description || ''}
+                onChange={(value) => handleRichTextChange('cta_description', value)}
+                placeholder="Enter CTA description"
+                rows={3}
+              />
+              <RichTextEditor
+                label="CTA Button Text"
+                value={content.cta_button_text || ''}
+                onChange={(value) => handleRichTextChange('cta_button_text', value)}
+                placeholder="Enter CTA button text"
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'cta'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'cta' ? 'Saving...' : 'Save CTA Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
-  )
+  );
 }

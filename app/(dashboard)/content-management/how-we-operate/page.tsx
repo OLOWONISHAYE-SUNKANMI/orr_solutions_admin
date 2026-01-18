@@ -1,379 +1,398 @@
-"use client"
-import { useEffect, useRef, useState } from "react";
-import EditableText from '../../../components/cms/EditableText';
-import { CMSService } from '../../../../lib/cms-api';
+"use client";
 
-interface ProcessStep {
-  id: number;
-  step_number: string;
-  title: string;
-  subtitle?: string;
-  description?: string;
-  bullet1?: string;
-  bullet2?: string;
-  bullet3?: string;
-  bullet4?: string;
-  bullet5?: string;
-  bullet6?: string;
-  bullet7?: string;
-  bullet8?: string;
-  bullet9?: string;
-  wordbreak?: string;
-  description1?: string;
-  description2?: string;
-  description3?: string;
-  description4?: string;
-  image_url: string;
-  button_text?: string;
-  button_text2?: string;
-  button_text3?: string;
-  order: number;
-  is_active: boolean;
-}
+import { useState, useEffect } from 'react';
+import { Save, Loader, Upload, Image as ImageIcon } from 'lucide-react';
+import RichTextEditor from '../../../../components/RichTextEditor';
+import { cleanContentObject, cleanHtmlContent } from '../../../utils/htmlCleaner';
 
-interface HowWeOperateData {
-  page: {
-    id: number;
-    hero_title: string;
-    meta_title?: string;
-    meta_description?: string;
-    is_active: boolean;
-  };
-  steps: ProcessStep[];
-}
-
-export default function StickyScrollSplit() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [data, setData] = useState<HowWeOperateData | null>(null);
+export default function HowWeOperatePage() {
+  const [content, setContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const cmsService = new CMSService();
+  const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('🔄 Fetching How We Operate data from backend...');
-        const response = await cmsService.getHowWeOperatePage();
-        console.log('✅ How We Operate API Response:', response);
-        setData(response);
-      } catch (error) {
-        console.error('❌ Error fetching How We Operate data:', error);
-        // Fallback to default data if API fails
-        setData({
-          page: {
-            id: 1,
-            hero_title: "How We Operate",
-            is_active: true
-          },
-          steps: []
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!containerRef.current || !data?.steps) return;
-
-      const sections = containerRef.current.querySelectorAll('.card-section');
-      const scrollPosition = window.scrollY + window.innerHeight / 2;
-
-      sections.forEach((section, index: number) => {
-        const htmlSection = section as HTMLElement;
-        const sectionTop = htmlSection.offsetTop;
-        const sectionBottom = sectionTop + htmlSection.offsetHeight;
-
-        if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
-          setActiveIndex(index);
-        }
-      });
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [data]);
-
-  const handleSave = async (field: string, value: string, stepIndex?: number) => {
-    if (!data) return;
-    
+  const fetchData = async () => {
     try {
-      if (stepIndex !== undefined) {
-        // Update individual step data
-        const step = data.steps[stepIndex];
-        const updateData = { [field]: value };
-        
-        await cmsService.updateProcessStep(step.id, updateData);
-        
-        const updatedSteps = [...data.steps];
-        updatedSteps[stepIndex] = { ...updatedSteps[stepIndex], [field]: value };
-        setData({ ...data, steps: updatedSteps });
-      } else {
-        // Update page data
-        const updateData = { page: { [field]: value } };
-        
-        await cmsService.updateHowWeOperatePage(updateData);
-        setData({ ...data, page: { ...data.page, [field]: value } });
+      console.log('Fetching data from backend...');
+      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/how-we-operate/');
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch data:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-      console.log('✅ Saved:', field, value);
+      
+      const result = await response.json();
+      console.log('Fetched data:', result);
+      
+      // Clean HTML from page content
+      const cleanedPage = cleanContentObject(result.data.page);
+      
+      // Clean HTML from steps content
+      const cleanedSteps = result.data.steps?.map((step: any) => 
+        cleanContentObject(step)
+      ) || [];
+      
+      setContent({ page: cleanedPage, steps: cleanedSteps });
     } catch (error) {
-      console.error('❌ Error saving:', error);
+      console.error('Failed to fetch content:', error);
+      alert(`Failed to load content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (section: string, data: any) => {
+    setSaving(section);
+    try {
+      console.log('Saving data:', JSON.stringify(data, null, 2));
+      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/how-we-operate/', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        alert('Saved successfully!');
+      } else {
+        // Get the error details from the response
+        const errorData = await response.text();
+        console.error('Backend error response:', errorData);
+        console.error('Response status:', response.status);
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        let errorMessage = `Failed to save (${response.status})`;
+        try {
+          const parsedError = JSON.parse(errorData);
+          if (parsedError.error) {
+            errorMessage += `: ${parsedError.error}`;
+          } else if (parsedError.message) {
+            errorMessage += `: ${parsedError.message}`;
+          }
+        } catch (e) {
+          // If response is not JSON, show the raw text
+          if (errorData) {
+            errorMessage += `: ${errorData.substring(0, 200)}`;
+          }
+        }
+        
+        alert(errorMessage);
+      }
+    } catch (error) {
+      console.error('Network/fetch error:', error);
+      alert(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleRichTextChange = (section: string, field: string, value: any) => {
+    if (section === 'page') {
+      setContent((prev: any) => ({
+        ...prev,
+        page: {
+          ...prev.page,
+          [field]: value
+        }
+      }));
+    } else if (section.startsWith('step-')) {
+      const stepId = parseInt(section.replace('step-', ''));
+      const newSteps = content.steps.map((s: any) => 
+        s.id === stepId ? { ...s, [field]: value } : s
+      );
+      setContent((prev: any) => ({ ...prev, steps: newSteps }));
+    }
+  };
+
+  const handleImageUpload = async (stepId: number, file: File) => {
+    setUploading(`step-${stepId}`);
+    try {
+      // Upload to Cloudinary or your image service
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'your_upload_preset'); // Configure this
+      
+      const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/your_cloud_name/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const uploadResult = await uploadResponse.json();
+      const imageUrl = uploadResult.secure_url;
+      
+      // Update step with new image URL
+      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/process-steps/${stepId}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_url: imageUrl })
+      });
+      
+      if (response.ok) {
+        alert('Image uploaded successfully!');
+        
+        // Update only the specific step's image URL without refetching all data
+        const newSteps = content.steps.map((s: any) => 
+          s.id === stepId ? { ...s, image_url: imageUrl } : s
+        );
+        setContent((prev: any) => ({ ...prev, steps: newSteps }));
+      }
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Error loading content</div>
-      </div>
-    );
-  }
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Navigation */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-card rounded-lg p-4 shadow-lg">
-          <h3 className="text-white font-semibold mb-3">Content Sections</h3>
-          <div className="space-y-2">
-            <a href="/content-management/how-we-operate" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              How We Operate
-            </a>
-            <div className="relative group">
-              <a href="/content-management/services" className="block text-[#33FF99] hover:text-white transition-colors text-sm cursor-pointer">
-                Services ▼
-              </a>
-              <div className="absolute left-0 top-6 bg-[#1a3a52] rounded-lg p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 min-w-[200px]">
-                <a href="/content-management/services/living-systems-regeneration" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Living Systems Regeneration
-                </a>
-                <a href="/content-management/services/operational-systems-infrastructure" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Operational Systems Infrastructure
-                </a>
-                <a href="/content-management/services/strategy-advisory-compliant" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Strategy Advisory Compliant
-                </a>
-              </div>
-            </div>
-            <a href="/content-management/resources-blogs" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Resources & Blogs
-            </a>
-            <a href="/content-management/legal-policy" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Legal & Policy
-            </a>
-            <a href="/content-management/contact" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Contact
-            </a>
-          </div>
-        </div>
-      </div>
-      {/* Hero Section */}
-      <div className="relative w-full py-20 pt-32 text-white">
-        <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-24">
-          <EditableText
-            content={data.page.hero_title}
-            onSave={(newText) => handleSave('hero_title', newText)}
-            tag="h1"
-            className="text-center text-emerald-400 text-5xl md:text-6xl font-bold mb-12"
-            placeholder="Enter title..."
-          />
-        </div>
-      </div>
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
 
-      {/* Split Layout Section */}
-      <div ref={containerRef} className="relative  mt-90 lg:mt-0 max-w-7xl mx-auto px-6 md:px-12 lg:px-24 pb-20 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
-          {/* Left Side - Stacking Cards */}
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
           <div>
-            {data.steps.map((card, index) => (
-              <div
-                key={card.id}
-                className="card-section"
-                style={{
-                  height: '100vh',
-                  position: 'sticky',
-                  top: `${24 + index * 2}px`,
-                  zIndex: index + 1
-                }}
-              >
-                <div
-                  className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl lg:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 w-full transition-all duration-700 ease-out"
-                  style={{
-                    transform: activeIndex === index
-                      ? 'scale(1) rotateY(0deg)'
-                      : activeIndex > index
-                        ? `scale(${0.95 - (activeIndex - index) * 0.03}) rotateY(-2deg)`
-                        : 'scale(0.98) rotateY(2deg)',
-                    opacity: 1,
-                    boxShadow: activeIndex === index
-                      ? '0 25px 50px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(16, 185, 129, 0.1)'
-                      : '0 10px 30px rgba(0, 0, 0, 0.3)'
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                      <EditableText
-                        content={card.step_number}
-                        onSave={(newText) => handleSave('step_number', newText, index)}
-                        tag="span"
-                        className=""
-                        placeholder="ID"
-                      />
-                    </div>
-                    <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center">
-                      <EditableText
-                        content="+"
-                        onSave={async (newText) => { console.log('Saved plus sign:', newText); }}
-                        tag="span"
-                        className="text-white font-bold text-2xl"
-                        placeholder="+"
-                      />
-                    </div>
-                  </div>
-
-                  <EditableText
-                    content={card.title}
-                    onSave={(newText) => handleSave('title', newText, index)}
-                    tag="h2"
-                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3"
-                    placeholder="Enter title..."
-                  />
-
-                  {card.subtitle && (
-                    <EditableText
-                      content={card.subtitle}
-                      onSave={(newText) => handleSave('subtitle', newText, index)}
-                      tag="h3"
-                      className="text-base sm:text-lg font-semibold text-emerald-400 mb-4"
-                      placeholder="Enter subtitle..."
-                    />
-                  )}
-
-                  {card.description && (
-                    <EditableText
-                      content={card.description}
-                      onSave={(newText) => handleSave('description', newText, index)}
-                      tag="p"
-                      className="text-sm sm:text-base text-white mb-4"
-                      placeholder="Enter description..."
-                      multiline
-                    />
-                  )}
-
-                  <div className="space-y-2">
-                    {card.bullet1 && <EditableText content={card.bullet1} onSave={(newText) => handleSave('bullet1', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet2 && <EditableText content={card.bullet2} onSave={(newText) => handleSave('bullet2', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.wordbreak && <EditableText content={card.wordbreak} onSave={(newText) => handleSave('wordbreak', newText, index)} tag="p" className="text-white text-base sm:text-lg font-bold text-center my-4" placeholder="Enter text..." />}
-                    {card.bullet3 && <EditableText content={card.bullet3} onSave={(newText) => handleSave('bullet3', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet4 && <EditableText content={card.bullet4} onSave={(newText) => handleSave('bullet4', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet5 && <EditableText content={card.bullet5} onSave={(newText) => handleSave('bullet5', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet6 && <EditableText content={card.bullet6} onSave={(newText) => handleSave('bullet6', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet7 && <EditableText content={card.bullet7} onSave={(newText) => handleSave('bullet7', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet8 && <EditableText content={card.bullet8} onSave={(newText) => handleSave('bullet8', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                    {card.bullet9 && <EditableText content={card.bullet9} onSave={(newText) => handleSave('bullet9', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base" placeholder="Enter bullet point..." />}
-                  </div>
-
-                  {card.description1 && <EditableText content={card.description1} onSave={(newText) => handleSave('description1', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base mt-4" placeholder="Enter description..." multiline />}
-                  {card.description2 && <EditableText content={card.description2} onSave={(newText) => handleSave('description2', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base mt-2" placeholder="Enter description..." multiline />}
-                  {card.description3 && <EditableText content={card.description3} onSave={(newText) => handleSave('description3', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base mt-2" placeholder="Enter description..." multiline />}
-                  {card.description4 && <EditableText content={card.description4} onSave={(newText) => handleSave('description4', newText, index)} tag="p" className="text-gray-300 text-sm sm:text-base mt-2" placeholder="Enter description..." multiline />}
-
-                  {card.button_text && (
-                    <div className="flex flex-col gap-3 mt-6">
-                      <button className="bg-emerald-400 text-black px-6 sm:px-8 py-2 sm:py-3 rounded-full font-semibold hover:bg-emerald-300 transition-all hover:scale-105 text-sm sm:text-base">
-                        <EditableText content={card.button_text} onSave={(newText) => handleSave('button_text', newText, index)} tag="span" className="" placeholder="Enter button text..." />
-                      </button>
-                      {card.button_text2 && (
-                        <button className="border border-emerald-400 text-emerald-400 px-6 sm:px-8 py-2 sm:py-3 rounded-full font-semibold hover:bg-emerald-400 hover:text-black transition-all hover:scale-105 text-sm sm:text-base">
-                          <EditableText content={card.button_text2} onSave={(newText) => handleSave('button_text2', newText, index)} tag="span" className="" placeholder="Enter button text..." />
-                        </button>
-                      )}
-                      {card.button_text3 && (
-                        <button className="border border-emerald-400 text-emerald-400 px-6 sm:px-8 py-2 sm:py-3 rounded-full font-semibold hover:bg-emerald-400 hover:text-black transition-all hover:scale-105 text-sm sm:text-base">
-                          <EditableText content={card.button_text3} onSave={(newText) => handleSave('button_text3', newText, index)} tag="span" className="" placeholder="Enter button text..." />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+            <h1 className="text-2xl md:text-4xl font-bold text-white">How We Operate Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage How We Operate page content and process steps</p>
           </div>
 
-          {/* Right Side - Fixed Image */}
-          <div className="block static">
-            <div className="fixed top-52 left-1/2 transform -translate-x-1/2 lg:top-58 lg:left-1/2 lg:transform lg:-translate-x-1/2 w-[85%] sm:w-[80%] lg:w-[75%] max-w-[500px] sm:max-w-[600px] lg:max-w-[900px] h-[45vh] sm:h-[45vh] lg:h-[calc(75vh-3rem)]">
-              <div className="w-full h-full flex items-center">
-                <div className="relative w-full h-full rounded-xl lg:rounded-3xl overflow-hidden shadow-2xl">
-                  <img
-                    key={activeIndex}
-                    src={data.steps[activeIndex]?.image_url || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=600&fit=crop'}
-                    alt={data.steps[activeIndex]?.title || 'Process step'}
-                    className="w-full h-full object-cover transition-all duration-1000 ease-out"
-                    style={{
-                      transform: 'scale(1.05)',
-                      animation: `imageAnim${activeIndex % 5} 1s ease-out`
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
-                  <div className="absolute bottom-2 lg:bottom-8 left-2 lg:left-8 right-2 lg:right-8">
-                    <EditableText
-                      content={data.steps[activeIndex]?.step_number || '01'}
-                      onSave={(newText) => handleSave('step_number', newText, activeIndex)}
-                      tag="div"
-                      className="text-emerald-400 text-sm lg:text-xl font-bold mb-1 lg:mb-2"
-                      placeholder="Enter ID..."
+          {/* Page Header Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Page Header</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('page', { page: { hero_title: content?.page?.hero_title, meta_title: content?.page?.meta_title, meta_description: content?.page?.meta_description } }); }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Hero Title"
+                value={content?.page?.hero_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'hero_title', value)}
+                placeholder="Enter hero title"
+              />
+              <RichTextEditor
+                label="Meta Title (SEO)"
+                value={content?.page?.meta_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'meta_title', value)}
+                placeholder="Enter meta title"
+              />
+              <RichTextEditor
+                label="Meta Description (SEO)"
+                value={content?.page?.meta_description || ''}
+                onChange={(value) => handleRichTextChange('page', 'meta_description', value)}
+                placeholder="Enter meta description"
+                rows={3}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'page'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'page' ? 'Saving...' : 'Save Page Header'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Process Steps */}
+          {(content?.steps || []).map((step: any, index: number) => (
+            <div key={step.id} className={sectionClass}>
+              <h2 className={titleClass}>Step {cleanHtmlContent(step.step_number)} - {cleanHtmlContent(step.title)}</h2>
+              <form onSubmit={(e) => { 
+                e.preventDefault(); 
+                handleSave(`step-${step.id}`, { 
+                  steps: [{ 
+                    id: step.id, 
+                    step_number: step.step_number,
+                    title: step.title, 
+                    subtitle: step.subtitle, 
+                    description: step.description,
+                    bullet1: step.bullet1,
+                    bullet2: step.bullet2,
+                    bullet3: step.bullet3,
+                    bullet4: step.bullet4,
+                    bullet5: step.bullet5,
+                    bullet6: step.bullet6,
+                    bullet7: step.bullet7,
+                    bullet8: step.bullet8,
+                    bullet9: step.bullet9,
+                    wordbreak: step.wordbreak,
+                    description1: step.description1,
+                    description2: step.description2,
+                    description3: step.description3,
+                    description4: step.description4,
+                    button_text: step.button_text,
+                    button_text2: step.button_text2,
+                    button_text3: step.button_text3
+                  }] 
+                }); 
+              }} className="flex flex-col gap-4">
+                
+                {/* Image Upload Section */}
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <label className={labelClass}>Step Image</label>
+                  {step.image_url && (
+                    <div className="mb-4">
+                      <img src={step.image_url} alt={step.title} className="w-full max-w-md h-48 object-cover rounded-lg" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(step.id, file);
+                      }}
+                      className="hidden"
+                      id={`image-upload-${step.id}`}
                     />
-                    <EditableText
-                      content={data.steps[activeIndex]?.title || 'Process Step'}
-                      onSave={(newText) => handleSave('title', newText, activeIndex)}
-                      tag="div"
-                      className="text-white text-sm lg:text-2xl xl:text-3xl font-bold"
-                      placeholder="Enter title..."
+                    <label 
+                      htmlFor={`image-upload-${step.id}`}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer flex items-center gap-2"
+                    >
+                      {uploading === `step-${step.id}` ? (
+                        <>
+                          <Loader size={16} className="animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={16} />
+                          Upload Image
+                        </>
+                      )}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={step.image_url || ''} 
+                      onChange={(e) => {
+                        const newSteps = content.steps.map((s: any) => 
+                          s.id === step.id ? { ...s, image_url: e.target.value } : s
+                        );
+                        setContent((prev: any) => ({ ...prev, steps: newSteps }));
+                      }}
+                      className={inputClass}
                     />
                   </div>
                 </div>
-              </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <RichTextEditor
+                    label="Step Number"
+                    value={step.step_number || ''}
+                    onChange={(value) => handleRichTextChange(`step-${step.id}`, 'step_number', value)}
+                    placeholder="Enter step number"
+                  />
+                  <RichTextEditor
+                    label="Title"
+                    value={step.title || ''}
+                    onChange={(value) => handleRichTextChange(`step-${step.id}`, 'title', value)}
+                    placeholder="Enter step title"
+                  />
+                </div>
+
+                <RichTextEditor
+                  label="Subtitle"
+                  value={step.subtitle || ''}
+                  onChange={(value) => handleRichTextChange(`step-${step.id}`, 'subtitle', value)}
+                  placeholder="Enter step subtitle"
+                />
+
+                <RichTextEditor
+                  label="Description"
+                  value={step.description || ''}
+                  onChange={(value) => handleRichTextChange(`step-${step.id}`, 'description', value)}
+                  placeholder="Enter step description"
+                  rows={3}
+                />
+
+                {/* Bullets */}
+                <div className="border-t border-white/10 pt-4">
+                  <h3 className="text-lg font-semibold mb-4 text-white">Bullet Points</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                      <RichTextEditor
+                        key={num}
+                        label={`Bullet ${num}`}
+                        value={step[`bullet${num}`] || ''}
+                        onChange={(value) => handleRichTextChange(`step-${step.id}`, `bullet${num}`, value)}
+                        placeholder={`Enter bullet point ${num}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional Descriptions */}
+                <div className="border-t border-white/10 pt-4">
+                  <h3 className="text-lg font-semibold mb-4 text-white">Additional Content</h3>
+                  <div className="flex flex-col gap-4">
+                    <RichTextEditor
+                      label="Word Break"
+                      value={step.wordbreak || ''}
+                      onChange={(value) => handleRichTextChange(`step-${step.id}`, 'wordbreak', value)}
+                      placeholder="Enter word break text"
+                    />
+                    {[1, 2, 3, 4].map((num) => (
+                      <RichTextEditor
+                        key={num}
+                        label={`Description ${num}`}
+                        value={step[`description${num}`] || ''}
+                        onChange={(value) => handleRichTextChange(`step-${step.id}`, `description${num}`, value)}
+                        placeholder={`Enter description ${num}`}
+                        rows={3}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="border-t border-white/10 pt-4">
+                  <h3 className="text-lg font-semibold mb-4 text-white">Button Text</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <RichTextEditor
+                      label="Button 1"
+                      value={step.button_text || ''}
+                      onChange={(value) => handleRichTextChange(`step-${step.id}`, 'button_text', value)}
+                      placeholder="Enter button 1 text"
+                    />
+                    <RichTextEditor
+                      label="Button 2"
+                      value={step.button_text2 || ''}
+                      onChange={(value) => handleRichTextChange(`step-${step.id}`, 'button_text2', value)}
+                      placeholder="Enter button 2 text"
+                    />
+                    <RichTextEditor
+                      label="Button 3"
+                      value={step.button_text3 || ''}
+                      onChange={(value) => handleRichTextChange(`step-${step.id}`, 'button_text3', value)}
+                      placeholder="Enter button 3 text"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" disabled={saving === `step-${step.id}`} className={buttonClass}>
+                    <Save size={18} />
+                    {saving === `step-${step.id}` ? 'Saving...' : `Save Step ${cleanHtmlContent(step.step_number)}`}
+                  </button>
+                </div>
+              </form>
             </div>
-          </div>
+          ))}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes imageAnim0 {
-          0% { opacity: 0; transform: scale(1.2) translateX(30px); filter: blur(6px); }
-          100% { opacity: 1; transform: scale(1.05) translateX(0px); filter: blur(0px); }
-        }
-        @keyframes imageAnim1 {
-          0% { opacity: 0; transform: scale(0.8) translateY(-30px) rotate(5deg); filter: brightness(0.5); }
-          100% { opacity: 1; transform: scale(1.05) translateY(0px) rotate(0deg); filter: brightness(1); }
-        }
-        @keyframes imageAnim2 {
-          0% { opacity: 0; transform: scale(1.1) translateX(-40px) skewX(10deg); filter: saturate(0); }
-          100% { opacity: 1; transform: scale(1.05) translateX(0px) skewX(0deg); filter: saturate(1); }
-        }
-        @keyframes imageAnim3 {
-          0% { opacity: 0; transform: scale(0.9) translateY(40px) rotateX(20deg); filter: contrast(0.3); }
-          100% { opacity: 1; transform: scale(1.05) translateY(0px) rotateX(0deg); filter: contrast(1); }
-        }
-        @keyframes imageAnim4 {
-          0% { opacity: 0; transform: scale(1.3) translate(-20px, 20px) rotateZ(-3deg); filter: hue-rotate(180deg); }
-          100% { opacity: 1; transform: scale(1.05) translate(0px, 0px) rotateZ(0deg); filter: hue-rotate(0deg); }
-        }
-      `}</style>
     </div>
   );
 }

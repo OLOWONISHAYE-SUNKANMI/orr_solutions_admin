@@ -14,7 +14,7 @@ function layout({ children }: { children: React.ReactNode }) {
       <NotificationProvider>
         <div className="flex flex-col md:flex-row max-h-screen relative">
           <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
-          <div className="flex-1 w-full overflow-x-hidden flex flex-col">
+          <div className="flex-1 flex flex-col ml-0 md:ml-64">
             <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
             <main className="flex-1 overflow-auto">{children}</main>
           </div>

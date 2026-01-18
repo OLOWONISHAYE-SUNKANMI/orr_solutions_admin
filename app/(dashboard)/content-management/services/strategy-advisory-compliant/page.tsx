@@ -1,11 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import WhatWeOfferSection from "@/components/shared/WhatWeOfferSection";
-import HowWeWorkSection from "@/components/shared/HowWeWorkSection";
-import NetworkAdvantageSection from "@/components/shared/NetworkAdvantageSection";
-import DigitalSolutionsSection from "@/components/shared/DigitalSolutionsSection";
-import CaseExampleSection from "@/components/shared/CaseExampleSection";
-import EditableText from "@/components/EditableText";
+
+import { useState, useEffect } from "react";
+import { Save, Loader, Upload } from 'lucide-react';
+import RichTextEditor from '../../../../../components/RichTextEditor';
+import { cleanContentObject } from '../../../../utils/htmlCleaner';
 
 interface StrategicAdvisoryContent {
   hero_title: string;
@@ -50,6 +48,7 @@ interface StrategicAdvisoryContent {
   case_challenge: string;
   case_solution: string;
   case_result: string;
+  case_image_url?: string;
   case_image_alt: string;
   cta_title: string;
   cta_description: string;
@@ -57,9 +56,10 @@ interface StrategicAdvisoryContent {
 }
 
 export default function StrategyAdvisoryPage() {
-  const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [content, setContent] = useState<StrategicAdvisoryContent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,7 +70,8 @@ export default function StrategyAdvisoryPage() {
           throw new Error('Failed to fetch content');
         }
         const data = await response.json();
-        setContent(data.data);
+        const cleanedContent = cleanContentObject(data.data);
+        setContent(cleanedContent);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -81,354 +82,495 @@ export default function StrategyAdvisoryPage() {
     fetchContent();
   }, []);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-slide-in');
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -30px 0px' }
-    );
-
-    sectionsRef.current.forEach((section) => {
-      if (section) observer.observe(section);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  const updateContent = async (field: string, value: string) => {
+  const handleSave = async (section: string) => {
+    setSaving(section);
     try {
       const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/strategic-advisory/', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify(content),
       });
       
       if (response.ok) {
-        setContent(prev => prev ? { ...prev, [field]: value } : null);
+        alert('Saved successfully!');
       }
     } catch (err) {
       console.error('Failed to update content:', err);
+      alert('Failed to save');
+    } finally {
+      setSaving(null);
     }
   };
+
+  const handleRichTextChange = (field: string, value: any) => {
+    setContent((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
-  if (error) {
+  if (error || !content) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-500 text-xl">Error: {error}</div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Content</h1>
+          <p className="text-gray-400">{error}</p>
+        </div>
       </div>
     );
   }
 
-  if (!content) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white text-xl">No content available</div>
-      </div>
-    );
-  }
-
-  const offers = [
-    {
-      title: content.service_1_title,
-      description: content.service_1_description,
-      icon: "M12 3L1 9L12 15L21 12.35V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"
-    },
-    {
-      title: content.service_2_title,
-      description: content.service_2_description,
-      icon: "M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22L6.66 19.7C7.14 19.87 7.64 20 8 20C19 20 22 3 22 3C21 5 14 5.25 9 6.25C4 7.25 2 11.5 2 13.5C2 15.5 3.75 17.25 3.75 17.25C7.5 13.5 12.5 13.5 15.5 13.5C15.5 13.5 16 13.75 16 14.25C16 14.75 15.5 15 15.5 15C12.5 15 7.5 15 3.75 18.75C3.75 18.75 5.25 20.5 8 20.5C11.5 20.5 17 16 17 8Z"
-    },
-    {
-      title: content.service_3_title,
-      description: content.service_3_description,
-      icon: "M9.5 3A6.5 6.5 0 0 1 16 9.5C16 11.11 15.41 12.59 14.44 13.73L14.71 14H16L21 19L19 21L14 16V14.71L13.73 14.44C12.59 15.41 11.11 16 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3M9.5 5C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"
-    }
-  ];
-
-  const howWeWorkData = {
-    subtitle: content.process_title,
-    description: content.process_description,
-    sections: [
-      {
-        title: content.process_step_1_title || "Step 1",
-        content: [content.process_step_1]
-      },
-      {
-        title: content.process_step_2_title || "Step 2",
-        content: [content.process_step_2]
-      },
-      {
-        title: content.process_step_3_title || "Step 3",
-        content: [content.process_step_3]
-      }
-    ]
-  };
-
-  const networkAdvantageData = {
-    title: content.network_title,
-    description: content.network_description,
-    networkCards: [
-      {
-        title: content.network_card_1_title,
-        description: content.network_card_1_description,
-        icon: "M12 3L1 9L12 15L21 12.35V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"
-      },
-      {
-        title: content.network_card_2_title,
-        description: content.network_card_2_description,
-        icon: "M9.5 3A6.5 6.5 0 0 1 16 9.5C16 11.11 15.41 12.59 14.44 13.73L14.71 14H16L21 19L19 21L14 16V14.71L13.73 14.44C12.59 15.41 11.11 16 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3M9.5 5C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"
-      },
-      {
-        title: content.network_card_3_title,
-        description: content.network_card_3_description,
-        icon: "M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5A3.5 3.5 0 0 1 15.5 12A3.5 3.5 0 0 1 12 15.5M19.43 12.98C19.47 12.66 19.5 12.33 19.5 12S19.47 11.34 19.43 11.02L21.54 9.37C21.73 9.22 21.78 8.95 21.66 8.73L19.66 5.27C19.54 5.05 19.27 4.96 19.05 5.05L16.56 6.05C16.04 5.65 15.48 5.32 14.87 5.07L14.49 2.42C14.46 2.18 14.25 2 14 2H10C9.75 2 9.54 2.18 9.51 2.42L9.13 5.07C8.52 5.32 7.96 5.66 7.44 6.05L4.95 5.05C4.73 4.96 4.46 5.05 4.34 5.27L2.34 8.73C2.21 8.95 2.27 9.22 2.46 9.37L4.57 11.02C4.53 11.34 4.5 11.67 4.5 12S4.53 12.66 4.57 12.98L2.46 14.63C2.27 14.78 2.21 15.05 2.34 15.27L4.34 18.73C4.46 18.95 4.73 19.03 4.95 18.95L7.44 17.94C7.96 18.34 8.52 18.68 9.13 18.93L9.51 21.58C9.54 21.82 9.75 22 10 22H14C14.25 22 14.46 21.82 14.49 21.58L14.87 18.93C15.48 18.68 16.04 18.34 16.56 17.94L19.05 18.95C19.27 19.03 19.54 18.95 19.66 18.73L21.66 15.27C21.78 15.05 21.73 14.78 21.54 14.63L19.43 12.98Z"
-      },
-      {
-        title: content.network_card_4_title,
-        description: content.network_card_4_description,
-        icon: "M12 2C11.5 2 11 2.19 10.59 2.59L2.59 10.59C1.8 11.37 1.8 12.63 2.59 13.41L10.59 21.41C11.37 22.2 12.63 22.2 13.41 21.41L21.41 13.41C22.2 12.63 22.2 11.37 21.41 10.59L13.41 2.59C13 2.19 12.5 2 12 2M12 4L20 12L12 20L4 12L12 4M15.5 16L11 11.5L12.5 10L15.5 13L20.5 8L22 9.5L15.5 16Z"
-      },
-      {
-        title: content.network_card_5_title,
-        description: content.network_card_5_description,
-        icon: "M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22L6.66 19.7C7.14 19.87 7.64 20 8 20C19 20 22 3 22 3C21 5 14 5.25 9 6.25C4 7.25 2 11.5 2 13.5C2 15.5 3.75 17.25 3.75 17.25C7.5 13.5 12.5 13.5 15.5 13.5C15.5 13.5 16 13.75 16 14.25C16 14.75 15.5 15 15.5 15C12.5 15 7.5 15 3.75 18.75C3.75 18.75 5.25 20.5 8 20.5C11.5 20.5 17 16 17 8Z"
-      }
-    ]
-  };
-
-  const digitalSolutionsData = {
-    title: content.digital_title,
-    subtitle: content.digital_subtitle,
-    description: content.digital_description,
-    imageAlt: "Network visualization showing connected nodes and data flows",
-    whoIsThisFor: [
-      content.digital_who_1 || "Organizations seeking strategic guidance",
-      content.digital_who_2 || "Companies planning digital transformation",
-      content.digital_who_3 || "Businesses needing compliance solutions"
-    ],
-    features: [
-      content.digital_feature_1 || "Strategic planning and advisory",
-      content.digital_feature_2 || "Digital transformation roadmaps",
-      content.digital_feature_3 || "Compliance and risk management"
-    ]
-  };
-
-  const caseExampleData = {
-    challenge: content.case_challenge,
-    solution: content.case_solution,
-    result: content.case_result,
-    imageAlt: content.case_image_alt
-  };
-
-  const updateOffer = async (index: number, field: string, value: string) => {
-    const fieldMap = {
-      0: { title: 'service_1_title', description: 'service_1_description' },
-      1: { title: 'service_2_title', description: 'service_2_description' },
-      2: { title: 'service_3_title', description: 'service_3_description' }
-    };
-    const backendField = fieldMap[index as keyof typeof fieldMap]?.[field as keyof typeof fieldMap[0]];
-    if (backendField) {
-      await updateContent(backendField, value);
-    }
-  };
-
-  const updateHowWeWork = async (updatedData: any) => {
-    if (updatedData.subtitle) await updateContent('process_title', updatedData.subtitle);
-    if (updatedData.description) await updateContent('process_description', updatedData.description);
-    if (updatedData.sections) {
-      for (let index = 0; index < updatedData.sections.length; index++) {
-        const section = updatedData.sections[index];
-        if (section.title) {
-          await updateContent(`process_step_${index + 1}_title`, section.title);
-        }
-        if (section.content?.[0]) {
-          await updateContent(`process_step_${index + 1}`, section.content[0]);
-        }
-      }
-    }
-  };
-
-  const updateNetworkAdvantage = async (updatedData: any) => {
-    if (updatedData.title) await updateContent('network_title', updatedData.title);
-    if (updatedData.description) await updateContent('network_description', updatedData.description);
-    if (updatedData.networkCards) {
-      for (let index = 0; index < updatedData.networkCards.length; index++) {
-        const card = updatedData.networkCards[index];
-        if (card.title) await updateContent(`network_card_${index + 1}_title`, card.title);
-        if (card.description) await updateContent(`network_card_${index + 1}_description`, card.description);
-      }
-    }
-  };
-
-  const updateDigitalSolutions = async (updatedData: any) => {
-    if (updatedData.title) await updateContent('digital_title', updatedData.title);
-    if (updatedData.subtitle) await updateContent('digital_subtitle', updatedData.subtitle);
-    if (updatedData.description) await updateContent('digital_description', updatedData.description);
-    if (updatedData.whoIsThisFor) {
-      for (let i = 0; i < updatedData.whoIsThisFor.length; i++) {
-        await updateContent(`digital_who_${i + 1}`, updatedData.whoIsThisFor[i]);
-      }
-    }
-    if (updatedData.features) {
-      for (let i = 0; i < updatedData.features.length; i++) {
-        await updateContent(`digital_feature_${i + 1}`, updatedData.features[i]);
-      }
-    }
-  };
-
-  const updateCaseExample = async (updatedData: any) => {
-    if (updatedData.challenge) await updateContent('case_challenge', updatedData.challenge);
-    if (updatedData.solution) await updateContent('case_solution', updatedData.solution);
-    if (updatedData.result) await updateContent('case_result', updatedData.result);
-    if (updatedData.imageAlt) await updateContent('case_image_alt', updatedData.imageAlt);
-  };
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
 
   return (
-    <div className="min-h-screen py-12 relative overflow-hidden bg-background z-10">
-      <style jsx>{`
-        .animate-slide-in {
-          animation: slideIn 0.6s ease-out forwards;
-        }
-        
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .section-animate {
-          opacity: 1;
-          transform: translateY(0);
-          position: relative;
-          z-index: 10;
-        }
-      `}</style>
-      <div ref={el => { sectionsRef.current[0] = el; }} className="section-animate">
-        <header className="relative z-10 mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-24 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32">
-          <div className="max-w-6xl space-y-6 sm:space-y-8">
-            <h1 className="text-white font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-tight">
-              <EditableText
-                content={content.hero_title}
-                onSave={(content) => updateContent('hero_title', content)}
-                className="text-[#47ff4c]"
-                tag="span"
-              /><br />
-           
-            </h1>
-        
-            <div className="space-y-4 max-w-4xl">
-              <EditableText
-                content={content.hero_subtitle}
-                onSave={(content) => updateContent('hero_subtitle', content)}
-                className="text-slate-200 text-base sm:text-lg md:text-xl leading-relaxed"
-                tag="p"
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
+
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white">Strategy Advisory Compliant Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage Strategy Advisory Compliant page content</p>
+          </div>
+
+          {/* Hero Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Hero Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('hero'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Hero Title"
+                value={content.hero_title || ''}
+                onChange={(value) => handleRichTextChange('hero_title', value)}
+                placeholder="Enter hero title"
+              />
+              <RichTextEditor
+                label="Hero Subtitle"
+                value={content.hero_subtitle || ''}
+                onChange={(value) => handleRichTextChange('hero_subtitle', value)}
+                placeholder="Enter hero subtitle"
+                rows={3}
+              />
+              <RichTextEditor
+                label="Hero Description"
+                value={content.hero_description || ''}
+                onChange={(value) => handleRichTextChange('hero_description', value)}
+                placeholder="Enter hero description"
+                rows={4}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'hero'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'hero' ? 'Saving...' : 'Save Hero Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Services Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>What We Offer Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('services'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Services Title"
+                value={content.services_title || ''}
+                onChange={(value) => handleRichTextChange('services_title', value)}
+                placeholder="Enter services title"
+              />
+              
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Service 1</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Service 1 Title"
+                    value={content.service_1_title || ''}
+                    onChange={(value) => handleRichTextChange('service_1_title', value)}
+                    placeholder="Enter service 1 title"
+                  />
+                  <RichTextEditor
+                    label="Service 1 Description"
+                    value={content.service_1_description || ''}
+                    onChange={(value) => handleRichTextChange('service_1_description', value)}
+                    placeholder="Enter service 1 description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Service 2</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Service 2 Title"
+                    value={content.service_2_title || ''}
+                    onChange={(value) => handleRichTextChange('service_2_title', value)}
+                    placeholder="Enter service 2 title"
+                  />
+                  <RichTextEditor
+                    label="Service 2 Description"
+                    value={content.service_2_description || ''}
+                    onChange={(value) => handleRichTextChange('service_2_description', value)}
+                    placeholder="Enter service 2 description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Service 3</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Service 3 Title"
+                    value={content.service_3_title || ''}
+                    onChange={(value) => handleRichTextChange('service_3_title', value)}
+                    placeholder="Enter service 3 title"
+                  />
+                  <RichTextEditor
+                    label="Service 3 Description"
+                    value={content.service_3_description || ''}
+                    onChange={(value) => handleRichTextChange('service_3_description', value)}
+                    placeholder="Enter service 3 description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'services'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'services' ? 'Saving...' : 'Save Services Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Process Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>How We Work Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('process'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Process Title"
+                value={content.process_title || ''}
+                onChange={(value) => handleRichTextChange('process_title', value)}
+                placeholder="Enter process title"
+              />
+              <RichTextEditor
+                label="Process Description"
+                value={content.process_description || ''}
+                onChange={(value) => handleRichTextChange('process_description', value)}
+                placeholder="Enter process description"
+                rows={3}
               />
 
-              <EditableText
-                content={content.hero_description}
-                onSave={(content) => updateContent('hero_description', content)}
-                className="text-slate-200 text-base sm:text-lg md:text-xl leading-relaxed"
-                tag="p"
-                multiline
-              />
-            </div>
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">{content.process_step_1_title || 'Step 1'}</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Step 1 Title"
+                    value={content.process_step_1_title || ''}
+                    onChange={(value) => handleRichTextChange('process_step_1_title', value)}
+                    placeholder="Enter step 1 title"
+                  />
+                  <RichTextEditor
+                    label="Step 1 Content"
+                    value={content.process_step_1 || ''}
+                    onChange={(value) => handleRichTextChange('process_step_1', value)}
+                    placeholder="Enter step 1 content"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">{content.process_step_2_title || 'Step 2'}</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Step 2 Title"
+                    value={content.process_step_2_title || ''}
+                    onChange={(value) => handleRichTextChange('process_step_2_title', value)}
+                    placeholder="Enter step 2 title"
+                  />
+                  <RichTextEditor
+                    label="Step 2 Content"
+                    value={content.process_step_2 || ''}
+                    onChange={(value) => handleRichTextChange('process_step_2', value)}
+                    placeholder="Enter step 2 content"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">{content.process_step_3_title || 'Step 3'}</h3>
+                <div className="flex flex-col gap-4">
+                  <RichTextEditor
+                    label="Step 3 Title"
+                    value={content.process_step_3_title || ''}
+                    onChange={(value) => handleRichTextChange('process_step_3_title', value)}
+                    placeholder="Enter step 3 title"
+                  />
+                  <RichTextEditor
+                    label="Step 3 Content"
+                    value={content.process_step_3 || ''}
+                    onChange={(value) => handleRichTextChange('process_step_3', value)}
+                    placeholder="Enter step 3 content"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'process'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'process' ? 'Saving...' : 'Save Process Section'}
+                </button>
+              </div>
+            </form>
           </div>
-        </header>
-      </div>
-      <div ref={el => { sectionsRef.current[1] = el; }} className="section-animate">
-        <WhatWeOfferSection 
-          title={content.services_title}
-          offers={offers} 
-          onUpdateOffer={updateOffer}
-          onUpdateTitle={(title) => updateContent('services_title', title)}
-        />
-      </div>
-      <div ref={el => { sectionsRef.current[2] = el; }} className="section-animate">
-        <HowWeWorkSection
-          subtitle={howWeWorkData.subtitle}
-          description={howWeWorkData.description}
-          sections={howWeWorkData.sections}
-          layout="single"
-          onUpdate={updateHowWeWork}
-        />
-      </div>
-      {/* <div ref={el => { sectionsRef.current[3] = el; }} className="section-animate">
-        <NetworkAdvantageSection
-          title={networkAdvantageData.title}
-          description={networkAdvantageData.description}
-          networkCards={networkAdvantageData.networkCards}
-          onUpdate={updateNetworkAdvantage}
-        />
-      </div> */}
-      <div ref={el => { sectionsRef.current[4] = el; }} className="section-animate">
-        <DigitalSolutionsSection
-          title={digitalSolutionsData.title}
-          subtitle={digitalSolutionsData.subtitle}
-          description={digitalSolutionsData.description}
-          imageAlt={digitalSolutionsData.imageAlt}
-          whoIsThisFor={digitalSolutionsData.whoIsThisFor}
-          features={digitalSolutionsData.features}
-          onUpdate={updateDigitalSolutions}
-        />
-      </div>
-      <div ref={el => { sectionsRef.current[5] = el; }} className="section-animate">
-        <CaseExampleSection
-          caseExample={{
-            challenge: caseExampleData.challenge,
-            solution: caseExampleData.solution,
-            result: caseExampleData.result
-          }}
-          imageAlt={caseExampleData.imageAlt}
-          onUpdate={updateCaseExample}
-        />
-      </div>
-      <div ref={el => { sectionsRef.current[6] = el; }} className="section-animate">
-        <section className="relative z-10 py-24 text-center">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-24">
-            <EditableText
-              content={content.cta_title}
-              onSave={(content) => updateContent('cta_title', content)}
-              className="text-4xl md:text-5xl font-bold text-white mb-8"
-              tag="h2"
-            />
-            <EditableText
-              content={content.cta_description}
-              onSave={(content) => updateContent('cta_description', content)}
-              className="text-slate-200 text-lg mb-12 max-w-3xl mx-auto"
-              tag="p"
-              multiline
-            />
-            <button className="bg-gradient-to-r from-[#47ff4c] to-[#0ec277] text-black px-8 py-4 rounded-full text-lg font-semibold hover:shadow-lg hover:shadow-[#47ff4c]/25 transition-all duration-300 inline-block">
-              <EditableText
-                content={content.cta_button_text}
-                onSave={(content) => updateContent('cta_button_text', content)}
-                className=""
-                tag="span"
+
+          {/* Network Advantage Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Network Advantage Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('network'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Network Title"
+                value={content.network_title || ''}
+                onChange={(value) => handleRichTextChange('network_title', value)}
+                placeholder="Enter network title"
               />
-            </button>
+              <RichTextEditor
+                label="Network Description"
+                value={content.network_description || ''}
+                onChange={(value) => handleRichTextChange('network_description', value)}
+                placeholder="Enter network description"
+                rows={3}
+              />
+
+              {[1, 2, 3, 4, 5].map((num) => (
+                <div key={num} className="border-t border-white/10 pt-4 mt-2">
+                  <h3 className="text-lg font-semibold mb-4 text-white">Network Card {num}</h3>
+                  <div className="flex flex-col gap-4">
+                    <RichTextEditor
+                      label={`Card ${num} Title`}
+                      value={content[`network_card_${num}_title` as keyof StrategicAdvisoryContent] || ''}
+                      onChange={(value) => handleRichTextChange(`network_card_${num}_title`, value)}
+                      placeholder={`Enter card ${num} title`}
+                    />
+                    <RichTextEditor
+                      label={`Card ${num} Description`}
+                      value={content[`network_card_${num}_description` as keyof StrategicAdvisoryContent] || ''}
+                      onChange={(value) => handleRichTextChange(`network_card_${num}_description`, value)}
+                      placeholder={`Enter card ${num} description`}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'network'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'network' ? 'Saving...' : 'Save Network Section'}
+                </button>
+              </div>
+            </form>
           </div>
-        </section>
+
+          {/* Digital Solutions Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Digital Solutions Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('digital'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Digital Title"
+                value={content.digital_title || ''}
+                onChange={(value) => handleRichTextChange('digital_title', value)}
+                placeholder="Enter digital title"
+              />
+              <RichTextEditor
+                label="Digital Subtitle"
+                value={content.digital_subtitle || ''}
+                onChange={(value) => handleRichTextChange('digital_subtitle', value)}
+                placeholder="Enter digital subtitle"
+              />
+              <RichTextEditor
+                label="Digital Description"
+                value={content.digital_description || ''}
+                onChange={(value) => handleRichTextChange('digital_description', value)}
+                placeholder="Enter digital description"
+                rows={3}
+              />
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Who Is This For</h3>
+                <div className="flex flex-col gap-4">
+                  {[1, 2, 3].map((num) => (
+                    <RichTextEditor
+                      key={num}
+                      label={`Who ${num}`}
+                      value={content[`digital_who_${num}` as keyof StrategicAdvisoryContent] || ''}
+                      onChange={(value) => handleRichTextChange(`digital_who_${num}`, value)}
+                      placeholder={`Enter who ${num}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 mt-2">
+                <h3 className="text-lg font-semibold mb-4 text-white">Features</h3>
+                <div className="flex flex-col gap-4">
+                  {[1, 2, 3].map((num) => (
+                    <RichTextEditor
+                      key={num}
+                      label={`Feature ${num}`}
+                      value={content[`digital_feature_${num}` as keyof StrategicAdvisoryContent] || ''}
+                      onChange={(value) => handleRichTextChange(`digital_feature_${num}`, value)}
+                      placeholder={`Enter feature ${num}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'digital'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'digital' ? 'Saving...' : 'Save Digital Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Case Example Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Case Example Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('case'); 
+            }} className="flex flex-col gap-4">
+              
+              {/* Image URL Section */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <label className={labelClass}>Case Example Image URL</label>
+                {content.case_image_url && (
+                  <div className="mb-4">
+                    <img src={content.case_image_url} alt={content.case_image_alt} className="w-full max-w-md h-48 object-cover rounded-lg" />
+                  </div>
+                )}
+                <input 
+                  type="text" 
+                  value={content.case_image_url || ''} 
+                  onChange={(e) => setContent((prev: any) => ({ ...prev, case_image_url: e.target.value }))}
+                  placeholder="https://example.com/image.jpg"
+                  className={inputClass} 
+                />
+              </div>
+
+              <RichTextEditor
+                label="Image Alt Text"
+                value={content.case_image_alt || ''}
+                onChange={(value) => handleRichTextChange('case_image_alt', value)}
+                placeholder="Enter image alt text"
+              />
+
+              <RichTextEditor
+                label="Challenge"
+                value={content.case_challenge || ''}
+                onChange={(value) => handleRichTextChange('case_challenge', value)}
+                placeholder="Enter case challenge"
+                rows={4}
+              />
+
+              <RichTextEditor
+                label="Solution"
+                value={content.case_solution || ''}
+                onChange={(value) => handleRichTextChange('case_solution', value)}
+                placeholder="Enter case solution"
+                rows={4}
+              />
+
+              <RichTextEditor
+                label="Result"
+                value={content.case_result || ''}
+                onChange={(value) => handleRichTextChange('case_result', value)}
+                placeholder="Enter case result"
+                rows={4}
+              />
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'case'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'case' ? 'Saving...' : 'Save Case Example Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* CTA Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Call to Action Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('cta'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="CTA Title"
+                value={content.cta_title || ''}
+                onChange={(value) => handleRichTextChange('cta_title', value)}
+                placeholder="Enter CTA title"
+              />
+              <RichTextEditor
+                label="CTA Description"
+                value={content.cta_description || ''}
+                onChange={(value) => handleRichTextChange('cta_description', value)}
+                placeholder="Enter CTA description"
+                rows={3}
+              />
+              <RichTextEditor
+                label="CTA Button Text"
+                value={content.cta_button_text || ''}
+                onChange={(value) => handleRichTextChange('cta_button_text', value)}
+                placeholder="Enter CTA button text"
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'cta'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'cta' ? 'Saving...' : 'Save CTA Section'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
       </div>
     </div>
-  )
+  );
 }

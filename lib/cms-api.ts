@@ -4,7 +4,7 @@ const API_BASE_URL = 'https://orr-backend-web-latest.onrender.com';
 
 export class CMSService {
   private getAuthHeaders() {
-    const token = localStorage.getItem('auth-token');
+    const token = localStorage.getItem('access_token');
     return {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
@@ -152,7 +152,9 @@ export class CMSService {
     );
 
     if (!response.ok) {
-      throw new Error('Failed to update Contact page content');
+      const errorText = await response.text();
+      console.error('Contact page update failed:', response.status, errorText);
+      throw new Error(`Failed to update Contact page content: ${response.status}`);
     }
   }
 

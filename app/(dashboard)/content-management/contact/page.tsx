@@ -1,13 +1,9 @@
 'use client';
 
-import { Phone, Mail, MapPin, Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import EditableText from '../../../components/cms/EditableText';
+import { useState, useEffect } from "react";
 import { CMSService } from '../../../../lib/cms-api';
-
-gsap.registerPlugin(ScrollTrigger);
+import { Save, Loader } from 'lucide-react';
+import RichTextEditor from '../../../../components/RichTextEditor';
 
 interface ContactPageData {
   id: number;
@@ -39,13 +35,9 @@ interface ContactPageData {
 }
 
 export default function Contact() {
-  const titleRef = useRef(null);
-  const infoCardRef = useRef(null);
-  const formCardRef = useRef(null);
-  const contactItemsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const formFieldsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [data, setData] = useState<ContactPageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
   const cmsService = new CMSService();
 
   useEffect(() => {
@@ -57,7 +49,6 @@ export default function Contact() {
         setData(response);
       } catch (error) {
         console.error('❌ Error fetching Contact data:', error);
-        // Fallback to default data if API fails
         setData({
           id: 1,
           hero_title: "Contact Us",
@@ -92,352 +83,351 @@ export default function Contact() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (!data) return;
-    
-    const title = titleRef.current;
-    if (title) {
-      gsap.fromTo(title,
-        { opacity: 0, y: -50, scale: 0.8 },
-        { opacity: 1, y: 0, scale: 1, duration: 1, ease: "elastic.out(1, 0.5)" }
-      );
-    }
-
-    gsap.fromTo(infoCardRef.current,
-      { opacity: 0, x: -100, rotateY: -15 },
-      {
-        opacity: 1, x: 0, rotateY: 0, duration: 1.2, ease: "power3.out",
-        scrollTrigger: { trigger: infoCardRef.current, start: "top 80%", toggleActions: "play none none reverse" }
-      }
-    );
-
-    gsap.fromTo(formCardRef.current,
-      { opacity: 0, x: 100, rotateY: 15 },
-      {
-        opacity: 1, x: 0, rotateY: 0, duration: 1.2, ease: "power3.out",
-        scrollTrigger: { trigger: formCardRef.current, start: "top 80%", toggleActions: "play none none reverse" }
-      }
-    );
-
-    contactItemsRef.current.forEach((item, i) => {
-      if (item) {
-        gsap.fromTo(item,
-          { opacity: 0, x: -30 },
-          {
-            opacity: 1, x: 0, duration: 0.6, delay: 0.3 + i * 0.15, ease: "back.out(1.7)",
-            scrollTrigger: { trigger: infoCardRef.current, start: "top 80%", toggleActions: "play none none reverse" }
-          }
-        );
-      }
-    });
-
-    formFieldsRef.current.forEach((field, i) => {
-      if (field) {
-        gsap.fromTo(field,
-          { opacity: 0, y: 20 },
-          {
-            opacity: 1, y: 0, duration: 0.5, delay: 0.2 + i * 0.1, ease: "power2.out",
-            scrollTrigger: { trigger: formCardRef.current, start: "top 80%", toggleActions: "play none none reverse" }
-          }
-        );
-      }
-    });
-  }, [data]);
-
-  const handleSave = async (field: string, value: string) => {
-    if (!data) return;
-    
+  const handleSave = async (section: string) => {
+    setSaving(section);
     try {
-      const updatedData = { ...data, [field]: value };
-      const updateData = { [field]: value };
+      // Check if we have an auth token
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        console.error('❌ No auth token found');
+        alert('Authentication required. Please log in again.');
+        return;
+      }
       
-      await cmsService.updateContactPageContent(updateData);
-      setData(updatedData);
-      console.log('✅ Saved:', field, value);
+      // Clean the payload - remove undefined/null values and ensure proper structure
+      const cleanPayload = {
+        id: data?.id || 1,
+        hero_title: data?.hero_title || '',
+        contact_info_title: data?.contact_info_title || '',
+        contact_info_subtitle: data?.contact_info_subtitle || '',
+        phone_number: data?.phone_number || '',
+        email_address: data?.email_address || '',
+        address: data?.address || '',
+        first_name_label: data?.first_name_label || '',
+        last_name_label: data?.last_name_label || '',
+        email_label: data?.email_label || '',
+        phone_label: data?.phone_label || '',
+        subject_label: data?.subject_label || '',
+        message_label: data?.message_label || '',
+        first_name_placeholder: data?.first_name_placeholder || '',
+        last_name_placeholder: data?.last_name_placeholder || '',
+        email_placeholder: data?.email_placeholder || '',
+        phone_placeholder: data?.phone_placeholder || '',
+        message_placeholder: data?.message_placeholder || '',
+        subject_option_1: data?.subject_option_1 || '',
+        subject_option_2: data?.subject_option_2 || '',
+        subject_option_3: data?.subject_option_3 || '',
+        subject_option_4: data?.subject_option_4 || '',
+        submit_button_text: data?.submit_button_text || '',
+        meta_title: data?.meta_title || '',
+        meta_description: data?.meta_description || '',
+        is_active: data?.is_active ?? true
+      };
+      
+      console.log('🔄 Sending Contact page data:', cleanPayload);
+      console.log('🔑 Using auth token:', token ? 'Present' : 'Missing');
+      
+      await cmsService.updateContactPageContent(cleanPayload);
+      alert('Saved successfully!');
+      const result = await cmsService.getContactPageContent();
+      setData(result);
     } catch (error) {
-      console.error('❌ Error saving:', error);
+      console.error('Failed to save:', error);
+      alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSaving(null);
     }
+  };
+
+  const handleRichTextChange = (field: string, value: any) => {
+    setData((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen text-foreground star flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="min-h-screen text-foreground star flex items-center justify-center">
-        <div className="text-white text-xl">Error loading content</div>
-      </div>
-    );
-  }
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
 
   return (
-    <div className="min-h-screen text-foreground star">
-      {/* Navigation */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-card rounded-lg p-4 shadow-lg">
-          <h3 className="text-white font-semibold mb-3">Content Sections</h3>
-          <div className="space-y-2">
-            <a href="/content-management/how-we-operate" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              How We Operate
-            </a>
-            <div className="relative group">
-              <a href="/content-management/services" className="block text-[#33FF99] hover:text-white transition-colors text-sm cursor-pointer">
-                Services ▼
-              </a>
-              <div className="absolute left-0 top-6 bg-[#1a3a52] rounded-lg p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 min-w-[200px]">
-                <a href="/content-management/services/living-systems-regeneration" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Living Systems Regeneration
-                </a>
-                <a href="/content-management/services/operational-systems-infrastructure" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Operational Systems Infrastructure
-                </a>
-                <a href="/content-management/services/strategy-advisory-compliant" className="block text-gray-300 hover:text-[#33FF99] transition-colors text-xs py-1">
-                  Strategy Advisory Compliant
-                </a>
-              </div>
-            </div>
-            <a href="/content-management/resources-blogs" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Resources & Blogs
-            </a>
-            <a href="/content-management/legal-policy" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Legal & Policy
-            </a>
-            <a href="/content-management/contact" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Contact
-            </a>
-          </div>
-        </div>
-      </div>
-      {/* Hero Section */}
-      <section className="pt-24 sm:pt-28 lg:pt-32 pb-12 sm:pb-16 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <EditableText
-            content={data.hero_title}
-            onSave={(newText) => handleSave('hero_title', newText)}
-            tag="h1"
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 sm:mb-8 text-white"
-            placeholder="Enter title..."
-          />
-        </div>
-      </section>
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
 
-      {/* Contact Form and Details Section */}
-      <section className="py-8 sm:py-12 lg:py-16 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 bg-card p-3 sm:p-4 rounded-2xl">
-          {/* Contact Information Card - Left */}
-          <div ref={infoCardRef} className="bg-primary rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-white">
-            <EditableText
-              content={data.contact_info_title}
-              onSave={(newText) => handleSave('contact_info_title', newText)}
-              tag="h2"
-              className="text-2xl sm:text-3xl font-bold mb-3"
-              placeholder="Enter title..."
-            />
-            <EditableText
-              content={data.contact_info_subtitle}
-              onSave={(newText) => handleSave('contact_info_subtitle', newText)}
-              tag="p"
-              className="text-white/90 mb-6 sm:mb-8 text-sm sm:text-base"
-              placeholder="Enter subtitle..."
-            />
-
-            {/* Phone */}
-            <div ref={el => { contactItemsRef.current[0] = el; }} className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
-              <EditableText
-                content={data.phone_number}
-                onSave={(newText) => handleSave('phone_number', newText)}
-                tag="p"
-                className="text-base sm:text-lg"
-                placeholder="Enter phone number..."
-              />
-            </div>
-
-            {/* Email */}
-            <div ref={el => { contactItemsRef.current[1] = el; }} className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
-              <EditableText
-                content={data.email_address}
-                onSave={(newText) => handleSave('email_address', newText)}
-                tag="p"
-                className="text-base sm:text-lg"
-                placeholder="Enter email..."
-              />
-            </div>
-
-            {/* Address */}
-            <div ref={el => { contactItemsRef.current[2] = el; }} className="flex items-start gap-3 sm:gap-4">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0 mt-1">
-                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-              </div>
-              <EditableText
-                content={data.address}
-                onSave={(newText) => handleSave('address', newText)}
-                tag="p"
-                className="text-base sm:text-lg"
-                placeholder="Enter address..."
-                multiline
-              />
-            </div>
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white">Contact Page Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage Contact page content and form fields</p>
           </div>
 
-          {/* Contact Form - Right */}
-          <div ref={formCardRef} className="bg-card/50 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border-white/10">
-            <form className="space-y-4 sm:space-y-6">
-              {/* First Name and Last Name Row */}
-              <div ref={el => { formFieldsRef.current[0] = el; }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <EditableText
-                    content={data.first_name_label}
-                    onSave={(newText) => handleSave('first_name_label', newText)}
-                    tag="label"
-                    className="block text-gray-300 text-sm mb-2"
-                    placeholder="Enter label..."
-                  />
-                  <input
-                    type="text"
-                    id="firstName"
-                    placeholder={data.first_name_placeholder}
-                    className="w-full bg-transparent border-b border-white/30 text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors pb-2"
-                  />
-                </div>
-                <div>
-                  <EditableText
-                    content={data.last_name_label}
-                    onSave={(newText) => handleSave('last_name_label', newText)}
-                    tag="label"
-                    className="block text-gray-300 text-sm mb-2"
-                    placeholder="Enter label..."
-                  />
-                  <input
-                    type="text"
-                    id="lastName"
-                    placeholder={data.last_name_placeholder}
-                    className="w-full bg-transparent border-b border-white/30 text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors pb-2"
-                  />
-                </div>
+          {/* Page Header Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Page Header</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('page-header'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Hero Title"
+                value={data?.hero_title || ''}
+                onChange={(value) => handleRichTextChange('hero_title', value)}
+                placeholder="Enter hero title"
+              />
+              <RichTextEditor
+                label="Meta Title (SEO)"
+                value={data?.meta_title || ''}
+                onChange={(value) => handleRichTextChange('meta_title', value)}
+                placeholder="Enter meta title"
+              />
+              <RichTextEditor
+                label="Meta Description (SEO)"
+                value={data?.meta_description || ''}
+                onChange={(value) => handleRichTextChange('meta_description', value)}
+                placeholder="Enter meta description"
+                rows={3}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'page-header'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'page-header' ? 'Saving...' : 'Save Page Header'}
+                </button>
               </div>
+            </form>
+          </div>
 
-              {/* Email and Phone Row */}
-              <div ref={el => { formFieldsRef.current[1] = el; }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <EditableText
-                    content={data.email_label}
-                    onSave={(newText) => handleSave('email_label', newText)}
-                    tag="label"
-                    className="block text-gray-300 text-sm mb-2"
-                    placeholder="Enter label..."
-                  />
-                  <input
-                    type="email"
-                    id="email"
-                    placeholder={data.email_placeholder}
-                    className="w-full bg-transparent border-b border-white/30 text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors pb-2"
-                  />
-                </div>
-                <div>
-                  <EditableText
-                    content={data.phone_label}
-                    onSave={(newText) => handleSave('phone_label', newText)}
-                    tag="label"
-                    className="block text-gray-300 text-sm mb-2"
-                    placeholder="Enter label..."
-                  />
-                  <input
-                    type="tel"
-                    id="phone"
-                    placeholder={data.phone_placeholder}
-                    className="w-full bg-transparent border-b border-white/30 text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors pb-2"
-                  />
-                </div>
+          {/* Contact Information Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Contact Information</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('contact-info'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Contact Info Title"
+                value={data?.contact_info_title || ''}
+                onChange={(value) => handleRichTextChange('contact_info_title', value)}
+                placeholder="Enter contact info title"
+              />
+              <RichTextEditor
+                label="Contact Info Subtitle"
+                value={data?.contact_info_subtitle || ''}
+                onChange={(value) => handleRichTextChange('contact_info_subtitle', value)}
+                placeholder="Enter contact info subtitle"
+              />
+              <RichTextEditor
+                label="Phone Number"
+                value={data?.phone_number || ''}
+                onChange={(value) => handleRichTextChange('phone_number', value)}
+                placeholder="Enter phone number"
+              />
+              <RichTextEditor
+                label="Email Address"
+                value={data?.email_address || ''}
+                onChange={(value) => handleRichTextChange('email_address', value)}
+                placeholder="Enter email address"
+              />
+              <RichTextEditor
+                label="Address"
+                value={data?.address || ''}
+                onChange={(value) => handleRichTextChange('address', value)}
+                placeholder="Enter address"
+                rows={3}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'contact-info'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'contact-info' ? 'Saving...' : 'Save Contact Information'}
+                </button>
               </div>
+            </form>
+          </div>
 
-              {/* Select Subject */}
-              <div ref={el => { formFieldsRef.current[2] = el; }}>
-                <EditableText
-                  content={data.subject_label}
-                  onSave={(newText) => handleSave('subject_label', newText)}
-                  tag="label"
-                  className="block text-gray-300 text-sm mb-4"
-                  placeholder="Enter label..."
+          {/* Form Labels Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Form Labels</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('form-labels'); 
+            }} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="First Name Label"
+                  value={data?.first_name_label || ''}
+                  onChange={(value) => handleRichTextChange('first_name_label', value)}
+                  placeholder="Enter first name label"
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  {[
-                    data.subject_option_1,
-                    data.subject_option_2,
-                    data.subject_option_3,
-                    data.subject_option_4,
-                  ].map((subject, idx) => (
-                    <label
-                      key={idx}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="subject"
-                        className="w-4 h-4 accent-primary"
-                      />
-                      <EditableText
-                        content={subject}
-                        onSave={(newText) => handleSave(`subject_option_${idx + 1}`, newText)}
-                        tag="span"
-                        className="text-gray-300 text-sm"
-                        placeholder="Enter subject..."
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Message */}
-              <div ref={el => { formFieldsRef.current[3] = el; }}>
-                <EditableText
-                  content={data.message_label}
-                  onSave={(newText) => handleSave('message_label', newText)}
-                  tag="label"
-                  className="block text-gray-300 text-sm mb-2"
-                  placeholder="Enter label..."
+                <RichTextEditor
+                  label="Last Name Label"
+                  value={data?.last_name_label || ''}
+                  onChange={(value) => handleRichTextChange('last_name_label', value)}
+                  placeholder="Enter last name label"
                 />
-                <textarea
-                  id="message"
-                  placeholder={data.message_placeholder}
-                  rows={1}
-                  className="w-full bg-transparent border-b border-white/30 text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors pb-2 resize-none"
-                ></textarea>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="Email Label"
+                  value={data?.email_label || ''}
+                  onChange={(value) => handleRichTextChange('email_label', value)}
+                  placeholder="Enter email label"
+                />
+                <RichTextEditor
+                  label="Phone Label"
+                  value={data?.phone_label || ''}
+                  onChange={(value) => handleRichTextChange('phone_label', value)}
+                  placeholder="Enter phone label"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="Subject Label"
+                  value={data?.subject_label || ''}
+                  onChange={(value) => handleRichTextChange('subject_label', value)}
+                  placeholder="Enter subject label"
+                />
+                <RichTextEditor
+                  label="Message Label"
+                  value={data?.message_label || ''}
+                  onChange={(value) => handleRichTextChange('message_label', value)}
+                  placeholder="Enter message label"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'form-labels'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'form-labels' ? 'Saving...' : 'Save Form Labels'}
+                </button>
+              </div>
+            </form>
+          </div>
 
-              {/* Submit Button */}
-              <div ref={el => { formFieldsRef.current[4] = el; }} className="pt-4 flex justify-center sm:justify-end">
-                <div className="relative inline-block">
-                  <button
-                    type="submit"
-                    className="bg-gradient-primary text-white font-semibold px-8 py-3 rounded-lg hover:bg-primary/90 transition-all"
-                  >
-                    <EditableText
-                      content={data.submit_button_text}
-                      onSave={(newText) => handleSave('submit_button_text', newText)}
-                      tag="span"
-                      className=""
-                      placeholder="Enter button text..."
-                    />
-                  </button>
-                  {/* Lucide-style send icon positioned overlapping the button */}
-                  <Send className="absolute right-20 sm:right-28 -bottom-6 sm:-bottom-8 w-8 h-8 sm:w-12 sm:h-12 text-white" />
-                </div>
+          {/* Form Placeholders Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Form Placeholders</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('form-placeholders'); 
+            }} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="First Name Placeholder"
+                  value={data?.first_name_placeholder || ''}
+                  onChange={(value) => handleRichTextChange('first_name_placeholder', value)}
+                  placeholder="Enter first name placeholder"
+                />
+                <RichTextEditor
+                  label="Last Name Placeholder"
+                  value={data?.last_name_placeholder || ''}
+                  onChange={(value) => handleRichTextChange('last_name_placeholder', value)}
+                  placeholder="Enter last name placeholder"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="Email Placeholder"
+                  value={data?.email_placeholder || ''}
+                  onChange={(value) => handleRichTextChange('email_placeholder', value)}
+                  placeholder="Enter email placeholder"
+                />
+                <RichTextEditor
+                  label="Phone Placeholder"
+                  value={data?.phone_placeholder || ''}
+                  onChange={(value) => handleRichTextChange('phone_placeholder', value)}
+                  placeholder="Enter phone placeholder"
+                />
+              </div>
+              <RichTextEditor
+                label="Message Placeholder"
+                value={data?.message_placeholder || ''}
+                onChange={(value) => handleRichTextChange('message_placeholder', value)}
+                placeholder="Enter message placeholder"
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'form-placeholders'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'form-placeholders' ? 'Saving...' : 'Save Form Placeholders'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Subject Options Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Subject Options</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('subject-options'); 
+            }} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="Subject Option 1"
+                  value={data?.subject_option_1 || ''}
+                  onChange={(value) => handleRichTextChange('subject_option_1', value)}
+                  placeholder="Enter subject option 1"
+                />
+                <RichTextEditor
+                  label="Subject Option 2"
+                  value={data?.subject_option_2 || ''}
+                  onChange={(value) => handleRichTextChange('subject_option_2', value)}
+                  placeholder="Enter subject option 2"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <RichTextEditor
+                  label="Subject Option 3"
+                  value={data?.subject_option_3 || ''}
+                  onChange={(value) => handleRichTextChange('subject_option_3', value)}
+                  placeholder="Enter subject option 3"
+                />
+                <RichTextEditor
+                  label="Subject Option 4"
+                  value={data?.subject_option_4 || ''}
+                  onChange={(value) => handleRichTextChange('subject_option_4', value)}
+                  placeholder="Enter subject option 4"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'subject-options'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'subject-options' ? 'Saving...' : 'Save Subject Options'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Submit Button Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Submit Button</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('submit-button'); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Submit Button Text"
+                value={data?.submit_button_text || ''}
+                onChange={(value) => handleRichTextChange('submit_button_text', value)}
+                placeholder="Enter submit button text"
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'submit-button'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'submit-button' ? 'Saving...' : 'Save Submit Button'}
+                </button>
               </div>
             </form>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

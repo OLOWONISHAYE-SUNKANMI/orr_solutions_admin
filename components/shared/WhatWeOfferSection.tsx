@@ -2,6 +2,13 @@
 import { useEffect, useRef } from "react";
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 interface OfferCard {
   title: string;
   description: string;
@@ -20,9 +27,10 @@ interface WhatWeOfferSectionProps {
 function OfferCard({ title, description, icon, features, onUpdate, index }: OfferCard & { onUpdate: (index: number, field: string, value: string) => void, index: number }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const handleSave = (field: string) => async (content: string) => {
-    onUpdate(index, field, content);
-    console.log('Saving content:', content);
+  const handleSave = (field: string) => async (content: string | RichTextData) => {
+    const contentString = typeof content === 'string' ? content : content.content;
+    onUpdate(index, field, contentString);
+    console.log('Saving content:', contentString);
   };
 
   useEffect(() => {
@@ -70,11 +78,12 @@ function OfferCard({ title, description, icon, features, onUpdate, index }: Offe
             <li key={featureIndex} className="animate-text-pop" style={{animationDelay: `${featureIndex * 0.1}s`}}>
               • <EditableText
                 content={feature}
-                onSave={async (content: string) => {
+                onSave={async (content: string | RichTextData) => {
+                  const contentString = typeof content === 'string' ? content : content.content;
                   const newFeatures = [...features];
-                  newFeatures[featureIndex] = content;
+                  newFeatures[featureIndex] = contentString;
                   onUpdate(index, 'features', JSON.stringify(newFeatures));
-                  console.log('Saving feature:', content);
+                  console.log('Saving feature:', contentString);
                 }}
                 className="inline"
                 tag="span"
@@ -90,9 +99,10 @@ function OfferCard({ title, description, icon, features, onUpdate, index }: Offe
 export default function WhatWeOfferSection({ title, offers, layout = 'flex', onUpdateOffer, onUpdateTitle }: WhatWeOfferSectionProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
 
-  const handleTitleSave = async (content: string) => {
+  const handleTitleSave = async (content: string | RichTextData) => {
     if (onUpdateTitle) {
-      onUpdateTitle(content);
+      const contentString = typeof content === 'string' ? content : content.content;
+      onUpdateTitle(contentString);
     }
   };
 

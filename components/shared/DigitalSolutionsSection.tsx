@@ -3,6 +3,13 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 interface DigitalSolutionsSectionProps {
   title: string;
   subtitle?: string;
@@ -25,17 +32,18 @@ export default function DigitalSolutionsSection({
   const leftColRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
 
-  const handleSave = async (content: string, field?: string, index?: number) => {
+  const handleSave = async (content: string | RichTextData, field?: string, index?: number) => {
+    const contentToSave = typeof content === 'string' ? content : content.content;
     if (onUpdate) {
       const updatedData = { title, subtitle, description, imageAlt, whoIsThisFor: [...whoIsThisFor], features: [...features] };
-      if (field === 'title') updatedData.title = content;
-      else if (field === 'subtitle') updatedData.subtitle = content;
-      else if (field === 'description') updatedData.description = content;
-      else if (field === 'who-item' && typeof index === 'number') updatedData.whoIsThisFor[index] = content;
-      else if (field === 'feature-item' && typeof index === 'number') updatedData.features[index] = content;
+      if (field === 'title') updatedData.title = contentToSave;
+      else if (field === 'subtitle') updatedData.subtitle = contentToSave;
+      else if (field === 'description') updatedData.description = contentToSave;
+      else if (field === 'who-item' && typeof index === 'number') updatedData.whoIsThisFor[index] = contentToSave;
+      else if (field === 'feature-item' && typeof index === 'number') updatedData.features[index] = contentToSave;
       await onUpdate(updatedData);
     }
-    console.log('Saving content:', content);
+    console.log('Saving content:', contentToSave);
   };
 
   useEffect(() => {

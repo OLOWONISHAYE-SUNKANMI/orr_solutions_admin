@@ -19,7 +19,13 @@ interface ApiError {
 }
 
 function createApiError(response: Response, errorData: any): ApiError {
-  const baseMessage = errorData?.message || errorData?.detail || `API Error: ${response.status} ${response.statusText}`;
+  // For 500 errors, include the full error details in the message
+  let baseMessage = errorData?.message || errorData?.detail || `API Error: ${response.status} ${response.statusText}`;
+  
+  if (response.status === 500 && errorData) {
+    // Include full error details for 500 errors
+    baseMessage = `Internal Server Error (500): ${JSON.stringify(errorData)}`;
+  }
   
   return {
     message: baseMessage,
@@ -99,6 +105,12 @@ async function apiCall<T>(
       
       const apiError = createApiError(response, errorData);
       
+      // Attach the original response for detailed error handling
+      const error = new Error(apiError.message);
+      (error as any).response = response;
+      (error as any).status = response.status;
+      (error as any).details = errorData;
+      
       // Handle specific HTTP status codes
       switch (response.status) {
         case 401:
@@ -138,6 +150,9 @@ async function apiCall<T>(
           break;
         case 500:
           console.error('🔥 Internal server error');
+      console.error('Full error response:', errorData);
+      console.error('Response status:', response.status);
+      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
           break;
         case 502:
           console.error('🌐 Bad gateway - server is down or unreachable');
@@ -150,7 +165,7 @@ async function apiCall<T>(
       }
       
       logApiError(endpoint, apiError);
-      throw new Error(apiError.message);
+      throw error;
     }
 
     const responseData = await response.json();
@@ -1331,7 +1346,25 @@ export const cmsAPI = {
 
   updateContent: (contentType: string, data: Record<string, any>) => {
     console.log(`[API] Updating CMS content for type '${contentType}':`, data);
-    return apiCall(`/admin-portal/v1/cms/${contentType}/`, {
+    
+    // Handle special content types that need different endpoints
+    let endpoint = `/admin-portal/v1/cms/${contentType}/`;
+    
+    // Map content types to their correct endpoints
+    const endpointMap: Record<string, string> = {
+      'contact-content': '/admin-portal/v1/cms/contact-content/',
+      'services-content': '/admin-portal/v1/cms/services-content/',
+      'resources-content': '/admin-portal/v1/cms/resources-content/',
+      'legal-policy-content': '/admin-portal/v1/cms/legal-policy-content/',
+      'how-we-operate': '/admin-portal/v1/cms/how-we-operate/',
+      'living-systems': '/admin-portal/v1/cms/living-systems/',
+    };
+    
+    if (endpointMap[contentType]) {
+      endpoint = endpointMap[contentType];
+    }
+    
+    return apiCall(endpoint, {
       method: "PUT",
       body: JSON.stringify(data),
     }).catch(error => {

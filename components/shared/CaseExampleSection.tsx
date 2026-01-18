@@ -3,6 +3,13 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 interface CaseExample {
   challenge: string;
   solution: string;
@@ -20,15 +27,16 @@ export default function CaseExampleSection({ caseExample, imageAlt, onUpdate }: 
   const cardsRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
 
-  const handleSave = async (content: string, field?: string) => {
+  const handleSave = async (content: string | RichTextData, field?: string) => {
+    const contentToSave = typeof content === 'string' ? content : content.content;
     if (onUpdate) {
       const updatedData = { ...caseExample, imageAlt };
-      if (field === 'challenge') updatedData.challenge = content;
-      else if (field === 'solution') updatedData.solution = content;
-      else if (field === 'result') updatedData.result = content;
+      if (field === 'challenge') updatedData.challenge = contentToSave;
+      else if (field === 'solution') updatedData.solution = contentToSave;
+      else if (field === 'result') updatedData.result = contentToSave;
       await onUpdate(updatedData);
     }
-    console.log('Saving content:', content);
+    console.log('Saving content:', contentToSave);
   };
 
   useEffect(() => {

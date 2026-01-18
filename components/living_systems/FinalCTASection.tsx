@@ -1,9 +1,17 @@
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 export default function LivingSystemsFinalCTASection() {
-  const handleSave = async (content: string) => {
+  const handleSave = async (content: string | RichTextData) => {
     // TODO: Implement API call to save content
-    console.log('Saving content:', content);
+    const contentToSave = typeof content === 'string' ? content : content.content;
+    console.log('Saving content:', contentToSave);
   };
 
   return (

@@ -73,7 +73,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside className={`w-64 h-screen bg-card text-white flex flex-col justify-between p-4 flex-shrink-0 overflow-y-auto transition-transform duration-300 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0 fixed md:relative z-50 md:z-auto`}>
+      } md:translate-x-0 fixed z-50`}>
         <div>
           <div className="flex items-center px-2 mb-8">
             <img src="/images/logo.svg" alt="ORR Solutions" className="w-fit h-auto" />
@@ -189,8 +189,20 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               open={open.content}
               onClick={() => toggle("content")}
               items={[
-                { label: "Blog & Articles", href: "/content-management" },
-                { label: "Resources Library", href: "/content-management/resources" },
+                { label: "Homepage Content", href: "/content-management" },
+                { label: "How We Operate", href: "/content-management/how-we-operate" },
+                { 
+                  label: "Services", 
+                  href: "/content-management/services",
+                  subItems: [
+                    { label: "Living Systems Regeneration", href: "/content-management/services/living-systems-regeneration" },
+                    { label: "Operational Systems Infrastructure", href: "/content-management/services/operational-systems-infrastructure" },
+                    { label: "Strategy Advisory Compliant", href: "/content-management/services/strategy-advisory-compliant" }
+                  ]
+                },
+                { label: "Resources & Blogs", href: "/content-management/resources-blogs" },
+                { label: "Legal & Policy", href: "/content-management/legal-policy" },
+                { label: "Contact", href: "/content-management/contact" },
                 { label: "Templates (Reports, Contracts, DS)", href: "/content-management/templates" },
                 { label: "Content Drafts", href: "/content-management/drafts" }
               ]}
@@ -336,17 +348,28 @@ function NavItemComponent({
   if (hasSubItems) {
     return (
       <div>
-        <div 
-          onClick={() => toggleSub(item.href)}
-          className={`flex items-center justify-between px-3 py-1 text-sm rounded cursor-pointer hover:bg-primary hover:bg-opacity-10 ${
-            isActive ? "text-lemon" : "text-white"
-          }`}
-        >
-          <span>{item.label}</span>
-          {subOpen[item.href] ? 
-            <ChevronDown size={14} className="transition" /> : 
-            <ChevronRight size={14} className="transition" />
-          }
+        <div className="flex items-center justify-between px-3 py-1 text-sm rounded hover:bg-primary hover:bg-opacity-10">
+          <Link 
+            href={item.href}
+            onClick={onLinkClick}
+            className={`flex-1 ${
+              isActive ? "text-lemon" : "text-white"
+            }`}
+          >
+            {item.label}
+          </Link>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSub(item.href);
+            }}
+            className="p-1 hover:bg-white/10 rounded"
+          >
+            {subOpen[item.href] ? 
+              <ChevronDown size={14} className="transition" /> : 
+              <ChevronRight size={14} className="transition" />
+            }
+          </button>
         </div>
         {subOpen[item.href] && (
           <div className="ml-4 mt-1 space-y-1">

@@ -1,5 +1,12 @@
 import EditableText from '../EditableText';
 
+interface RichTextData {
+  content: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+}
+
 interface NetworkCardProps {
   title: string;
   description: string;
@@ -9,11 +16,12 @@ interface NetworkCardProps {
 }
 
 export default function NetworkCard({ title, description, icon, index = 0, onUpdate }: NetworkCardProps) {
-  const handleSave = async (content: string, field: string) => {
+  const handleSave = async (content: string | RichTextData, field: string) => {
+    const contentString = typeof content === 'string' ? content : content.content;
     if (onUpdate) {
-      await onUpdate(content, field, index);
+      await onUpdate(contentString, field, index);
     }
-    console.log('Saving content:', content);
+    console.log('Saving content:', contentString);
   };
 
   return (

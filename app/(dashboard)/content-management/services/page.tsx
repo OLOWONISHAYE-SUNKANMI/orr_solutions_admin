@@ -1,8 +1,9 @@
 "use client";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import EditableText from '../../../components/cms/EditableText';
+import { useEffect, useState } from "react";
 import { CMSService } from '../../../../lib/cms-api';
+import { Save, Loader, Upload } from 'lucide-react';
+import RichTextEditor from '../../../../components/RichTextEditor';
+import { getRichTextContent } from '../../../../lib/rich-text-utils';
 
 interface ServiceStage {
   id: number;
@@ -47,9 +48,10 @@ interface ServicesData {
 }
 
 export default function Services() {
-  const sectionsRef = useRef<(HTMLElement | null)[]>([]);
   const [data, setData] = useState<ServicesData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
   const cmsService = new CMSService();
 
   useEffect(() => {
@@ -141,344 +143,491 @@ export default function Services() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in-up');
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
 
-    sectionsRef.current.forEach((section) => {
-      if (section) observer.observe(section);
-    });
 
-    return () => observer.disconnect();
-  }, [data]);
+  const validateFieldLength = (value: string, maxLength: number, fieldName: string): boolean => {
+    if (value && value.length > maxLength) {
+      alert(`${fieldName} exceeds maximum length of ${maxLength} characters. Current length: ${value.length}`);
+      return false;
+    }
+    return true;
+  };
 
-  const handleSave = async (field: string, value: string, type: 'page' | 'stage' | 'pillar' = 'page', id?: number) => {
-    if (!data) return;
-    
+  const handleSave = async (section: string, saveData: any) => {
+    setSaving(section);
     try {
-      if (type === 'page') {
-        // Update page fields
-        const updateData = { page: { [field]: value } };
-        await cmsService.updateServicesPageContent(updateData);
-        
-        setData(prev => prev ? {
-          ...prev,
-          page: { ...prev.page, [field]: value }
-        } : null);
-        console.log('✅ Saved page field:', field, value);
-      } else if (type === 'stage' && id) {
-        // Update stage fields
-        const updateData = { [field]: value };
-        await cmsService.updateServiceStage(id, updateData);
-        
-        setData(prev => prev ? {
-          ...prev,
-          stages: prev.stages.map(stage => 
-            stage.id === id ? { ...stage, [field]: value } : stage
-          )
-        } : null);
-        console.log('✅ Saved stage field:', field, value);
-      } else if (type === 'pillar' && id) {
-        // Update pillar fields
-        const updateData = { [field]: value };
-        await cmsService.updateServicePillar(id, updateData);
-        
-        setData(prev => prev ? {
-          ...prev,
-          pillars: prev.pillars.map(pillar => 
-            pillar.id === id ? { ...pillar, [field]: value } : pillar
-          )
-        } : null);
-        console.log('✅ Saved pillar field:', field, value);
+      // Validate field lengths for service stages
+      if (section.startsWith('stage-')) {
+        const stage = saveData;
+        if (!validateFieldLength(stage.title, 100, 'Title') ||
+            !validateFieldLength(stage.subtitle, 100, 'Subtitle') ||
+            !validateFieldLength(stage.button_text, 100, 'Button Text')) {
+          return;
+        }
+        const stageId = parseInt(section.split('-')[1]);
+        await cmsService.updateServiceStage(stageId, saveData);
+      } else if (section.startsWith('pillar-')) {
+        const pillar = saveData;
+        if (!validateFieldLength(pillar.title, 100, 'Title') ||
+            !validateFieldLength(pillar.button_text, 100, 'Button Text')) {
+          return;
+        }
+        const pillarId = parseInt(section.split('-')[1]);
+        await cmsService.updateServicePillar(pillarId, saveData);
+      } else {
+        await cmsService.updateServicesPageContent(saveData);
       }
+      alert('Saved successfully!');
+      const result = await cmsService.getServicesPageContent();
+      setData(result);
     } catch (error) {
-      console.error('❌ Error saving:', error);
+      console.error('Failed to save:', error);
+      alert('Failed to save');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleRichTextChange = (section: string, field: string, value: any) => {
+    if (section === 'page') {
+      setData((prev: any) => ({
+        ...prev,
+        page: {
+          ...prev.page,
+          [field]: value
+        }
+      }));
+    } else if (section.startsWith('stage-')) {
+      const stageId = parseInt(section.replace('stage-', ''));
+      const newStages = data?.stages?.map((s: ServiceStage) => 
+        s.id === stageId ? { ...s, [field]: value } : s
+      ) || [];
+      setData((prev: any) => ({ ...prev, stages: newStages }));
+    } else if (section.startsWith('pillar-')) {
+      const pillarId = parseInt(section.replace('pillar-', ''));
+      const newPillars = data?.pillars?.map((p: ServicePillar) => 
+        p.id === pillarId ? { ...p, [field]: value } : p
+      ) || [];
+      setData((prev: any) => ({ ...prev, pillars: newPillars }));
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploading('business-gp-image');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'your_upload_preset');
+      
+      const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/your_cloud_name/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const uploadResult = await uploadResponse.json();
+      const imageUrl = uploadResult.secure_url;
+      
+      await cmsService.updateServicesPageContent({ page: { business_gp_image: imageUrl } });
+      alert('Image uploaded successfully!');
+      const result = await cmsService.getServicesPageContent();
+      setData(result);
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen text-foreground flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen text-white flex items-center justify-center">
+        <Loader className="animate-spin" size={48} />
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="min-h-screen text-foreground flex items-center justify-center">
-        <div className="text-white text-xl">Error loading content</div>
-      </div>
-    );
-  }
+  const inputClass = "w-full bg-white/10 border border-white/20 rounded-lg px-3 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200";
+  const labelClass = "text-white text-sm mb-2 block";
+  const buttonClass = "bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2";
+  const sectionClass = "bg-gradient-to-br from-white/15 to-white/5 rounded-xl border border-white/10 shadow-lg p-6";
+  const titleClass = "text-2xl font-semibold text-white mb-6";
 
   return (
-    <div className="min-h-screen text-foreground">
-      {/* Navigation */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-card rounded-lg p-4 shadow-lg">
-          <h3 className="text-white font-semibold mb-3">Content Sections</h3>
-          <div className="space-y-2">
-            <a href="/content-management/how-we-operate" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              How We Operate
-            </a>
-            <div className="relative group">
-              <a href="/content-management/services" className="block text-[#33FF99] hover:text-white transition-colors text-sm cursor-pointer">
-                Services ▼
-              </a>
+    <div className="min-h-screen text-white relative overflow-hidden star">
+      <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
+
+      <div className="relative z-10 p-4 md:p-8">
+        <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 flex flex-col gap-6 md:gap-8 border border-white/10 shadow-2xl">
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white">Services Content</h1>
+            <p className="text-gray-400 text-xs md:text-sm mt-2">Manage Services page content, stages, and pillars</p>
+          </div>
+
+          {/* Page Header Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Page Header</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('page-header', { 
+                page: { 
+                  hero_title: data?.page?.hero_title,
+                  hero_subtitle: data?.page?.hero_subtitle,
+                  meta_title: data?.page?.meta_title,
+                  meta_description: data?.page?.meta_description
+                } 
+              }); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Hero Title"
+                value={data?.page?.hero_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'hero_title', value)}
+                placeholder="Enter hero title"
+              />
+              <RichTextEditor
+                label="Hero Subtitle"
+                value={data?.page?.hero_subtitle || ''}
+                onChange={(value) => handleRichTextChange('page', 'hero_subtitle', value)}
+                placeholder="Enter hero subtitle"
+                rows={4}
+              />
+              <RichTextEditor
+                label="Meta Title (SEO)"
+                value={data?.page?.meta_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'meta_title', value)}
+                placeholder="Enter meta title"
+              />
+              <RichTextEditor
+                label="Meta Description (SEO)"
+                value={data?.page?.meta_description || ''}
+                onChange={(value) => handleRichTextChange('page', 'meta_description', value)}
+                placeholder="Enter meta description"
+                rows={3}
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'page-header'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'page-header' ? 'Saving...' : 'Save Page Header'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Service Stages */}
+          {(data?.stages || []).map((stage: ServiceStage) => (
+            <div key={stage.id} className={sectionClass}>
+              <h2 className={titleClass}>Stage {stage.stage_number} - {getRichTextContent(stage.title)}</h2>
+              <form onSubmit={(e) => { 
+                e.preventDefault(); 
+                handleSave(`stage-${stage.id}`, stage); 
+              }} className="flex flex-col gap-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className={labelClass}>Stage Number</label>
+                    <input 
+                      type="number" 
+                      value={stage.stage_number || ''} 
+                      onChange={(e) => {
+                        const newStages = data?.stages?.map((s: ServiceStage) => 
+                          s.id === stage.id ? { ...s, stage_number: parseInt(e.target.value) } : s
+                        ) || [];
+                        setData((prev: any) => ({ ...prev, stages: newStages }));
+                      }} 
+                      className={inputClass} 
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className={labelClass}>Order</label>
+                    <input 
+                      type="number" 
+                      value={stage.order || ''} 
+                      onChange={(e) => {
+                        const newStages = data?.stages?.map((s: ServiceStage) => 
+                          s.id === stage.id ? { ...s, order: parseInt(e.target.value) } : s
+                        ) || [];
+                        setData((prev: any) => ({ ...prev, stages: newStages }));
+                      }} 
+                      className={inputClass} 
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label={`Title (${(stage.title || '').length}/100 characters)`}
+                    value={stage.title || ''}
+                    onChange={(value) => handleRichTextChange(`stage-${stage.id}`, 'title', value)}
+                    placeholder="Enter stage title"
+                  />
+                  {(stage.title || '').length > 100 && (
+                    <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label={`Subtitle (${(stage.subtitle || '').length}/100 characters)`}
+                    value={stage.subtitle || ''}
+                    onChange={(value) => handleRichTextChange(`stage-${stage.id}`, 'subtitle', value)}
+                    placeholder="Enter stage subtitle"
+                  />
+                  {(stage.subtitle || '').length > 100 && (
+                    <p className="text-red-400 text-xs">Subtitle exceeds 100 character limit</p>
+                  )}
+                </div>
+
+                <RichTextEditor
+                  label="Description"
+                  value={stage.description || ''}
+                  onChange={(value) => handleRichTextChange(`stage-${stage.id}`, 'description', value)}
+                  placeholder="Enter stage description"
+                  rows={3}
+                />
+
+                <RichTextEditor
+                  label="Focus Content"
+                  value={stage.focus_content || ''}
+                  onChange={(value) => handleRichTextChange(`stage-${stage.id}`, 'focus_content', value)}
+                  placeholder="Use line breaks for bullet points"
+                  rows={5}
+                />
+
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label={`Button Text (${(stage.button_text || '').length}/100 characters)`}
+                    value={stage.button_text || ''}
+                    onChange={(value) => handleRichTextChange(`stage-${stage.id}`, 'button_text', value)}
+                    placeholder="Enter button text"
+                  />
+                  {(stage.button_text || '').length > 100 && (
+                    <p className="text-red-400 text-xs">Button text exceeds 100 character limit</p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="submit" 
+                    disabled={
+                      saving === `stage-${stage.id}` ||
+                      (stage.title || '').length > 100 ||
+                      (stage.subtitle || '').length > 100 ||
+                      (stage.button_text || '').length > 100
+                    } 
+                    className={buttonClass}
+                  >
+                    <Save size={18} />
+                    {saving === `stage-${stage.id}` ? 'Saving...' : `Save Stage ${stage.stage_number}`}
+                  </button>
+                </div>
+              </form>
             </div>
-            <a href="/content-management/resources-blogs" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Resources & Blogs
-            </a>
-            <a href="/content-management/legal-policy" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Legal & Policy
-            </a>
-            <a href="/content-management/contact" className="block text-[#33FF99] hover:text-white transition-colors text-sm">
-              Contact
-            </a>
+          ))}
+
+          {/* Pillars Section Title */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Pillars Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('pillars-title', { 
+                page: { 
+                  pillars_title: data?.page?.pillars_title
+                } 
+              }); 
+            }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Pillars Section Title"
+                value={data?.page?.pillars_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'pillars_title', value)}
+                placeholder="Enter pillars section title"
+              />
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'pillars-title'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'pillars-title' ? 'Saving...' : 'Save Pillars Title'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Service Pillars */}
+          {(data?.pillars || []).map((pillar: ServicePillar, index: number) => (
+            <div key={pillar.id} className={sectionClass}>
+              <h2 className={titleClass}>Pillar {index + 1} - {getRichTextContent(pillar.title)}</h2>
+              <form onSubmit={(e) => { 
+                e.preventDefault(); 
+                handleSave(`pillar-${pillar.id}`, pillar); 
+              }} className="flex flex-col gap-4">
+                
+                <div className="flex flex-col gap-2">
+                  <label className={labelClass}>Order</label>
+                  <input 
+                    type="number" 
+                    value={pillar.order || ''} 
+                    onChange={(e) => {
+                      const newPillars = data?.pillars?.map((p: ServicePillar) => 
+                        p.id === pillar.id ? { ...p, order: parseInt(e.target.value) } : p
+                      ) || [];
+                      setData((prev: any) => ({ ...prev, pillars: newPillars }));
+                    }} 
+                    className={inputClass} 
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label={`Title (${(pillar.title || '').length}/100 characters)`}
+                    value={pillar.title || ''}
+                    onChange={(value) => handleRichTextChange(`pillar-${pillar.id}`, 'title', value)}
+                    placeholder="Enter pillar title"
+                  />
+                  {(pillar.title || '').length > 100 && (
+                    <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
+                  )}
+                </div>
+
+                <RichTextEditor
+                  label="Description"
+                  value={pillar.description || ''}
+                  onChange={(value) => handleRichTextChange(`pillar-${pillar.id}`, 'description', value)}
+                  placeholder="Enter pillar description"
+                  rows={4}
+                />
+
+                <div className="flex flex-col gap-2">
+                  <RichTextEditor
+                    label={`Button Text (${(pillar.button_text || '').length}/100 characters)`}
+                    value={pillar.button_text || ''}
+                    onChange={(value) => handleRichTextChange(`pillar-${pillar.id}`, 'button_text', value)}
+                    placeholder="Enter button text"
+                  />
+                  {(pillar.button_text || '').length > 100 && (
+                    <p className="text-red-400 text-xs">Button text exceeds 100 character limit</p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="submit" 
+                    disabled={
+                      saving === `pillar-${pillar.id}` ||
+                      (pillar.title || '').length > 100 ||
+                      (pillar.button_text || '').length > 100
+                    } 
+                    className={buttonClass}
+                  >
+                    <Save size={18} />
+                    {saving === `pillar-${pillar.id}` ? 'Saving...' : `Save Pillar ${index + 1}`}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ))}
+
+          {/* Business GP Section */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Business GP Section</h2>
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              handleSave('business-gp', { 
+                page: { 
+                  business_gp_title: data?.page?.business_gp_title,
+                  business_gp_subtitle: data?.page?.business_gp_subtitle,
+                  business_gp_description: data?.page?.business_gp_description,
+                  business_gp_button_text: data?.page?.business_gp_button_text,
+                  business_gp_image: data?.page?.business_gp_image
+                } 
+              }); 
+            }} className="flex flex-col gap-4">
+              
+              {/* Image Upload Section */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <label className={labelClass}>Business GP Image</label>
+                {data?.page?.business_gp_image && (
+                  <div className="mb-4">
+                    <img 
+                      src={data.page.business_gp_image} 
+                      alt="Business GP" 
+                      className="w-full max-w-md h-48 object-cover rounded-lg" 
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                    className="hidden"
+                    id="business-gp-image-upload"
+                  />
+                  <label 
+                    htmlFor="business-gp-image-upload"
+                    className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer flex items-center gap-2"
+                  >
+                    {uploading === 'business-gp-image' ? (
+                      <>
+                        <Loader size={16} className="animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Upload Image
+                      </>
+                    )}
+                  </label>
+                  <input 
+                    type="text" 
+                    value={data?.page?.business_gp_image || ''} 
+                    onChange={(e) => setData((prev: any) => ({ ...prev, page: { ...prev.page, business_gp_image: e.target.value } }))}
+                    placeholder="Or paste image URL"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <RichTextEditor
+                label="Title"
+                value={data?.page?.business_gp_title || ''}
+                onChange={(value) => handleRichTextChange('page', 'business_gp_title', value)}
+                placeholder="Enter business GP title"
+              />
+
+              <RichTextEditor
+                label="Subtitle"
+                value={data?.page?.business_gp_subtitle || ''}
+                onChange={(value) => handleRichTextChange('page', 'business_gp_subtitle', value)}
+                placeholder="Enter business GP subtitle"
+              />
+
+              <RichTextEditor
+                label="Description"
+                value={data?.page?.business_gp_description || ''}
+                onChange={(value) => handleRichTextChange('page', 'business_gp_description', value)}
+                placeholder="Enter business GP description"
+                rows={4}
+              />
+
+              <RichTextEditor
+                label="Button Text"
+                value={data?.page?.business_gp_button_text || ''}
+                onChange={(value) => handleRichTextChange('page', 'business_gp_button_text', value)}
+                placeholder="Enter button text"
+              />
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'business-gp'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'business-gp' ? 'Saving...' : 'Save Business GP Section'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .animate-fade-in-up {
-          animation: fadeInUp 0.8s ease-out forwards;
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-
-      {/* Hero Section */}
-      <section 
-        ref={el => { sectionsRef.current[0] = el; }}
-        className="pt-32 pb-16 px-6 relative min-h-[80vh] flex items-center"
-      >
-        <div className="absolute inset-0" />
-        <div className="absolute inset-0 bg-[url('/stars.svg')] bg-cover opacity-30 pointer-events-none" />
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <EditableText
-            content={data.page.hero_title}
-            onSave={(newText) => handleSave('hero_title', newText)}
-            tag="h1"
-            className="text-4xl md:text-6xl font-bold mb-8 leading-tight"
-            placeholder="Enter title..."
-          />
-          <EditableText
-            content={data.page.hero_subtitle}
-            onSave={(newText) => handleSave('hero_subtitle', newText)}
-            tag="p"
-            className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed"
-            placeholder="Enter description..."
-            multiline
-          />
-        </div>
-      </section>
-
-      {/* Process Stages */}
-      <section 
-        ref={el => { sectionsRef.current[1] = el; }}
-        className="py-16 px-6"
-      >
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 md:grid-rows-2">
-            {data.stages.slice(0, 4).map((stage, index) => (
-              <div key={stage.id} className="bg-slate-700 rounded-2xl p-8 text-white flex flex-col">
-                <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <EditableText
-                  content={stage.title}
-                  onSave={(newText) => handleSave('title', newText, 'stage', stage.id)}
-                  tag="h2"
-                  className="text-xl font-bold mb-4"
-                  placeholder="Enter stage title..."
-                />
-                <EditableText
-                  content={stage.subtitle}
-                  onSave={(newText) => handleSave('subtitle', newText, 'stage', stage.id)}
-                  tag="h3"
-                  className="text-lg font-semibold mb-4"
-                  placeholder="Enter subtitle..."
-                />
-                <EditableText
-                  content={stage.description}
-                  onSave={(newText) => handleSave('description', newText, 'stage', stage.id)}
-                  tag="p"
-                  className="text-gray-300 text-sm mb-6"
-                  placeholder="Enter description..."
-                  multiline
-                />
-                <div className="text-gray-300 text-sm mb-8 flex-grow">
-                  <EditableText
-                    content={stage.focus_content}
-                    onSave={(newText) => handleSave('focus_content', newText, 'stage', stage.id)}
-                    tag="div"
-                    className="whitespace-pre-line"
-                    placeholder="Enter focus content..."
-                    multiline
-                  />
-                </div>
-                <button className="w-full bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-emerald-600 transition-colors mt-auto cursor-pointer">
-                  <EditableText content={stage.button_text} onSave={(newText) => handleSave('button_text', newText, 'stage', stage.id)} tag="span" className="" placeholder="Enter button text..." />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Stage 5 - Grow (Full Width) */}
-          {data.stages[4] && (
-            <div className="bg-slate-700 rounded-2xl p-8 text-white max-w-[600px] mx-auto">
-              <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <EditableText
-                content={data.stages[4].title}
-                onSave={(newText) => handleSave('title', newText, 'stage', data.stages[4].id)}
-                tag="h2"
-                className="text-xl font-bold mb-4"
-                placeholder="Enter stage title..."
-              />
-              <EditableText
-                content={data.stages[4].subtitle}
-                onSave={(newText) => handleSave('subtitle', newText, 'stage', data.stages[4].id)}
-                tag="h3"
-                className="text-lg font-semibold mb-4"
-                placeholder="Enter subtitle..."
-              />
-              <EditableText
-                content={data.stages[4].description}
-                onSave={(newText) => handleSave('description', newText, 'stage', data.stages[4].id)}
-                tag="p"
-                className="text-gray-300 text-sm mb-6"
-                placeholder="Enter description..."
-                multiline
-              />
-              <div className="text-gray-300 text-sm mb-8">
-                <EditableText
-                  content={data.stages[4].focus_content}
-                  onSave={(newText) => handleSave('focus_content', newText, 'stage', data.stages[4].id)}
-                  tag="div"
-                  className="whitespace-pre-line"
-                  placeholder="Enter focus content..."
-                  multiline
-                />
-              </div>
-              <button className="w-full bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-emerald-600 transition-colors cursor-pointer">
-                <EditableText content={data.stages[4].button_text} onSave={(newText) => handleSave('button_text', newText, 'stage', data.stages[4].id)} tag="span" className="" placeholder="Enter button text..." />
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* The Three Pillars */}
-      <section 
-        ref={el => { sectionsRef.current[2] = el; }}
-        className="py-20 px-6 bg-gradient-to-br from-emerald-600 to-emerald-800 min-h-[80vh] flex items-center"
-      >
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <EditableText
-              content={data.page.pillars_title}
-              onSave={(newText) => handleSave('pillars_title', newText)}
-              tag="h2"
-              className="text-4xl font-bold text-white"
-              placeholder="Enter title..."
-            />
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {data.pillars.map((pillar) => (
-              <div key={pillar.id} className="bg-black rounded-2xl px-8 py-12 text-white flex flex-col min-h-[300px]">
-                <EditableText
-                  content={pillar.title}
-                  onSave={(newText) => handleSave('title', newText, 'pillar', pillar.id)}
-                  tag="h3"
-                  className="text-3xl font-bold mb-8 text-center"
-                  placeholder="Enter title..."
-                />
-                <EditableText
-                  content={pillar.description}
-                  onSave={(newText) => handleSave('description', newText, 'pillar', pillar.id)}
-                  tag="p"
-                  className="text-gray-300 text-xl mb-8 text-center flex-grow"
-                  placeholder="Enter description..."
-                  multiline
-                />
-                <button className="w-full bg-gradient-primary text-[#204460] font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity mt-8 cursor-pointer">
-                  <EditableText content={pillar.button_text} onSave={(newText) => handleSave('button_text', newText, 'pillar', pillar.id)} tag="span" className="" placeholder="Enter button text..." />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Business GP Section */}
-      <section 
-        ref={el => { sectionsRef.current[3] = el; }}
-        className="py-20 px-6 bg-background star relative min-h-[80vh] flex items-center"
-      >
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <EditableText
-                content={data.page.business_gp_title}
-                onSave={(newText) => handleSave('business_gp_title', newText)}
-                tag="h2"
-                className="text-4xl font-bold text-white mb-6"
-                placeholder="Enter title..."
-              />
-              <EditableText
-                content={data.page.business_gp_subtitle}
-                onSave={(newText) => handleSave('business_gp_subtitle', newText)}
-                tag="h3"
-                className="text-4xl font-bold mb-8 text-white"
-                placeholder="Enter subtitle..."
-              />
-              <EditableText
-                content={data.page.business_gp_description}
-                onSave={(newText) => handleSave('business_gp_description', newText)}
-                tag="p"
-                className="text-gray-300 text-xl mb-8"
-                placeholder="Enter description..."
-                multiline
-              />
-              <button className="bg-gradient-primary text-[#204460] px-12 py-4 rounded-lg text-lg font-semibold hover:bg-green-600 transition-colors">
-                <EditableText content={data.page.business_gp_button_text} onSave={(newText) => handleSave('business_gp_button_text', newText)} tag="span" className="" placeholder="Enter button text..." />
-              </button>
-            </div>
-            <div>
-              <img 
-                src={data.page.business_gp_image}
-                alt="Business handshake" 
-                className="w-full h-auto rounded-lg"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
