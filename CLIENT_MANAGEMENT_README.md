@@ -1,7 +1,7 @@
 # Client Management System
 
 ## Overview
-The Client Management system provides a comprehensive interface for managing client profiles, portal access, and engagement tracking. It consumes the backend API at `https://orr-backend-web-latest.onrender.com/admin-portal/v1/clients/` and provides a modern, responsive UI for client administration.
+The Client Management system provides a comprehensive interface for managing client profiles, portal access, and engagement tracking. It consumes the backend API at `https://orr-backend.orr.solutions/admin-portal/v1/clients/` and provides a modern, responsive UI for client administration.
 
 ## Features
 
@@ -33,8 +33,8 @@ The Client Management system provides a comprehensive interface for managing cli
 ### Base Configuration
 ```typescript
 // Environment Variables
-NEXT_PUBLIC_API_URL=https://orr-backend-web-latest.onrender.com
-NEXT_PUBLIC_CLIENT_MANAGEMENT_URL=https://orr-backend-web-latest.onrender.com/client-management
+NEXT_PUBLIC_API_URL=https://orr-backend.orr.solutions
+NEXT_PUBLIC_CLIENT_MANAGEMENT_URL=https://orr-backend.orr.solutions/client-management
 ```
 
 ### API Endpoints Used
@@ -310,7 +310,7 @@ await clientService.updateClient(clientId, updateData);
 
 ### Environment Setup
 1. Set environment variables in `.env.local`
-2. Ensure backend API is running on `https://orr-backend-web-latest.onrender.com`
+2. Ensure backend API is running on `https://orr-backend.orr.solutions`
 3. Start frontend development server: `npm run dev`
 4. Access client management at `http://localhost:3000/client-management`
 

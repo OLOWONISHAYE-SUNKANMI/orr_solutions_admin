@@ -54,8 +54,8 @@ export default function PaymentsBillingPage() {
 
       console.log('Fetching billing data...');
       const [statsRes, historyRes] = await Promise.all([
-        fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/billing-history/stats/'),
-        fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/billing-history/?${queryParams}`)
+        fetch('https://orr-backend.orr.solutions/admin-portal/v1/billing-history/stats/'),
+        fetch(`https://orr-backend.orr.solutions/admin-portal/v1/billing-history/?${queryParams}`)
       ]);
       
       console.log('Stats response status:', statsRes.status);

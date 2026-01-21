@@ -30,7 +30,7 @@ export default function AutoReplySettingsPage() {
     try {
       setLoading(true);
       
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/auto-reply-templates/', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/tickets/auto-reply-templates/', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
