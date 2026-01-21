@@ -65,7 +65,7 @@ export default function StrategyAdvisoryPage() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/strategic-advisory/');
+        const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/strategic-advisory/');
         if (!response.ok) {
           throw new Error('Failed to fetch content');
         }
@@ -85,7 +85,7 @@ export default function StrategyAdvisoryPage() {
   const handleSave = async (section: string) => {
     setSaving(section);
     try {
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/strategic-advisory/', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/strategic-advisory/', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

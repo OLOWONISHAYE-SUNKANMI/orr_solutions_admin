@@ -88,8 +88,8 @@ export default function FunnelReportsPage() {
     const fetchData = async () => {
       try {
         const [conversionRes, timeRes] = await Promise.all([
-          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/funnel-reports/conversion-funnel/'),
-          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/funnel-reports/time-based-funnel/')
+          fetch('https://orr-backend.orr.solutions/admin-portal/v1/funnel-reports/conversion-funnel/'),
+          fetch('https://orr-backend.orr.solutions/admin-portal/v1/funnel-reports/time-based-funnel/')
         ]);
         
         if (conversionRes.ok && timeRes.ok) {

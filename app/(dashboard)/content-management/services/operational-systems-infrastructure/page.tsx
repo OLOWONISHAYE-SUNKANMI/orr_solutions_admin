@@ -44,7 +44,7 @@ export default function OperationalSystemsPage() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/operational-systems/');
+        const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/operational-systems/');
         if (!response.ok) {
           throw new Error('Failed to fetch content');
         }
@@ -64,7 +64,7 @@ export default function OperationalSystemsPage() {
   const handleSave = async (section: string) => {
     setSaving(section);
     try {
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/operational-systems/', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/operational-systems/', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

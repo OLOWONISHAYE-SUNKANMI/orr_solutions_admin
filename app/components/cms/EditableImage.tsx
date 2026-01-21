@@ -12,7 +12,7 @@ interface EditableImageProps {
   fill?: boolean;
 }
 
-const API_BASE_URL = 'https://orr-backend-web-latest.onrender.com';
+const API_BASE_URL = 'https://orr-backend.orr.solutions';
 
 export default function EditableImage({
   src,
