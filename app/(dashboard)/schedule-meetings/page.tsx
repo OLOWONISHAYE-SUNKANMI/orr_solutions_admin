@@ -159,7 +159,7 @@ function page() {
               )}
             </div>
 
-            <div className="flex flex-col xl:grid xl:grid-cols-[320px_1fr] gap-4 lg:gap-6">
+            <div className="flex flex-col overflow-x-auto xl:grid xl:grid-cols-[320px_1fr] gap-4 lg:gap-6">
               {/* Left Sidebar - Meeting Requests List */}
               <div className="flex flex-col gap-4 max-h-[280px] xl:max-h-[600px] overflow-y-auto order-2 xl:order-1">
                 <div>
