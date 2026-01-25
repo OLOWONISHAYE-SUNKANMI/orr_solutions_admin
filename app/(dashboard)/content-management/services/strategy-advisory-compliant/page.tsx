@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Save, Loader, Upload } from 'lucide-react';
 import RichTextEditor from '../../../../../components/RichTextEditor';
 import { cleanContentObject } from '../../../../utils/htmlCleaner';
+import SuccessModal from '../../../../components/ui/SuccessModal';
+import ErrorModal from '../../../../components/ui/ErrorModal';
 
 interface StrategicAdvisoryContent {
   hero_title: string;
@@ -59,13 +61,14 @@ export default function StrategyAdvisoryPage() {
   const [content, setContent] = useState<StrategicAdvisoryContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-
   const [error, setError] = useState<string | null>(null);
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/strategic-advisory/');
+        const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/strategic-advisory/');
         if (!response.ok) {
           throw new Error('Failed to fetch content');
         }
@@ -85,7 +88,7 @@ export default function StrategyAdvisoryPage() {
   const handleSave = async (section: string) => {
     setSaving(section);
     try {
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/strategic-advisory/', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/strategic-advisory/', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -94,11 +97,19 @@ export default function StrategyAdvisoryPage() {
       });
       
       if (response.ok) {
-        alert('Saved successfully!');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Content Saved',
+          message: 'Your changes have been saved successfully!'
+        });
       }
     } catch (err) {
       console.error('Failed to update content:', err);
-      alert('Failed to save');
+      setErrorModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: 'Failed to save content'
+      });
     } finally {
       setSaving(null);
     }
@@ -571,6 +582,20 @@ export default function StrategyAdvisoryPage() {
 
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

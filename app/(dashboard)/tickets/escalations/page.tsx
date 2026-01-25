@@ -19,7 +19,7 @@ export default function EscalationsPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/?source=ai_escalation', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/tickets/?source=ai_escalation', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }

@@ -20,7 +20,7 @@ export default function ClientMessagesPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/?source=manual_request', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/tickets/?source=manual_request', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
@@ -46,7 +46,7 @@ export default function ClientMessagesPage() {
     try {
       setSendingReply(ticketId);
       
-      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/${ticketId}/auto-reply/`, {
+      const response = await fetch(`https://orr-backend.orr.solutions/admin-portal/v1/tickets/${ticketId}/auto-reply/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,

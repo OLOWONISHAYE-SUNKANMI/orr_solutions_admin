@@ -19,7 +19,7 @@ export default function InternalCommsPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/tickets/my-tickets/', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/tickets/my-tickets/', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }

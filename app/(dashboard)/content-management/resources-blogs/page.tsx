@@ -5,6 +5,8 @@ import { CMSService } from '../../../../lib/cms-api';
 import { Save, Loader, Upload } from 'lucide-react';
 import RichTextEditor from '../../../../components/RichTextEditor';
 import { cleanContentObject } from '../../../utils/htmlCleaner';
+import SuccessModal from '../../../components/ui/SuccessModal';
+import ErrorModal from '../../../components/ui/ErrorModal';
 
 interface ContentCard {
   id: number;
@@ -40,6 +42,8 @@ export default function ResourcesBlogs() {
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const cmsService = new CMSService();
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,10 +100,18 @@ export default function ResourcesBlogs() {
       } else {
         await cmsService.updateResourcesBlogsPageContent(saveData);
       }
-      alert('Saved successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Content Saved',
+        message: 'Your changes have been saved successfully!'
+      });
     } catch (error) {
       console.error('Failed to save:', error);
-      alert('Failed to save');
+      setErrorModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: 'Failed to save content'
+      });
     } finally {
       setSaving(null);
     }
@@ -121,7 +133,11 @@ export default function ResourcesBlogs() {
       const imageUrl = uploadResult.secure_url;
       
       await cmsService.updateContentCard(cardId, { image_url: imageUrl });
-      alert('Image uploaded successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Image Uploaded',
+        message: 'Image uploaded successfully!'
+      });
       
       // Update only the specific card's image URL without refetching all data
       const newCards = data?.cards?.map((c: ContentCard) => 
@@ -130,7 +146,11 @@ export default function ResourcesBlogs() {
       setData((prev: any) => ({ ...prev, cards: newCards }));
     } catch (error) {
       console.error('Failed to upload image:', error);
-      alert('Failed to upload image');
+      setErrorModal({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: 'Failed to upload image'
+      });
     } finally {
       setUploading(null);
     }
@@ -424,6 +444,20 @@ export default function ResourcesBlogs() {
           ))}
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

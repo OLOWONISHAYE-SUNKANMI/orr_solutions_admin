@@ -5,6 +5,8 @@ import { Save, Loader, Upload } from 'lucide-react';
 import RichTextEditor from '../../../../../components/RichTextEditor';
 import { cmsAPI } from '../../../../services/api';
 import { cleanContentObject } from '../../../../utils/htmlCleaner';
+import SuccessModal from '../../../../components/ui/SuccessModal';
+import ErrorModal from '../../../../components/ui/ErrorModal';
 
 interface LivingSystemsContent {
   hero_title: string;
@@ -38,6 +40,8 @@ export default function LivingSystemsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -61,11 +65,19 @@ export default function LivingSystemsPage() {
     try {
       // Remove field length validation - let backend handle it
       await cmsAPI.updateLivingSystemsContent(content!);
-      alert('Saved successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Content Saved',
+        message: 'Your changes have been saved successfully!'
+      });
     } catch (err: any) {
       console.error('Failed to update content:', err);
       const errorMessage = err?.message || 'Failed to save';
-      alert(`Failed to save: ${errorMessage}`);
+      setErrorModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: `Failed to save: ${errorMessage}`
+      });
     } finally {
       setSaving(null);
     }
@@ -94,10 +106,18 @@ export default function LivingSystemsPage() {
       const imageUrl = uploadResult.secure_url;
       
       setContent((prev: any) => ({ ...prev, case_image_url: imageUrl }));
-      alert('Image uploaded successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Image Uploaded',
+        message: 'Image uploaded successfully!'
+      });
     } catch (error) {
       console.error('Failed to upload image:', error);
-      alert('Failed to upload image');
+      setErrorModal({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: 'Failed to upload image'
+      });
     } finally {
       setUploading(null);
     }
@@ -434,6 +454,20 @@ export default function LivingSystemsPage() {
           </div>
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

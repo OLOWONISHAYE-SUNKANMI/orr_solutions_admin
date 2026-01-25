@@ -50,8 +50,8 @@ export default function BehaviourAnalyticsPage() {
     const fetchData = async () => {
       try {
         const [behaviorRes, journeyRes] = await Promise.all([
-          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/behavior-analytics/user-behavior/'),
-          fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/behavior-analytics/user-journey/')
+          fetch('https://orr-backend.orr.solutions/admin-portal/v1/behavior-analytics/user-behavior/'),
+          fetch('https://orr-backend.orr.solutions/admin-portal/v1/behavior-analytics/user-journey/')
         ]);
         
         if (behaviorRes.ok && journeyRes.ok) {

@@ -15,7 +15,7 @@ export default function ContentManagement() {
     const fetchData = async () => {
       if (isAuthenticated) {
         try {
-          const endpoint = `https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/all-content/`;
+          const endpoint = `https://orr-backend.orr.solutions/admin-portal/v1/cms/all-content/`;
           const [roleData, allContentResponse] = await Promise.all([
             cmsAPI.getUserRole(),
             fetch(endpoint)

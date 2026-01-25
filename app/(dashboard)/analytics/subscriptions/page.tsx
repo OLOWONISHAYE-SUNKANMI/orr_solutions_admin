@@ -10,7 +10,7 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/subscriptions/management/');
+        const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/subscriptions/management/');
         if (response.ok) {
           const result = await response.json();
           setData(result.data || result);
