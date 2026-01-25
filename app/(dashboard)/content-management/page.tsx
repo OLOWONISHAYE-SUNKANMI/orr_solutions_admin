@@ -166,16 +166,13 @@ export default function ContentManagement() {
 
   const getStringValue = (value: any): string => {
     if (typeof value === 'string') return value;
-    if (value && typeof value === 'object' && value.content) return value.content;
-    if (value && typeof value === 'object') {
-      // Handle old object format completely
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return '';
-      }
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object' && value !== null) {
+      if (value.content) return String(value.content);
+      if (value.format !== undefined) return String(value.content || '');
+      return '';
     }
-    return '';
+    return String(value || '');
   };
 
   const cleanObjectData = (obj: any) => {
@@ -237,23 +234,23 @@ export default function ContentManagement() {
           {/* Hero Section */}
           <div className={sectionClass}>
             <h2 className={titleClass}>Hero Section</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('homepage', { hero_title: content?.homepage?.hero_title, hero_subtitle: content?.homepage?.hero_subtitle, hero_cta_text: content?.homepage?.hero_cta_text }); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('homepage', { hero_title: getStringValue(content?.homepage?.hero_title), hero_subtitle: getStringValue(content?.homepage?.hero_subtitle), hero_cta_text: getStringValue(content?.homepage?.hero_cta_text) }); }} className="flex flex-col gap-4">
               <RichTextEditor
                 label="Hero Title"
-                value={content?.homepage?.hero_title}
+                value={getStringValue(content?.homepage?.hero_title)}
                 onChange={(value) => handleRichTextChange('homepage', 'hero_title', value)}
                 placeholder="Enter hero title"
               />
               <RichTextEditor
                 label="Hero Subtitle"
-                value={content?.homepage?.hero_subtitle}
+                value={getStringValue(content?.homepage?.hero_subtitle)}
                 onChange={(value) => handleRichTextChange('homepage', 'hero_subtitle', value)}
                 placeholder="Enter hero subtitle"
                 rows={3}
               />
               <RichTextEditor
                 label="CTA Button Text"
-                value={content?.homepage?.hero_cta_text}
+                value={getStringValue(content?.homepage?.hero_cta_text)}
                 onChange={(value) => handleRichTextChange('homepage', 'hero_cta_text', value)}
                 placeholder="Enter CTA text"
               />
@@ -269,10 +266,10 @@ export default function ContentManagement() {
           {/* Pillars Section */}
           <div className={sectionClass}>
             <h2 className={titleClass}>Pillars Section</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillars_title: content?.servicesPage?.pillars_title }); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillars_title: getStringValue(content?.servicesPage?.pillars_title) }); }} className="flex flex-col gap-4">
               <RichTextEditor
                 label="Pillars Section Title"
-                value={content?.servicesPage?.pillars_title || ''}
+                value={getStringValue(content?.servicesPage?.pillars_title)}
                 onChange={(value) => handleRichTextChange('servicesPage', 'pillars_title', value)}
                 placeholder="Enter pillars section title"
               />
@@ -288,25 +285,25 @@ export default function ContentManagement() {
           {/* Pillar 1 - Digital Systems, Automation & AI */}
           <div className={sectionClass}>
             <h2 className={titleClass}>Pillar 1 - Digital Systems, Automation & AI</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_1_title: content?.servicesPage?.pillar_1_title, pillar_1_description: content?.servicesPage?.pillar_1_description }); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_1_title: getStringValue(content?.servicesPage?.pillar_1_title), pillar_1_description: getStringValue(content?.servicesPage?.pillar_1_description) }); }} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <label className={labelClass}>Order</label>
                 <input type="number" value="1" readOnly className={inputClass} />
               </div>
               <div className="flex flex-col gap-2">
                 <RichTextEditor
-                  label={`Title (${(content?.servicesPage?.pillar_1_title || '').length}/100 characters)`}
-                  value={content?.servicesPage?.pillar_1_title || ''}
+                  label={`Title (${getStringValue(content?.servicesPage?.pillar_1_title).length}/100 characters)`}
+                  value={getStringValue(content?.servicesPage?.pillar_1_title)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_title', value)}
                   placeholder="Enter pillar 1 title"
                 />
-                {(content?.servicesPage?.pillar_1_title || '').length > 100 && (
+                {getStringValue(content?.servicesPage?.pillar_1_title).length > 100 && (
                   <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
                 )}
               </div>
               <RichTextEditor
                 label="Description"
-                value={content?.servicesPage?.pillar_1_description || ''}
+                value={getStringValue(content?.servicesPage?.pillar_1_description)}
                 onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_description', value)}
                 placeholder="Enter pillar 1 description"
                 rows={3}
@@ -331,25 +328,25 @@ export default function ContentManagement() {
           {/* Pillar 2 - Strategic Advisory & Compliance */}
           <div className={sectionClass}>
             <h2 className={titleClass}>Pillar 2 - Strategic Advisory & Compliance</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_2_title: content?.servicesPage?.pillar_2_title, pillar_2_description: content?.servicesPage?.pillar_2_description }); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_2_title: getStringValue(content?.servicesPage?.pillar_2_title), pillar_2_description: getStringValue(content?.servicesPage?.pillar_2_description) }); }} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <label className={labelClass}>Order</label>
                 <input type="number" value="2" readOnly className={inputClass} />
               </div>
               <div className="flex flex-col gap-2">
                 <RichTextEditor
-                  label={`Title (${(content?.servicesPage?.pillar_2_title || '').length}/100 characters)`}
-                  value={content?.servicesPage?.pillar_2_title || ''}
+                  label={`Title (${getStringValue(content?.servicesPage?.pillar_2_title).length}/100 characters)`}
+                  value={getStringValue(content?.servicesPage?.pillar_2_title)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_title', value)}
                   placeholder="Enter pillar 2 title"
                 />
-                {(content?.servicesPage?.pillar_2_title || '').length > 100 && (
+                {getStringValue(content?.servicesPage?.pillar_2_title).length > 100 && (
                   <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
                 )}
               </div>
               <RichTextEditor
                 label="Description"
-                value={content?.servicesPage?.pillar_2_description || ''}
+                value={getStringValue(content?.servicesPage?.pillar_2_description)}
                 onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_description', value)}
                 placeholder="Enter pillar 2 description"
                 rows={3}
@@ -374,25 +371,25 @@ export default function ContentManagement() {
           {/* Pillar 3 - Living Systems & Regeneration */}
           <div className={sectionClass}>
             <h2 className={titleClass}>Pillar 3 - Living Systems & Regeneration</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_3_title: content?.servicesPage?.pillar_3_title, pillar_3_description: content?.servicesPage?.pillar_3_description }); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_3_title: getStringValue(content?.servicesPage?.pillar_3_title), pillar_3_description: getStringValue(content?.servicesPage?.pillar_3_description) }); }} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <label className={labelClass}>Order</label>
                 <input type="number" value="3" readOnly className={inputClass} />
               </div>
               <div className="flex flex-col gap-2">
                 <RichTextEditor
-                  label={`Title (${(content?.servicesPage?.pillar_3_title || '').length}/100 characters)`}
-                  value={content?.servicesPage?.pillar_3_title || ''}
+                  label={`Title (${getStringValue(content?.servicesPage?.pillar_3_title).length}/100 characters)`}
+                  value={getStringValue(content?.servicesPage?.pillar_3_title)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_title', value)}
                   placeholder="Enter pillar 3 title"
                 />
-                {(content?.servicesPage?.pillar_3_title || '').length > 100 && (
+                {getStringValue(content?.servicesPage?.pillar_3_title).length > 100 && (
                   <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
                 )}
               </div>
               <RichTextEditor
                 label="Description"
-                value={content?.servicesPage?.pillar_3_description || ''}
+                value={getStringValue(content?.servicesPage?.pillar_3_description)}
                 onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_description', value)}
                 placeholder="Enter pillar 3 description"
                 rows={3}
@@ -428,30 +425,30 @@ export default function ContentManagement() {
           {/* Approach Section */}
           <div className={sectionClass}>
             <h2 className={titleClass}>Approach Section</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('approach-section', { title: content?.approachSection?.title, paragraph_1: content?.approachSection?.paragraph_1, paragraph_2: content?.approachSection?.paragraph_2, paragraph_3: content?.approachSection?.paragraph_3 }); }} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('approach-section', { title: getStringValue(content?.approachSection?.title), paragraph_1: getStringValue(content?.approachSection?.paragraph_1), paragraph_2: getStringValue(content?.approachSection?.paragraph_2), paragraph_3: getStringValue(content?.approachSection?.paragraph_3) }); }} className="flex flex-col gap-4">
               <RichTextEditor
                 label="Section Title"
-                value={content?.approachSection?.title}
+                value={getStringValue(content?.approachSection?.title)}
                 onChange={(value) => handleRichTextChange('approachSection', 'title', value)}
                 placeholder="Enter section title"
               />
               <RichTextEditor
                 label="Paragraph 1"
-                value={content?.approachSection?.paragraph_1}
+                value={getStringValue(content?.approachSection?.paragraph_1)}
                 onChange={(value) => handleRichTextChange('approachSection', 'paragraph_1', value)}
                 placeholder="Enter first paragraph"
                 rows={4}
               />
               <RichTextEditor
                 label="Paragraph 2"
-                value={content?.approachSection?.paragraph_2}
+                value={getStringValue(content?.approachSection?.paragraph_2)}
                 onChange={(value) => handleRichTextChange('approachSection', 'paragraph_2', value)}
                 placeholder="Enter second paragraph"
                 rows={4}
               />
               <RichTextEditor
                 label="Paragraph 3"
-                value={content?.approachSection?.paragraph_3}
+                value={getStringValue(content?.approachSection?.paragraph_3)}
                 onChange={(value) => handleRichTextChange('approachSection', 'paragraph_3', value)}
                 placeholder="Enter third paragraph"
                 rows={4}
@@ -472,13 +469,13 @@ export default function ContentManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <RichTextEditor
                   label="Section Title"
-                  value={content?.businessSystemSection?.title}
+                  value={getStringValue(content?.businessSystemSection?.title)}
                   onChange={(value) => handleRichTextChange('businessSystemSection', 'title', value)}
                   placeholder="Enter section title"
                 />
                 <RichTextEditor
                   label="Section Subtitle"
-                  value={content?.businessSystemSection?.subtitle}
+                  value={getStringValue(content?.businessSystemSection?.subtitle)}
                   onChange={(value) => handleRichTextChange('businessSystemSection', 'subtitle', value)}
                   placeholder="Enter section subtitle"
                 />
@@ -489,13 +486,13 @@ export default function ContentManagement() {
                 <div className="flex flex-col gap-3">
                   <RichTextEditor
                     label="Card 1 Title"
-                    value={content?.businessSystemSection?.card_1_title}
+                    value={getStringValue(content?.businessSystemSection?.card_1_title)}
                     onChange={(value) => handleRichTextChange('businessSystemSection', 'card_1_title', value)}
                     placeholder="Enter card 1 title"
                   />
                   <RichTextEditor
                     label="Card 1 Description"
-                    value={content?.businessSystemSection?.card_1_description}
+                    value={getStringValue(content?.businessSystemSection?.card_1_description)}
                     onChange={(value) => handleRichTextChange('businessSystemSection', 'card_1_description', value)}
                     placeholder="Enter card 1 description"
                     rows={3}
@@ -508,13 +505,13 @@ export default function ContentManagement() {
                 <div className="flex flex-col gap-3">
                   <RichTextEditor
                     label="Card 2 Title"
-                    value={content?.businessSystemSection?.card_2_title}
+                    value={getStringValue(content?.businessSystemSection?.card_2_title)}
                     onChange={(value) => handleRichTextChange('businessSystemSection', 'card_2_title', value)}
                     placeholder="Enter card 2 title"
                   />
                   <RichTextEditor
                     label="Card 2 Description"
-                    value={content?.businessSystemSection?.card_2_description}
+                    value={getStringValue(content?.businessSystemSection?.card_2_description)}
                     onChange={(value) => handleRichTextChange('businessSystemSection', 'card_2_description', value)}
                     placeholder="Enter card 2 description"
                     rows={3}
@@ -527,13 +524,13 @@ export default function ContentManagement() {
                 <div className="flex flex-col gap-3">
                   <RichTextEditor
                     label="Card 3 Title"
-                    value={content?.businessSystemSection?.card_3_title}
+                    value={getStringValue(content?.businessSystemSection?.card_3_title)}
                     onChange={(value) => handleRichTextChange('businessSystemSection', 'card_3_title', value)}
                     placeholder="Enter card 3 title"
                   />
                   <RichTextEditor
                     label="Card 3 Description"
-                    value={content?.businessSystemSection?.card_3_description}
+                    value={getStringValue(content?.businessSystemSection?.card_3_description)}
                     onChange={(value) => handleRichTextChange('businessSystemSection', 'card_3_description', value)}
                     placeholder="Enter card 3 description"
                     rows={3}
@@ -556,13 +553,13 @@ export default function ContentManagement() {
             <form onSubmit={(e) => { e.preventDefault(); handleSave('orr-role-section', { title: content?.orrRoleSection?.title, description: content?.orrRoleSection?.description }); }} className="flex flex-col gap-4">
               <RichTextEditor
                 label="Section Title"
-                value={content?.orrRoleSection?.title || ''}
+                value={getStringValue(content?.orrRoleSection?.title)}
                 onChange={(value) => handleRichTextChange('orrRoleSection', 'title', value)}
                 placeholder="Enter section title"
               />
               <RichTextEditor
                 label="Description"
-                value={content?.orrRoleSection?.description || ''}
+                value={getStringValue(content?.orrRoleSection?.description)}
                 onChange={(value) => handleRichTextChange('orrRoleSection', 'description', value)}
                 placeholder="Enter description"
                 rows={5}
@@ -582,13 +579,13 @@ export default function ContentManagement() {
             <form onSubmit={(e) => { e.preventDefault(); handleSave('message-strip', { title: content?.messageStrip?.title, message: content?.messageStrip?.message }); }} className="flex flex-col gap-4">
               <RichTextEditor
                 label="Section Title"
-                value={content?.messageStrip?.title || ''}
+                value={getStringValue(content?.messageStrip?.title)}
                 onChange={(value) => handleRichTextChange('messageStrip', 'title', value)}
                 placeholder="Enter section title"
               />
               <RichTextEditor
                 label="Message"
-                value={content?.messageStrip?.message || ''}
+                value={getStringValue(content?.messageStrip?.message)}
                 onChange={(value) => handleRichTextChange('messageStrip', 'message', value)}
                 placeholder="Enter message"
                 rows={5}
@@ -609,13 +606,13 @@ export default function ContentManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <RichTextEditor
                   label="Section Title"
-                  value={content?.processSection?.title || ''}
+                  value={getStringValue(content?.processSection?.title)}
                   onChange={(value) => handleRichTextChange('processSection', 'title', value)}
                   placeholder="Enter section title"
                 />
                 <RichTextEditor
                   label="Section Subtitle"
-                  value={content?.processSection?.subtitle || ''}
+                  value={getStringValue(content?.processSection?.subtitle)}
                   onChange={(value) => handleRichTextChange('processSection', 'subtitle', value)}
                   placeholder="Enter section subtitle"
                 />
@@ -627,13 +624,13 @@ export default function ContentManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <RichTextEditor
                       label={`Stage ${num} Title`}
-                      value={content?.processSection?.[`stage_${num}_title`]}
+                      value={getStringValue(content?.processSection?.[`stage_${num}_title`])}
                       onChange={(value) => handleRichTextChange('processSection', `stage_${num}_title`, value)}
                       placeholder={`Enter stage ${num} title`}
                     />
                     <RichTextEditor
                       label={`Stage ${num} Description`}
-                      value={content?.processSection?.[`stage_${num}_description`]}
+                      value={getStringValue(content?.processSection?.[`stage_${num}_description`])}
                       onChange={(value) => handleRichTextChange('processSection', `stage_${num}_description`, value)}
                       placeholder={`Enter stage ${num} description`}
                       rows={3}
@@ -657,13 +654,13 @@ export default function ContentManagement() {
             <form onSubmit={(e) => { e.preventDefault(); handleSave('orr-report-section', { title: content?.orrReportSection?.title, subtitle: content?.orrReportSection?.subtitle, feature_1: content?.orrReportSection?.feature_1, feature_2: content?.orrReportSection?.feature_2, feature_3: content?.orrReportSection?.feature_3, feature_4: content?.orrReportSection?.feature_4 }); }} className="flex flex-col gap-4">
               <RichTextEditor
                 label="Section Title"
-                value={content?.orrReportSection?.title || ''}
+                value={getStringValue(content?.orrReportSection?.title)}
                 onChange={(value) => handleRichTextChange('orrReportSection', 'title', value)}
                 placeholder="Enter section title"
               />
               <RichTextEditor
                 label="Section Subtitle"
-                value={content?.orrReportSection?.subtitle || ''}
+                value={getStringValue(content?.orrReportSection?.subtitle)}
                 onChange={(value) => handleRichTextChange('orrReportSection', 'subtitle', value)}
                 placeholder="Enter section subtitle"
                 rows={3}
@@ -671,28 +668,28 @@ export default function ContentManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <RichTextEditor
                   label="Feature 1"
-                  value={content?.orrReportSection?.feature_1 || ''}
+                  value={getStringValue(content?.orrReportSection?.feature_1)}
                   onChange={(value) => handleRichTextChange('orrReportSection', 'feature_1', value)}
                   placeholder="Enter feature 1"
                   rows={2}
                 />
                 <RichTextEditor
                   label="Feature 2"
-                  value={content?.orrReportSection?.feature_2 || ''}
+                  value={getStringValue(content?.orrReportSection?.feature_2)}
                   onChange={(value) => handleRichTextChange('orrReportSection', 'feature_2', value)}
                   placeholder="Enter feature 2"
                   rows={2}
                 />
                 <RichTextEditor
                   label="Feature 3"
-                  value={content?.orrReportSection?.feature_3 || ''}
+                  value={getStringValue(content?.orrReportSection?.feature_3)}
                   onChange={(value) => handleRichTextChange('orrReportSection', 'feature_3', value)}
                   placeholder="Enter feature 3"
                   rows={2}
                 />
                 <RichTextEditor
                   label="Feature 4"
-                  value={content?.orrReportSection?.feature_4 || ''}
+                  value={getStringValue(content?.orrReportSection?.feature_4)}
                   onChange={(value) => handleRichTextChange('orrReportSection', 'feature_4', value)}
                   placeholder="Enter feature 4"
                   rows={2}
@@ -713,16 +710,16 @@ export default function ContentManagement() {
             <div className="flex flex-col gap-4">
               {(content?.faqs || []).map((faq: any, index: number) => (
                 <div key={faq.id || index} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <form onSubmit={(e) => { e.preventDefault(); handleSave(`faqs/${faq.id}`, { question: faq.question, answer: faq.answer }); }} className="flex flex-col gap-3">
+                  <form onSubmit={(e) => { e.preventDefault(); handleSave(`faqs/${faq.id}`, { question: getStringValue(faq.question), answer: getStringValue(faq.answer) }); }} className="flex flex-col gap-3">
                     <RichTextEditor
                       label={`Question ${index + 1}`}
-                      value={faq.question || ''}
+                      value={getStringValue(faq.question)}
                       onChange={(value) => setContent((prev: any) => ({ ...prev, faqs: (prev?.faqs || []).map((f: any, i: number) => i === index ? { ...f, question: value } : f) }))}
                       placeholder="Enter question"
                     />
                     <RichTextEditor
                       label={`Answer ${index + 1}`}
-                      value={faq.answer || ''}
+                      value={getStringValue(faq.answer)}
                       onChange={(value) => setContent((prev: any) => ({ ...prev, faqs: (prev?.faqs || []).map((f: any, i: number) => i === index ? { ...f, answer: value } : f) }))}
                       placeholder="Enter answer"
                       rows={4}
@@ -784,7 +781,7 @@ export default function ContentManagement() {
                 <h3 className="text-lg font-semibold mb-4 text-white">Three Pillars Section</h3>
                 <RichTextEditor
                   label="Pillars Title"
-                  value={content?.servicesPage?.pillars_title || ''}
+                  value={getStringValue(content?.servicesPage?.pillars_title)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'pillars_title', value)}
                   placeholder="Enter pillars section title"
                 />
@@ -792,13 +789,13 @@ export default function ContentManagement() {
                   <div>
                     <RichTextEditor
                       label="Pillar 1 Title"
-                      value={content?.servicesPage?.pillar_1_title || ''}
+                      value={getStringValue(content?.servicesPage?.pillar_1_title)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_title', value)}
                       placeholder="Enter pillar 1 title"
                     />
                     <RichTextEditor
                       label="Pillar 1 Description"
-                      value={content?.servicesPage?.pillar_1_description || ''}
+                      value={getStringValue(content?.servicesPage?.pillar_1_description)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_description', value)}
                       placeholder="Enter pillar 1 description"
                       rows={3}
@@ -807,13 +804,13 @@ export default function ContentManagement() {
                   <div>
                     <RichTextEditor
                       label="Pillar 2 Title"
-                      value={content?.servicesPage?.pillar_2_title || ''}
+                      value={getStringValue(content?.servicesPage?.pillar_2_title)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_title', value)}
                       placeholder="Enter pillar 2 title"
                     />
                     <RichTextEditor
                       label="Pillar 2 Description"
-                      value={content?.servicesPage?.pillar_2_description || ''}
+                      value={getStringValue(content?.servicesPage?.pillar_2_description)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_description', value)}
                       placeholder="Enter pillar 2 description"
                       rows={3}
@@ -822,13 +819,13 @@ export default function ContentManagement() {
                   <div>
                     <RichTextEditor
                       label="Pillar 3 Title"
-                      value={content?.servicesPage?.pillar_3_title || ''}
+                      value={getStringValue(content?.servicesPage?.pillar_3_title)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_title', value)}
                       placeholder="Enter pillar 3 title"
                     />
                     <RichTextEditor
                       label="Pillar 3 Description"
-                      value={content?.servicesPage?.pillar_3_description || ''}
+                      value={getStringValue(content?.servicesPage?.pillar_3_description)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_description', value)}
                       placeholder="Enter pillar 3 description"
                       rows={3}
@@ -841,7 +838,7 @@ export default function ContentManagement() {
                 <h3 className="text-lg font-semibold mb-4 text-white">Services Overview</h3>
                 <RichTextEditor
                   label="Services Overview Title"
-                  value={content?.servicesPage?.services_overview_title || ''}
+                  value={getStringValue(content?.servicesPage?.services_overview_title)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'services_overview_title', value)}
                   placeholder="Enter services overview title"
                 />
@@ -849,13 +846,13 @@ export default function ContentManagement() {
                   <div>
                     <RichTextEditor
                       label="Service 1 Title"
-                      value={content?.servicesPage?.service_1_title || ''}
+                      value={getStringValue(content?.servicesPage?.service_1_title)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'service_1_title', value)}
                       placeholder="Enter service 1 title"
                     />
                     <RichTextEditor
                       label="Service 1 Description"
-                      value={content?.servicesPage?.service_1_description || ''}
+                      value={getStringValue(content?.servicesPage?.service_1_description)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'service_1_description', value)}
                       placeholder="Enter service 1 description"
                       rows={4}
@@ -864,13 +861,13 @@ export default function ContentManagement() {
                   <div>
                     <RichTextEditor
                       label="Service 2 Title"
-                      value={content?.servicesPage?.service_2_title || ''}
+                      value={getStringValue(content?.servicesPage?.service_2_title)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'service_2_title', value)}
                       placeholder="Enter service 2 title"
                     />
                     <RichTextEditor
                       label="Service 2 Description"
-                      value={content?.servicesPage?.service_2_description || ''}
+                      value={getStringValue(content?.servicesPage?.service_2_description)}
                       onChange={(value) => handleRichTextChange('servicesPage', 'service_2_description', value)}
                       placeholder="Enter service 2 description"
                       rows={4}
@@ -884,20 +881,20 @@ export default function ContentManagement() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <RichTextEditor
                     label="Business GP Title"
-                    value={content?.servicesPage?.business_gp_title || ''}
+                    value={getStringValue(content?.servicesPage?.business_gp_title)}
                     onChange={(value) => handleRichTextChange('servicesPage', 'business_gp_title', value)}
                     placeholder="Enter business GP title"
                   />
                   <RichTextEditor
                     label="Business GP Subtitle"
-                    value={content?.servicesPage?.business_gp_subtitle || ''}
+                    value={getStringValue(content?.servicesPage?.business_gp_subtitle)}
                     onChange={(value) => handleRichTextChange('servicesPage', 'business_gp_subtitle', value)}
                     placeholder="Enter business GP subtitle"
                   />
                 </div>
                 <RichTextEditor
                   label="Business GP Description"
-                  value={content?.servicesPage?.business_gp_description || ''}
+                  value={getStringValue(content?.servicesPage?.business_gp_description)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'business_gp_description', value)}
                   placeholder="Enter business GP description"
                   rows={3}
@@ -908,13 +905,13 @@ export default function ContentManagement() {
                 <h3 className="text-lg font-semibold mb-4 text-white">Data Intelligence Section</h3>
                 <RichTextEditor
                   label="Data Intelligence Title"
-                  value={content?.servicesPage?.data_intelligence_title || ''}
+                  value={getStringValue(content?.servicesPage?.data_intelligence_title)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'data_intelligence_title', value)}
                   placeholder="Enter data intelligence title"
                 />
                 <RichTextEditor
                   label="Data Intelligence Description"
-                  value={content?.servicesPage?.data_intelligence_description || ''}
+                  value={getStringValue(content?.servicesPage?.data_intelligence_description)}
                   onChange={(value) => handleRichTextChange('servicesPage', 'data_intelligence_description', value)}
                   placeholder="Enter data intelligence description"
                   rows={4}

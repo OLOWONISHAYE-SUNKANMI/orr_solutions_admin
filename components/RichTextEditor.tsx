@@ -27,16 +27,12 @@ export default function RichTextEditor({
   const getStringValue = (val: any): string => {
     if (typeof val === 'string') return val;
     if (val === null || val === undefined) return '';
-    if (typeof val === 'object') {
-      // If it has a content property, use that
-      if (val.content && typeof val.content === 'string') {
-        return val.content;
-      }
-      // If it's an object but no content property, return empty string
+    if (typeof val === 'object' && val !== null) {
+      if (val.content) return String(val.content);
+      if (val.format !== undefined) return String(val.content || '');
       return '';
     }
-    // Convert other types to string
-    return String(val);
+    return String(val || '');
   };
 
   const stringValue = getStringValue(value);
@@ -169,7 +165,7 @@ export default function RichTextEditor({
           <div className="text-xs text-gray-400 mb-2">Preview:</div>
           <div
             style={{ color: 'white' }}
-            dangerouslySetInnerHTML={{ __html: stringValue }} // Render HTML in preview
+            dangerouslySetInnerHTML={{ __html: String(getStringValue(stringValue) || '') }}
           />
         </div>
       )}

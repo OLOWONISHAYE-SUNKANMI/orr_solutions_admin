@@ -38,6 +38,17 @@ export default function BusinessSystemCardsManagement({
   const [newCard, setNewCard] = useState<BusinessSystemCard>({ title: '', description: '', order: 1 });
   const { success, error } = useNotificationContext();
 
+  const getStringValue = (value: any): string => {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object' && value !== null) {
+      if (value.content) return String(value.content);
+      if (value.format !== undefined) return String(value.content || '');
+      return '';
+    }
+    return String(value || '');
+  };
+
   useEffect(() => {
     fetchCards();
   }, []);
@@ -176,13 +187,13 @@ export default function BusinessSystemCardsManagement({
               </div>
               <RichTextEditor
                 label="Title"
-                value={newCard.title}
+                value={getStringValue(newCard.title)}
                 onChange={(value) => setNewCard({...newCard, title: value})}
                 placeholder="Enter card title"
               />
               <RichTextEditor
                 label="Description"
-                value={newCard.description}
+                value={getStringValue(newCard.description)}
                 onChange={(value) => setNewCard({...newCard, description: value})}
                 placeholder="Enter card description"
                 rows={3}
@@ -202,7 +213,7 @@ export default function BusinessSystemCardsManagement({
 
         {cards.map((card, index) => (
           <div key={card.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-4 text-white">Card {index + 1} - {card.title || 'Untitled'}</h3>
+            <h3 className="text-lg font-semibold mb-4 text-white">Card {index + 1} - {getStringValue(card.title) || 'Untitled'}</h3>
             <form onSubmit={(e) => { 
               e.preventDefault(); 
               card.id && handleSave(card.id, card); 
@@ -218,13 +229,13 @@ export default function BusinessSystemCardsManagement({
               </div>
               <RichTextEditor
                 label="Title"
-                value={card.title}
+                value={getStringValue(card.title)}
                 onChange={(value) => card.id && handleCardChange(card.id, 'title', value)}
                 placeholder="Enter card title"
               />
               <RichTextEditor
                 label="Description"
-                value={card.description}
+                value={getStringValue(card.description)}
                 onChange={(value) => card.id && handleCardChange(card.id, 'description', value)}
                 placeholder="Enter card description"
                 rows={3}
