@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Save, Loader, AlertCircle, Eye, Edit } from "lucide-react";
 import { cmsAPI } from "@/app/services";
+import SuccessModal from "../../../components/ui/SuccessModal";
+import ErrorModal from "../../../components/ui/ErrorModal";
 
 interface StrategicAdvisoryContent {
   id: number;
@@ -35,6 +37,8 @@ export default function StrategicAdvisoryAdminPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     fetchContent();
@@ -59,9 +63,19 @@ export default function StrategicAdvisoryAdminPage() {
       setSaving(true);
       setError(null);
       await cmsAPI.updateStrategicAdvisoryContent(content);
+      setSuccessModal({
+        isOpen: true,
+        title: 'Content Saved',
+        message: 'Your changes have been saved successfully!'
+      });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: err.message || "Failed to save content"
+      });
       setError(err.message || "Failed to save content");
     } finally {
       setSaving(false);
@@ -282,6 +296,20 @@ export default function StrategicAdvisoryAdminPage() {
           </div>
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

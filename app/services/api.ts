@@ -4,7 +4,7 @@
  * Base URL: /admin-portal/v1/
  */
 
-const BASE_URL =  "https://orr-backend-web-latest.onrender.com";
+const BASE_URL =  "https://orr-backend.orr.solutions";
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -1358,11 +1358,20 @@ export const cmsAPI = {
       'legal-policy-content': '/admin-portal/v1/cms/legal-policy-content/',
       'how-we-operate': '/admin-portal/v1/cms/how-we-operate/',
       'living-systems': '/admin-portal/v1/cms/living-systems/',
+      'services-page': '/admin-portal/v1/cms/services-page/',
+      'approach-section': '/admin-portal/v1/cms/approach-section/',
+      'business-system-section': '/admin-portal/v1/cms/business-system-section/',
+      'orr-role-section': '/admin-portal/v1/cms/orr-role-section/',
+      'message-strip': '/admin-portal/v1/cms/message-strip/',
+      'process-section': '/admin-portal/v1/cms/process-section/',
+      'orr-report-section': '/admin-portal/v1/cms/orr-report-section/',
     };
     
     if (endpointMap[contentType]) {
       endpoint = endpointMap[contentType];
     }
+    
+    console.log(`[API] Using endpoint: ${endpoint}`);
     
     return apiCall(endpoint, {
       method: "PUT",

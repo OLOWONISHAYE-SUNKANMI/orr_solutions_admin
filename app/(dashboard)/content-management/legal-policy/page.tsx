@@ -5,6 +5,8 @@ import { CMSService } from '../../../../lib/cms-api';
 import { Save, Loader } from 'lucide-react';
 import RichTextEditor from '../../../../components/RichTextEditor';
 import { cleanContentObject } from '../../../utils/htmlCleaner';
+import SuccessModal from '../../../components/ui/SuccessModal';
+import ErrorModal from '../../../components/ui/ErrorModal';
 
 interface PolicyItem {
   id: number;
@@ -31,6 +33,8 @@ export default function LegacyPolicy() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const cmsService = new CMSService();
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,10 +102,18 @@ export default function LegacyPolicy() {
       } else {
         await cmsService.updateLegalPolicyPageContent(saveData);
       }
-      alert('Saved successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Content Saved',
+        message: 'Your changes have been saved successfully!'
+      });
     } catch (error) {
       console.error('Failed to save:', error);
-      alert('Failed to save');
+      setErrorModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: 'Failed to save content'
+      });
     } finally {
       setSaving(null);
     }
@@ -250,6 +262,20 @@ export default function LegacyPolicy() {
           ))}
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

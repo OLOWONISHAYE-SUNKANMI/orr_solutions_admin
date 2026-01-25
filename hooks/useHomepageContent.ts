@@ -28,7 +28,7 @@ export function useHomepageContent() {
       setLoading(true);
       setError(null);
 
-      const endpoint = `https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/all-content/`;
+      const endpoint = `https://orr-backend.orr.solutions/admin-portal/v1/cms/all-content/`;
       console.log('🏠 Homepage fetching data from endpoint:', endpoint);
       
       const response = await fetch(endpoint);

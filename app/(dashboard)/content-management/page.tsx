@@ -5,6 +5,9 @@ import { Save, Loader } from 'lucide-react';
 import { cmsAPI } from '../../services/api';
 import { useAuthStore } from '../../../lib/hooks/auth';
 import RichTextEditor from '../../../components/RichTextEditor';
+import BusinessSystemCardsManagement from './BusinessSystemCardsManagement';
+import SuccessModal from '../../components/ui/SuccessModal';
+import ErrorModal from '../../components/ui/ErrorModal';
 
 export default function ContentManagement() {
   const [content, setContent] = useState<any>(null);
@@ -12,12 +15,14 @@ export default function ContentManagement() {
   const [saving, setSaving] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<any>(null);
   const { isAuthenticated, logout } = useAuthStore();
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     const fetchData = async () => {
       if (isAuthenticated) {
         try {
-          const endpoint = `https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/all-content/`;
+          const endpoint = `https://orr-backend.orr.solutions/admin-portal/v1/cms/all-content/`;
           const [roleData, allContentResponse] = await Promise.all([
             cmsAPI.getUserRole(),
             fetch(endpoint)
@@ -80,15 +85,43 @@ export default function ContentManagement() {
     try {
       // Clean the data before sending to API
       const cleanedData = cleanObjectData(data);
+      
+      // Validate that we have some data to send
+      const hasValidData = Object.values(cleanedData).some(value => 
+        value && typeof value === 'string' && value.trim().length > 0
+      );
+      
+      if (!hasValidData) {
+        setErrorModal({
+          isOpen: true,
+          title: 'Validation Error',
+          message: 'Please fill in at least one field before saving.'
+        });
+        return;
+      }
+      
+      console.log('Sending data to API:', { section, cleanedData });
+      
       await cmsAPI.updateContent(section, cleanedData);
-      alert('Saved successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Content Saved',
+        message: 'Your changes have been saved successfully!'
+      });
     } catch (error: any) {
       console.error('Failed to save:', error);
       
       // Try to get detailed error information
       let errorDetails = 'Unknown error occurred';
       
-      if (error?.response) {
+      if (error?.details) {
+        // If we have detailed error information from the API
+        if (typeof error.details === 'object') {
+          errorDetails = JSON.stringify(error.details, null, 2);
+        } else {
+          errorDetails = error.details;
+        }
+      } else if (error?.response) {
         // If it's a fetch response error
         try {
           const errorText = await error.response.text();
@@ -101,7 +134,21 @@ export default function ContentManagement() {
       }
       
       console.error('Detailed error:', errorDetails);
-      alert(`Failed to save: ${errorDetails}`);
+      
+      // Show a more user-friendly error message
+      if (errorDetails.includes('Validation failed')) {
+        setErrorModal({
+          isOpen: true,
+          title: 'Validation Error',
+          message: `Please check that all required fields are filled correctly. Details: ${errorDetails}`
+        });
+      } else {
+        setErrorModal({
+          isOpen: true,
+          title: 'Save Failed',
+          message: errorDetails
+        });
+      }
     } finally {
       setSaving(null);
     }
@@ -139,17 +186,26 @@ export default function ContentManagement() {
       if (value === null || value === undefined) {
         cleaned[key] = '';
       } else if (typeof value === 'string') {
-        cleaned[key] = value;
+        // Trim whitespace and ensure it's a valid string
+        cleaned[key] = value.trim();
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         if (value.content && typeof value.content === 'string') {
-          cleaned[key] = value.content;
+          cleaned[key] = value.content.trim();
         } else {
-          cleaned[key] = '';
+          // For rich text editor objects, try to extract text content
+          try {
+            cleaned[key] = JSON.stringify(value);
+          } catch {
+            cleaned[key] = '';
+          }
         }
       } else {
-        cleaned[key] = String(value);
+        cleaned[key] = String(value).trim();
       }
     });
+    
+    // Log the cleaned data for debugging
+    console.log('Cleaned data:', cleaned);
     return cleaned;
   };
 
@@ -210,178 +266,164 @@ export default function ContentManagement() {
             </form>
           </div>
 
-          {/* Services Page Content */}
+          {/* Pillars Section */}
           <div className={sectionClass}>
-            <h2 className={titleClass}>Services Page</h2>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { 
-              pillars_title: content?.servicesPage?.pillars_title,
-              pillar_1_title: content?.servicesPage?.pillar_1_title,
-              pillar_1_description: content?.servicesPage?.pillar_1_description,
-              pillar_2_title: content?.servicesPage?.pillar_2_title,
-              pillar_2_description: content?.servicesPage?.pillar_2_description,
-              pillar_3_title: content?.servicesPage?.pillar_3_title,
-              pillar_3_description: content?.servicesPage?.pillar_3_description,
-              services_overview_title: content?.servicesPage?.services_overview_title,
-              service_1_title: content?.servicesPage?.service_1_title,
-              service_1_description: content?.servicesPage?.service_1_description,
-              service_2_title: content?.servicesPage?.service_2_title,
-              service_2_description: content?.servicesPage?.service_2_description,
-              business_gp_title: content?.servicesPage?.business_gp_title,
-              business_gp_subtitle: content?.servicesPage?.business_gp_subtitle,
-              business_gp_description: content?.servicesPage?.business_gp_description,
-              data_intelligence_title: content?.servicesPage?.data_intelligence_title,
-              data_intelligence_description: content?.servicesPage?.data_intelligence_description
-            }); }} className="flex flex-col gap-6">
-              
-              <div className="border-t border-white/10 pt-4">
-                <h3 className="text-lg font-semibold mb-4 text-white">Three Pillars Section</h3>
-                <RichTextEditor
-                  label="Pillars Title"
-                  value={content?.servicesPage?.pillars_title || ''}
-                  onChange={(value) => handleRichTextChange('servicesPage', 'pillars_title', value)}
-                  placeholder="Enter pillars section title"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <RichTextEditor
-                      label="Pillar 1 Title"
-                      value={content?.servicesPage?.pillar_1_title || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_title', value)}
-                      placeholder="Enter pillar 1 title"
-                    />
-                    <RichTextEditor
-                      label="Pillar 1 Description"
-                      value={content?.servicesPage?.pillar_1_description || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_description', value)}
-                      placeholder="Enter pillar 1 description"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <RichTextEditor
-                      label="Pillar 2 Title"
-                      value={content?.servicesPage?.pillar_2_title || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_title', value)}
-                      placeholder="Enter pillar 2 title"
-                    />
-                    <RichTextEditor
-                      label="Pillar 2 Description"
-                      value={content?.servicesPage?.pillar_2_description || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_description', value)}
-                      placeholder="Enter pillar 2 description"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <RichTextEditor
-                      label="Pillar 3 Title"
-                      value={content?.servicesPage?.pillar_3_title || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_title', value)}
-                      placeholder="Enter pillar 3 title"
-                    />
-                    <RichTextEditor
-                      label="Pillar 3 Description"
-                      value={content?.servicesPage?.pillar_3_description || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_description', value)}
-                      placeholder="Enter pillar 3 description"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-4">
-                <h3 className="text-lg font-semibold mb-4 text-white">Services Overview</h3>
-                <RichTextEditor
-                  label="Services Overview Title"
-                  value={content?.servicesPage?.services_overview_title || ''}
-                  onChange={(value) => handleRichTextChange('servicesPage', 'services_overview_title', value)}
-                  placeholder="Enter services overview title"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <RichTextEditor
-                      label="Service 1 Title"
-                      value={content?.servicesPage?.service_1_title || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'service_1_title', value)}
-                      placeholder="Enter service 1 title"
-                    />
-                    <RichTextEditor
-                      label="Service 1 Description"
-                      value={content?.servicesPage?.service_1_description || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'service_1_description', value)}
-                      placeholder="Enter service 1 description"
-                      rows={4}
-                    />
-                  </div>
-                  <div>
-                    <RichTextEditor
-                      label="Service 2 Title"
-                      value={content?.servicesPage?.service_2_title || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'service_2_title', value)}
-                      placeholder="Enter service 2 title"
-                    />
-                    <RichTextEditor
-                      label="Service 2 Description"
-                      value={content?.servicesPage?.service_2_description || ''}
-                      onChange={(value) => handleRichTextChange('servicesPage', 'service_2_description', value)}
-                      placeholder="Enter service 2 description"
-                      rows={4}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-4">
-                <h3 className="text-lg font-semibold mb-4 text-white">Business GP Section</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <RichTextEditor
-                    label="Business GP Title"
-                    value={content?.servicesPage?.business_gp_title || ''}
-                    onChange={(value) => handleRichTextChange('servicesPage', 'business_gp_title', value)}
-                    placeholder="Enter business GP title"
-                  />
-                  <RichTextEditor
-                    label="Business GP Subtitle"
-                    value={content?.servicesPage?.business_gp_subtitle || ''}
-                    onChange={(value) => handleRichTextChange('servicesPage', 'business_gp_subtitle', value)}
-                    placeholder="Enter business GP subtitle"
-                  />
-                </div>
-                <RichTextEditor
-                  label="Business GP Description"
-                  value={content?.servicesPage?.business_gp_description || ''}
-                  onChange={(value) => handleRichTextChange('servicesPage', 'business_gp_description', value)}
-                  placeholder="Enter business GP description"
-                  rows={3}
-                />
-              </div>
-
-              <div className="border-t border-white/10 pt-4">
-                <h3 className="text-lg font-semibold mb-4 text-white">Data Intelligence Section</h3>
-                <RichTextEditor
-                  label="Data Intelligence Title"
-                  value={content?.servicesPage?.data_intelligence_title || ''}
-                  onChange={(value) => handleRichTextChange('servicesPage', 'data_intelligence_title', value)}
-                  placeholder="Enter data intelligence title"
-                />
-                <RichTextEditor
-                  label="Data Intelligence Description"
-                  value={content?.servicesPage?.data_intelligence_description || ''}
-                  onChange={(value) => handleRichTextChange('servicesPage', 'data_intelligence_description', value)}
-                  placeholder="Enter data intelligence description"
-                  rows={4}
-                />
-              </div>
-              
+            <h2 className={titleClass}>Pillars Section</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillars_title: content?.servicesPage?.pillars_title }); }} className="flex flex-col gap-4">
+              <RichTextEditor
+                label="Pillars Section Title"
+                value={content?.servicesPage?.pillars_title || ''}
+                onChange={(value) => handleRichTextChange('servicesPage', 'pillars_title', value)}
+                placeholder="Enter pillars section title"
+              />
               <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={saving === 'services-page'} className={buttonClass}>
                   <Save size={18} />
-                  {saving === 'services-page' ? 'Saving...' : 'Save Services Page'}
+                  {saving === 'services-page' ? 'Saving...' : 'Save Pillars Title'}
                 </button>
               </div>
             </form>
           </div>
+
+          {/* Pillar 1 - Digital Systems, Automation & AI */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Pillar 1 - Digital Systems, Automation & AI</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_1_title: content?.servicesPage?.pillar_1_title, pillar_1_description: content?.servicesPage?.pillar_1_description }); }} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className={labelClass}>Order</label>
+                <input type="number" value="1" readOnly className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label={`Title (${(content?.servicesPage?.pillar_1_title || '').length}/100 characters)`}
+                  value={content?.servicesPage?.pillar_1_title || ''}
+                  onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_title', value)}
+                  placeholder="Enter pillar 1 title"
+                />
+                {(content?.servicesPage?.pillar_1_title || '').length > 100 && (
+                  <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
+                )}
+              </div>
+              <RichTextEditor
+                label="Description"
+                value={content?.servicesPage?.pillar_1_description || ''}
+                onChange={(value) => handleRichTextChange('servicesPage', 'pillar_1_description', value)}
+                placeholder="Enter pillar 1 description"
+                rows={3}
+              />
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Button Text (69/100 characters)"
+                  value="Learn More"
+                  onChange={() => {}}
+                  placeholder="Learn More"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'services-page'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'services-page' ? 'Saving...' : 'Save Pillar 1'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Pillar 2 - Strategic Advisory & Compliance */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Pillar 2 - Strategic Advisory & Compliance</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_2_title: content?.servicesPage?.pillar_2_title, pillar_2_description: content?.servicesPage?.pillar_2_description }); }} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className={labelClass}>Order</label>
+                <input type="number" value="2" readOnly className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label={`Title (${(content?.servicesPage?.pillar_2_title || '').length}/100 characters)`}
+                  value={content?.servicesPage?.pillar_2_title || ''}
+                  onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_title', value)}
+                  placeholder="Enter pillar 2 title"
+                />
+                {(content?.servicesPage?.pillar_2_title || '').length > 100 && (
+                  <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
+                )}
+              </div>
+              <RichTextEditor
+                label="Description"
+                value={content?.servicesPage?.pillar_2_description || ''}
+                onChange={(value) => handleRichTextChange('servicesPage', 'pillar_2_description', value)}
+                placeholder="Enter pillar 2 description"
+                rows={3}
+              />
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Button Text (69/100 characters)"
+                  value="Learn More"
+                  onChange={() => {}}
+                  placeholder="Learn More"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'services-page'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'services-page' ? 'Saving...' : 'Save Pillar 2'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Pillar 3 - Living Systems & Regeneration */}
+          <div className={sectionClass}>
+            <h2 className={titleClass}>Pillar 3 - Living Systems & Regeneration</h2>
+            <form onSubmit={(e) => { e.preventDefault(); handleSave('services-page', { pillar_3_title: content?.servicesPage?.pillar_3_title, pillar_3_description: content?.servicesPage?.pillar_3_description }); }} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className={labelClass}>Order</label>
+                <input type="number" value="3" readOnly className={inputClass} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label={`Title (${(content?.servicesPage?.pillar_3_title || '').length}/100 characters)`}
+                  value={content?.servicesPage?.pillar_3_title || ''}
+                  onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_title', value)}
+                  placeholder="Enter pillar 3 title"
+                />
+                {(content?.servicesPage?.pillar_3_title || '').length > 100 && (
+                  <p className="text-red-400 text-xs">Title exceeds 100 character limit</p>
+                )}
+              </div>
+              <RichTextEditor
+                label="Description"
+                value={content?.servicesPage?.pillar_3_description || ''}
+                onChange={(value) => handleRichTextChange('servicesPage', 'pillar_3_description', value)}
+                placeholder="Enter pillar 3 description"
+                rows={3}
+              />
+              <div className="flex flex-col gap-2">
+                <RichTextEditor
+                  label="Button Text (69/100 characters)"
+                  value="Learn More"
+                  onChange={() => {}}
+                  placeholder="Learn More"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={saving === 'services-page'} className={buttonClass}>
+                  <Save size={18} />
+                  {saving === 'services-page' ? 'Saving...' : 'Save Pillar 3'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Business System Cards Management */}
+          <BusinessSystemCardsManagement 
+            inputClass={inputClass}
+            labelClass={labelClass}
+            buttonClass={buttonClass}
+            sectionClass={sectionClass}
+            titleClass={titleClass}
+            saving={saving}
+            setSaving={setSaving}
+          />
 
           {/* Approach Section */}
           <div className={sectionClass}>
@@ -889,6 +931,20 @@ export default function ContentManagement() {
           </div>
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

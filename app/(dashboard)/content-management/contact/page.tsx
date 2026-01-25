@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { CMSService } from '../../../../lib/cms-api';
 import { Save, Loader } from 'lucide-react';
 import RichTextEditor from '../../../../components/RichTextEditor';
+import SuccessModal from '../../../components/ui/SuccessModal';
+import ErrorModal from '../../../components/ui/ErrorModal';
 
 interface ContactPageData {
   id: number;
@@ -39,6 +41,8 @@ export default function Contact() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const cmsService = new CMSService();
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,7 +94,11 @@ export default function Contact() {
       const token = localStorage.getItem('auth-token');
       if (!token) {
         console.error('❌ No auth token found');
-        alert('Authentication required. Please log in again.');
+        setErrorModal({
+          isOpen: true,
+          title: 'Authentication Required',
+          message: 'Authentication required. Please log in again.'
+        });
         return;
       }
       
@@ -128,12 +136,20 @@ export default function Contact() {
       console.log('🔑 Using auth token:', token ? 'Present' : 'Missing');
       
       await cmsService.updateContactPageContent(cleanPayload);
-      alert('Saved successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Content Saved',
+        message: 'Your changes have been saved successfully!'
+      });
       const result = await cmsService.getContactPageContent();
       setData(result);
     } catch (error) {
       console.error('Failed to save:', error);
-      alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setErrorModal({
+        isOpen: true,
+        title: 'Save Failed',
+        message: `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
     } finally {
       setSaving(null);
     }
@@ -428,6 +444,20 @@ export default function Contact() {
           </div>
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

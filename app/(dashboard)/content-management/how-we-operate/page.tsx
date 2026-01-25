@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { Save, Loader, Upload, Image as ImageIcon } from 'lucide-react';
 import RichTextEditor from '../../../../components/RichTextEditor';
 import { cleanContentObject, cleanHtmlContent } from '../../../utils/htmlCleaner';
+import SuccessModal from '../../../components/ui/SuccessModal';
+import ErrorModal from '../../../components/ui/ErrorModal';
 
 export default function HowWeOperatePage() {
   const [content, setContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [successModal, setSuccessModal] = useState({ isOpen: false, title: '', message: '' });
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     fetchData();
@@ -18,7 +22,7 @@ export default function HowWeOperatePage() {
   const fetchData = async () => {
     try {
       console.log('Fetching data from backend...');
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/how-we-operate/');
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/how-we-operate/');
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -40,7 +44,11 @@ export default function HowWeOperatePage() {
       setContent({ page: cleanedPage, steps: cleanedSteps });
     } catch (error) {
       console.error('Failed to fetch content:', error);
-      alert(`Failed to load content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setErrorModal({
+        isOpen: true,
+        title: 'Load Failed',
+        message: `Failed to load content: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
     } finally {
       setLoading(false);
     }
@@ -50,14 +58,18 @@ export default function HowWeOperatePage() {
     setSaving(section);
     try {
       console.log('Saving data:', JSON.stringify(data, null, 2));
-      const response = await fetch('https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/how-we-operate/', {
+      const response = await fetch('https://orr-backend.orr.solutions/admin-portal/v1/cms/how-we-operate/', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
       
       if (response.ok) {
-        alert('Saved successfully!');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Content Saved',
+          message: 'Your changes have been saved successfully!'
+        });
       } else {
         // Get the error details from the response
         const errorData = await response.text();
@@ -80,11 +92,19 @@ export default function HowWeOperatePage() {
           }
         }
         
-        alert(errorMessage);
+        setErrorModal({
+          isOpen: true,
+          title: 'Save Failed',
+          message: errorMessage
+        });
       }
     } catch (error) {
       console.error('Network/fetch error:', error);
-      alert(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setErrorModal({
+        isOpen: true,
+        title: 'Network Error',
+        message: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
     } finally {
       setSaving(null);
     }
@@ -125,14 +145,18 @@ export default function HowWeOperatePage() {
       const imageUrl = uploadResult.secure_url;
       
       // Update step with new image URL
-      const response = await fetch(`https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/process-steps/${stepId}/`, {
+      const response = await fetch(`https://orr-backend.orr.solutions/admin-portal/v1/cms/process-steps/${stepId}/`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: imageUrl })
       });
       
       if (response.ok) {
-        alert('Image uploaded successfully!');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Image Uploaded',
+          message: 'Image uploaded successfully!'
+        });
         
         // Update only the specific step's image URL without refetching all data
         const newSteps = content.steps.map((s: any) => 
@@ -142,7 +166,11 @@ export default function HowWeOperatePage() {
       }
     } catch (error) {
       console.error('Failed to upload image:', error);
-      alert('Failed to upload image');
+      setErrorModal({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: 'Failed to upload image'
+      });
     } finally {
       setUploading(null);
     }
@@ -393,6 +421,20 @@ export default function HowWeOperatePage() {
           ))}
         </div>
       </div>
+      
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ isOpen: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
+      />
+      
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
     </div>
   );
 }

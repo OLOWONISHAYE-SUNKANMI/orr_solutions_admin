@@ -33,7 +33,7 @@ export default function AuthDebugger() {
   const testApiCall = async () => {
     try {
       const response = await auth.makeAuthenticatedRequest(
-        'https://orr-backend-web-latest.onrender.com/admin-portal/v1/cms/business-system-section/',
+        'https://orr-backend.orr.solutions/admin-portal/v1/cms/business-system-section/',
         { method: 'GET' }
       );
       
