@@ -161,14 +161,14 @@ function page() {
 
             <div className="flex flex-col overflow-x-auto xl:grid xl:grid-cols-[320px_1fr] gap-4 lg:gap-6">
               {/* Left Sidebar - Meeting Requests List */}
-              <div className="flex flex-col gap-4 max-h-[280px] xl:max-h-[600px] overflow-y-auto order-2 xl:order-1">
+              <div className="flex flex-col gap-4 max-h-[280px] xl:max-h-[600px] order-2 xl:order-1">
                 <div>
                   <h3 className="text-sm font-semibold text-white">My Meetings</h3>
                   <p className="text-xs text-gray-500 mt-1">
                     Meetings assigned to you
                   </p>
                 </div>
-                <div className="bg-gradient-to-b from-white/15 to-white/5 h-full p-3 lg:p-4 rounded-xl flex flex-col gap-3 border border-white/10 shadow-lg">
+                <div className="bg-gradient-to-b  overflow-y-auto from-white/15 to-white/5 h-full p-3 lg:p-4 rounded-xl flex flex-col gap-3 border border-white/10 shadow-lg">
                   {events.map((event) => (
                     <div
                       key={event.id}
