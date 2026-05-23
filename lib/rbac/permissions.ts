@@ -14,7 +14,12 @@ export type Permission =
   | 'can_view_analytics'
   | 'can_view_billing'
   | 'can_manage_settings'
-  | 'can_view_ai_logs';
+  | 'can_view_ai_logs'
+  | 'can_manage_roles'
+  | 'can_view_audit_logs'
+  | 'can_view_security_events'
+  | 'can_approve_sensitive_actions'
+  | 'can_configure_system';
 
 export type RoleName = 'super_admin' | 'admin' | 'operator' | 'content_editor';
 
@@ -35,6 +40,11 @@ export const ROLE_PERMISSIONS: Record<RoleName, Permission[]> = {
     'can_view_billing',
     'can_manage_settings',
     'can_view_ai_logs',
+    'can_manage_roles',
+    'can_view_audit_logs',
+    'can_view_security_events',
+    'can_approve_sensitive_actions',
+    'can_configure_system',
   ],
   admin: [
     'can_view_all_clients',
@@ -44,6 +54,8 @@ export const ROLE_PERMISSIONS: Record<RoleName, Permission[]> = {
     'can_view_analytics',
     'can_view_billing',
     'can_manage_settings',
+    'can_create_content',
+    'can_publish_content',
   ],
   operator: [
     'can_view_all_clients',
@@ -328,4 +340,12 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
   '/analytics-reporting': ['can_view_analytics'],
   '/seo-and-analytics': ['can_view_analytics'],
   '/schedule-meetings': ['can_manage_meetings'],
+
+  // Super Admin & Security Operations Console
+  '/role-management': ['can_manage_roles'],
+  '/audit-center': ['can_view_audit_logs'],
+  '/security-monitoring': ['can_view_security_events'],
+  '/approval-queue': ['can_approve_sensitive_actions'],
+  '/system-configuration': ['can_configure_system'],
+  '/access-control': ['can_manage_roles'],
 };

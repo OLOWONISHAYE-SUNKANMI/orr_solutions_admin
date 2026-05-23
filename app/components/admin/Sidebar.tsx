@@ -20,7 +20,9 @@ import {
   Lock,
   Search,
   ChevronLast,
-  SquareArrowLeft
+  SquareArrowLeft,
+  Shield,
+  Key
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,6 +31,7 @@ import { useAuthStore } from "../../../lib/hooks/auth";
 import { useLanguageStore } from "@/store/languageStore";
 import { ThemeToggle } from "../ThemeToggle";
 import LanguageToggle from "@/app/components/ui/LanguageToggle";
+import { ROUTE_PERMISSIONS, ROLE_PERMISSIONS, RoleName } from "../../../lib/rbac/permissions";
 
 type OpenState = {
   home: boolean;
@@ -40,6 +43,7 @@ type OpenState = {
   payments: boolean;
   vault: boolean;
   settings: boolean;
+  security: boolean;
 };
 
 type NavItem = {
@@ -55,7 +59,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
   const { t, language } = useLanguageStore();
   const [open, setOpen] = useState<OpenState>({
     home: true,
@@ -67,6 +71,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     payments: true,
     vault: true,
     settings: true,
+    security: true,
   });
   const [subOpen, setSubOpen] = useState<{ [key: string]: boolean }>({});
   const [isMinimized, setIsMinimized] = useState(false);
@@ -74,10 +79,202 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const toggle = (key: keyof OpenState) => setOpen({ ...open, [key]: !open[key] });
   const toggleSub = (key: string) => setSubOpen({ ...subOpen, [key]: !subOpen[key] });
 
+  // Static permission resolver that works without React Hook violations inside map/filter functions
+  const hasAccess = (route: string): boolean => {
+    if (!user) return false;
+    if (user.role_name === 'super_admin') return true;
+
+    let required = ROUTE_PERMISSIONS[route];
+    if (required === undefined) {
+      const matched = Object.keys(ROUTE_PERMISSIONS).find(
+        r => r !== '/' && route.startsWith(r)
+      );
+      required = matched ? ROUTE_PERMISSIONS[matched] : [];
+    }
+
+    if (required.length === 0) return true;
+
+    const userPerms = (user.permissions as any) || {};
+    const hasExplicit = required.some(p => userPerms[p] === true);
+    if (hasExplicit) return true;
+
+    const roleName = user.role_name as RoleName;
+    const rolePermissions = ROLE_PERMISSIONS[roleName] || [];
+    return required.some(p => rolePermissions.includes(p));
+  };
+
+  const toggleRole = () => {
+    if (!user) return;
+    const isCurrentlySuper = user.role_name === 'super_admin';
+    const newRole: RoleName = isCurrentlySuper ? 'admin' : 'super_admin';
+    
+    // Build granular permissions matching ROLE_PERMISSIONS matrix
+    const newPermissions = {
+      can_manage_users: newRole === 'super_admin',
+      can_view_all_clients: true,
+      can_edit_clients: true,
+      can_manage_tickets: true,
+      can_manage_meetings: true,
+      can_create_content: true,
+      can_publish_content: true,
+      can_view_analytics: true,
+      can_view_billing: true,
+      can_manage_settings: true,
+      can_view_ai_logs: newRole === 'super_admin',
+      can_manage_roles: newRole === 'super_admin',
+      can_view_audit_logs: newRole === 'super_admin',
+      can_view_security_events: newRole === 'super_admin',
+      can_approve_sensitive_actions: newRole === 'super_admin',
+      can_configure_system: newRole === 'super_admin',
+    };
+
+    setUser({
+      ...user,
+      role_name: newRole,
+      role_display: newRole === 'super_admin' ? 'Super Admin' : 'Administrator',
+      permissions: newPermissions as any,
+    });
+  };
+
   const handleLogout = () => {
     logout();
     onClose();
   };
+
+  // Dynamic group item filtering helper
+  const filterGroupItems = (items: NavItem[]): NavItem[] => {
+    return items
+      .map(item => {
+        const isItemAllowed = hasAccess(item.href);
+        if (item.subItems) {
+          const allowedSubItems = filterGroupItems(item.subItems);
+          if (allowedSubItems.length > 0) {
+            return { ...item, subItems: allowedSubItems };
+          }
+        }
+        return isItemAllowed ? item : null;
+      })
+      .filter((item): item is NavItem => item !== null);
+  };
+
+  const homeItems = filterGroupItems([
+    { label: t('sidebar.dashboard'), href: "/dashboard/" }
+  ]);
+
+  const operationalItems = filterGroupItems([
+    { label: t('sidebar.quick_actions'), href: "/operational/quick-actions" },
+    { label: t('sidebar.system_notifications'), href: "/operational/system-notifications" },
+    { label: t('sidebar.billing_credit'), href: "/operational/billing-credit" },
+    {
+      label: t('sidebar.client_management'),
+      href: "/client-management",
+      subItems: [
+        { label: t('sidebar.all_clients'), href: "/client-management" },
+        { label: t('sidebar.client_profiles'), href: "/client-management/profiles" },
+        { label: t('sidebar.client_workspaces'), href: "/client-management/workspaces" },
+        {
+          label: t('sidebar.client_meetings'),
+          href: "/client-management/meetings",
+          subItems: [
+            { label: t('sidebar.past'), href: "/client-management/meetings/past" },
+            { label: t('sidebar.upcoming'), href: "/client-management/meetings/upcoming" },
+            { label: t('sidebar.pending'), href: "/client-management/meetings/pending" }
+          ]
+        }
+      ]
+    }
+  ]);
+
+  const consultationItems = filterGroupItems([
+    {
+      label: t('sidebar.all_consultations'),
+      href: "/consultations",
+      subItems: [
+        { label: t('sidebar.past'), href: "/consultations/past" },
+        { label: t('sidebar.upcoming'), href: "/consultations/scheduled" }
+      ]
+    },
+    { label: t('sidebar.assigned_consultants'), href: "/consultations/consultants" },
+    { label: t('sidebar.reports_drafts'), href: "/consultations/reports" },
+    {
+      label: t('sidebar.meeting_management'),
+      href: "/schedule-meetings",
+      subItems: [
+        { label: t('sidebar.my_meetings'), href: "/schedule-meetings" },
+        { label: t('sidebar.requested_meetings'), href: "/schedule-meetings/requested" },
+        { label: t('sidebar.confirmed_meetings'), href: "/schedule-meetings/confirmed" }
+      ]
+    }
+  ]);
+
+  const vaultItems = filterGroupItems([
+    { label: t('sidebar.vault_all'), href: "/document-vault/all" },
+    { label: t('sidebar.vault_studio'), href: "/document-vault/studio" },
+    { label: t('sidebar.vault_folders'), href: "/document-vault/folders" },
+    { label: t('sidebar.vault_intake'), href: "/document-vault/intake" },
+    { label: t('sidebar.vault_access'), href: "/document-vault/access-rules" },
+    { label: t('sidebar.vault_internal'), href: "/document-vault/internal" },
+    { label: t('sidebar.vault_versions'), href: "/document-vault/versions" },
+    { label: t('sidebar.vault_audit'), href: "/document-vault/audit" }
+  ]);
+
+  const ticketsItems = filterGroupItems([
+    { label: t('sidebar.all_tickets'), href: "/tickets" },
+    { label: t('sidebar.my_tickets'), href: "/tickets/my-tickets" },
+    { label: t('sidebar.client_messages'), href: "/messages" },
+    { label: t('sidebar.internal_comms'), href: "/tickets/internal-comms" },
+    { label: t('sidebar.escalations'), href: "/tickets/escalations" }
+  ]);
+
+  const paymentsItems = filterGroupItems([
+    { label: t('sidebar.payments_billings'), href: "/payment-management/subscriptions" },
+    { label: t('sidebar.wallet_logs'), href: "/payment-management/wallet" },
+    { label: t('sidebar.financial_management'), href: "/payment-management/hub" },
+    { label: t('sidebar.pro_rata_approval'), href: "/payment-management/pro-rata" },
+    { label: t('sidebar.invoicing'), href: "/payment-management/invoicing" },
+    { label: t('sidebar.payment_disputes'), href: "/payment-management/disputes" }
+  ]);
+
+  const contentItems = filterGroupItems([
+    { label: t('sidebar.homepage_content'), href: "/content-management" },
+    { label: t('sidebar.how_we_operate'), href: "/content-management/how-we-operate" },
+    {
+      label: t('sidebar.services'),
+      href: "/content-management/services",
+      subItems: [
+        { label: t('sidebar.living_systems'), href: "/content-management/services/living-systems-regeneration" },
+        { label: t('sidebar.operational_systems'), href: "/content-management/services/operational-systems-infrastructure" },
+        { label: t('sidebar.strategy_advisory'), href: "/content-management/services/strategy-advisory-compliant" }
+      ]
+    },
+    { label: t('sidebar.resources_blogs'), href: "/content-management/resources-blogs" },
+    { label: t('sidebar.legal_policy'), href: "/content-management/legal-policy" },
+    { label: t('sidebar.contact'), href: "/content-management/contact" },
+    { label: t('sidebar.templates'), href: "/content-management/templates" },
+    { label: t('sidebar.content_drafts'), href: "/content-management/drafts" }
+  ]);
+
+  const analyticsItems = filterGroupItems([
+    { label: t('sidebar.behaviour_analytics'), href: "/analytics/behaviour" },
+    { label: t('sidebar.sector_insights'), href: "/analytics/sector" },
+    { label: t('sidebar.consultation_metrics'), href: "/analytics/consultation-metrics" },
+    { label: t('sidebar.workspace_usage'), href: "/analytics/workspace-usage" },
+    { label: t('sidebar.funnel_reports'), href: "/analytics/funnel-reports" },
+  ]);
+
+  const settingsItems = filterGroupItems([
+    { label: t('sidebar.global_settings'), href: "/settings" },
+    { label: t('sidebar.audit_logs'), href: "/document-vault/audit" }
+  ]);
+
+  // Premium Super Admin operations & security sections
+  const securityItems = filterGroupItems([
+    { label: "Approval Queue", href: "/approval-queue" },
+    { label: "Role Management", href: "/role-management" },
+    { label: "Audit Center", href: "/audit-center" },
+    { label: "Security Monitoring", href: "/security-monitoring" },
+    { label: "System Configuration", href: "/system-configuration" },
+  ]);
 
   return (
     <>
@@ -115,223 +312,165 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
 
           <nav className="space-y-10">
+            {/* Group: Security Operations (SUPER_ADMIN only) */}
+            {securityItems.length > 0 && (
+              <SidebarGroup
+                label="Security & Operations"
+                icon={<Shield size={24} className="text-amber-500 animate-pulse" />}
+                open={open.security}
+                isMinimized={isMinimized}
+                onClick={() => toggle("security")}
+                items={securityItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
+
             {/* Group: Home */}
-            <SidebarGroup
-              label={t('sidebar.home_dashboard')}
-              icon={<Home size={24} />}
-              open={open.home}
-              isMinimized={isMinimized}
-              onClick={() => toggle("home")}
-              items={[
-                { label: t('sidebar.dashboard'), href: "/dashboard/" }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {homeItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.home_dashboard')}
+                icon={<Home size={24} />}
+                open={open.home}
+                isMinimized={isMinimized}
+                onClick={() => toggle("home")}
+                items={homeItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Operational */}
-            <SidebarGroup
-              label={t('sidebar.operational_dashboard')}
-              icon={<Settings size={24} />}
-              open={open.operational}
-              isMinimized={isMinimized}
-              onClick={() => toggle("operational")}
-              items={[
-                { label: t('sidebar.quick_actions'), href: "/operational/quick-actions" },
-                { label: t('sidebar.system_notifications'), href: "/operational/system-notifications" },
-                { label: t('sidebar.billing_credit'), href: "/operational/billing-credit" },
-                {
-                  label: t('sidebar.client_management'),
-                  href: "/client-management",
-                  subItems: [
-                    { label: t('sidebar.all_clients'), href: "/client-management" },
-                    { label: t('sidebar.client_profiles'), href: "/client-management/profiles" },
-                    { label: t('sidebar.client_workspaces'), href: "/client-management/workspaces" },
-                    {
-                      label: t('sidebar.client_meetings'),
-                      href: "/client-management/meetings",
-                      subItems: [
-                        { label: t('sidebar.past'), href: "/client-management/meetings/past" },
-                        { label: t('sidebar.upcoming'), href: "/client-management/meetings/upcoming" },
-                        { label: t('sidebar.pending'), href: "/client-management/meetings/pending" }
-                      ]
-                    }
-                  ]
-                }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {operationalItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.operational_dashboard')}
+                icon={<Settings size={24} />}
+                open={open.operational}
+                isMinimized={isMinimized}
+                onClick={() => toggle("operational")}
+                items={operationalItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Consultation */}
-            <SidebarGroup
-              label={t('sidebar.consultation_management')}
-              icon={<UserCheck size={24} />}
-              open={open.consultation}
-              isMinimized={isMinimized}
-              onClick={() => toggle("consultation")}
-              items={[
-                {
-                  label: t('sidebar.all_consultations'),
-                  href: "/consultations",
-                  subItems: [
-                    { label: t('sidebar.past'), href: "/consultations/past" },
-                    { label: t('sidebar.upcoming'), href: "/consultations/scheduled" }
-                  ]
-                },
-                { label: t('sidebar.assigned_consultants'), href: "/consultations/consultants" },
-                { label: t('sidebar.reports_drafts'), href: "/consultations/reports" },
-                {
-                  label: t('sidebar.meeting_management'),
-                  href: "/schedule-meetings",
-                  subItems: [
-                    { label: t('sidebar.my_meetings'), href: "/schedule-meetings" },
-                    { label: t('sidebar.requested_meetings'), href: "/schedule-meetings/requested" },
-                    { label: t('sidebar.confirmed_meetings'), href: "/schedule-meetings/confirmed" }
-                  ]
-                }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {consultationItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.consultation_management')}
+                icon={<UserCheck size={24} />}
+                open={open.consultation}
+                isMinimized={isMinimized}
+                onClick={() => toggle("consultation")}
+                items={consultationItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Document Vault */}
-            <SidebarGroup
-              label={t('sidebar.document_vault')}
-              icon={<FileText size={24} />}
-              open={open.vault}
-              isMinimized={isMinimized}
-              onClick={() => toggle("vault")}
-              items={[
-                { label: t('sidebar.vault_all'), href: "/document-vault/all" },
-                { label: t('sidebar.vault_studio'), href: "/document-vault/studio" },
-                { label: t('sidebar.vault_folders'), href: "/document-vault/folders" },
-                { label: t('sidebar.vault_intake'), href: "/document-vault/intake" },
-                { label: t('sidebar.vault_access'), href: "/document-vault/access-rules" },
-                { label: t('sidebar.vault_internal'), href: "/document-vault/internal" },
-                { label: t('sidebar.vault_versions'), href: "/document-vault/versions" },
-                { label: t('sidebar.vault_audit'), href: "/document-vault/audit" }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {vaultItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.document_vault')}
+                icon={<FileText size={24} />}
+                open={open.vault}
+                isMinimized={isMinimized}
+                onClick={() => toggle("vault")}
+                items={vaultItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Tickets */}
-            <SidebarGroup
-              label={t('sidebar.tickets_communication')}
-              icon={<MessageSquare size={24} />}
-              open={open.tickets}
-              isMinimized={isMinimized}
-              onClick={() => toggle("tickets")}
-              items={[
-                { label: t('sidebar.all_tickets'), href: "/tickets" },
-                { label: t('sidebar.my_tickets'), href: "/tickets/my-tickets" },
-                { label: t('sidebar.client_messages'), href: "/messages" },
-                { label: t('sidebar.internal_comms'), href: "/tickets/internal-comms" },
-                { label: t('sidebar.escalations'), href: "/tickets/escalations" }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {ticketsItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.tickets_communication')}
+                icon={<MessageSquare size={24} />}
+                open={open.tickets}
+                isMinimized={isMinimized}
+                onClick={() => toggle("tickets")}
+                items={ticketsItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Payments */}
-            <SidebarGroup
-              label={t('sidebar.payment_management')}
-              icon={<Wallet size={24} />}
-              open={open.payments}
-              isMinimized={isMinimized}
-              onClick={() => toggle("payments")}
-              items={[
-                { label: t('sidebar.payments_billings'), href: "/payment-management/subscriptions" },
-                { label: t('sidebar.wallet_logs'), href: "/payment-management/wallet" },
-                { label: t('sidebar.financial_management'), href: "/payment-management/hub" },
-                { label: t('sidebar.pro_rata_approval'), href: "/payment-management/pro-rata" },
-                { label: t('sidebar.invoicing'), href: "/payment-management/invoicing" },
-                { label: t('sidebar.payment_disputes'), href: "/payment-management/disputes" }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {paymentsItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.payment_management')}
+                icon={<Wallet size={24} />}
+                open={open.payments}
+                isMinimized={isMinimized}
+                onClick={() => toggle("payments")}
+                items={paymentsItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Content */}
-            <SidebarGroup
-              label={t('sidebar.content_management')}
-              icon={<FileText size={24} />}
-              open={open.content}
-              isMinimized={isMinimized}
-              onClick={() => toggle("content")}
-              items={[
-                { label: t('sidebar.homepage_content'), href: "/content-management" },
-                { label: t('sidebar.how_we_operate'), href: "/content-management/how-we-operate" },
-                {
-                  label: t('sidebar.services'),
-                  href: "/content-management/services",
-                  subItems: [
-                    { label: t('sidebar.living_systems'), href: "/content-management/services/living-systems-regeneration" },
-                    { label: t('sidebar.operational_systems'), href: "/content-management/services/operational-systems-infrastructure" },
-                    { label: t('sidebar.strategy_advisory'), href: "/content-management/services/strategy-advisory-compliant" }
-                  ]
-                },
-                { label: t('sidebar.resources_blogs'), href: "/content-management/resources-blogs" },
-                { label: t('sidebar.legal_policy'), href: "/content-management/legal-policy" },
-                { label: t('sidebar.contact'), href: "/content-management/contact" },
-                { label: t('sidebar.templates'), href: "/content-management/templates" },
-                { label: t('sidebar.content_drafts'), href: "/content-management/drafts" }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {contentItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.content_management')}
+                icon={<FileText size={24} />}
+                open={open.content}
+                isMinimized={isMinimized}
+                onClick={() => toggle("content")}
+                items={contentItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Analytics */}
-            <SidebarGroup
-              label={t('sidebar.analytics_insights')}
-              icon={<BarChart3 size={24} />}
-              open={open.analytics}
-              isMinimized={isMinimized}
-              onClick={() => toggle("analytics")}
-              items={[
-                { label: t('sidebar.behaviour_analytics'), href: "/analytics/behaviour" },
-                { label: t('sidebar.sector_insights'), href: "/analytics/sector" },
-                { label: t('sidebar.consultation_metrics'), href: "/analytics/consultation-metrics" },
-                { label: t('sidebar.workspace_usage'), href: "/analytics/workspace-usage" },
-                { label: t('sidebar.funnel_reports'), href: "/analytics/funnel-reports" },
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {analyticsItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.analytics_insights')}
+                icon={<BarChart3 size={24} />}
+                open={open.analytics}
+                isMinimized={isMinimized}
+                onClick={() => toggle("analytics")}
+                items={analyticsItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
 
             {/* Group: Settings */}
-            <SidebarGroup
-              label={t('sidebar.settings')}
-              icon={<Settings size={24} />}
-              open={open.settings}
-              isMinimized={isMinimized}
-              onClick={() => toggle("settings")}
-              items={[
-                { label: t('sidebar.global_settings'), href: "/settings" },
-                { label: t('sidebar.audit_logs'), href: "/document-vault/audit" }
-              ]}
-              pathname={pathname}
-              subOpen={subOpen}
-              toggleSub={toggleSub}
-              onLinkClick={onClose}
-            />
+            {settingsItems.length > 0 && (
+              <SidebarGroup
+                label={t('sidebar.settings')}
+                icon={<Settings size={24} />}
+                open={open.settings}
+                isMinimized={isMinimized}
+                onClick={() => toggle("settings")}
+                items={settingsItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
           </nav>
         </div>
 
@@ -354,15 +493,29 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
 
           {/* User Card: Theme Aware */}
-          <div className={`bg-primary/10 border border-primary/20 text-white rounded-[2rem] p-4 flex items-center transition-all ${isMinimized ? 'justify-center mx-1 h-14' : 'justify-between h-20 px-5'}`}>
+          <div className={`bg-primary/10 border border-primary/20 text-white rounded-[2rem] p-4 flex items-center transition-all ${isMinimized ? 'justify-center mx-1 h-14' : 'justify-between h-22 px-5'}`}>
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black overflow-hidden border border-primary/30 flex-shrink-0">
                 <span className="text-sm">{user?.username?.[0]?.toUpperCase() || 'A'}</span>
               </div>
               {!isMinimized && (
-                <div className="leading-tight overflow-hidden animate-in fade-in duration-500">
+                <div className="leading-tight overflow-hidden animate-in fade-in duration-500 flex flex-col gap-1">
                   <div className="font-bold truncate max-w-[120px] text-[13px]">{user?.username || t('sidebar.admin')}</div>
                   <div className="text-[10px] opacity-60 truncate max-w-[120px] font-medium">{user?.email}</div>
+                  
+                  {/* Premium Development Role Switcher */}
+                  <button 
+                    onClick={toggleRole}
+                    className={`inline-flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase border w-max select-none transition-all cursor-pointer ${
+                      user?.role_name === 'super_admin' 
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/25 active:scale-95' 
+                        : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/25 active:scale-95'
+                    }`}
+                    title="Click to Switch Role (Dev Mode)"
+                  >
+                    <Shield size={8} className="animate-pulse" />
+                    {user?.role_name === 'super_admin' ? 'Super Admin' : 'Admin'}
+                  </button>
                 </div>
               )}
             </div>
