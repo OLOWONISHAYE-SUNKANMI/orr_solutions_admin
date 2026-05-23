@@ -319,17 +319,22 @@ export interface AdminUser {
   created_at?: string;
   updated_at?: string;
   permissions?: {
-    can_manage_users: boolean;
-    can_view_all_clients: boolean;
-    can_edit_clients: boolean;
-    can_manage_tickets: boolean;
-    can_manage_meetings: boolean;
-    can_create_content: boolean;
-    can_publish_content: boolean;
-    can_view_analytics: boolean;
-    can_view_billing: boolean;
-    can_manage_settings: boolean;
-    can_view_ai_logs: boolean;
+    can_manage_users?: boolean;
+    can_view_all_clients?: boolean;
+    can_edit_clients?: boolean;
+    can_manage_tickets?: boolean;
+    can_manage_meetings?: boolean;
+    can_create_content?: boolean;
+    can_publish_content?: boolean;
+    can_view_analytics?: boolean;
+    can_view_billing?: boolean;
+    can_manage_settings?: boolean;
+    can_view_ai_logs?: boolean;
+    can_manage_roles?: boolean;
+    can_view_audit_logs?: boolean;
+    can_view_security_events?: boolean;
+    can_approve_sensitive_actions?: boolean;
+    can_configure_system?: boolean;
   };
 }
 
@@ -344,17 +349,22 @@ export interface AdminRolePermissions {
   id: number;
   name: AdminRole;
   description: string;
-  can_manage_users: boolean;
-  can_view_all_clients: boolean;
-  can_edit_clients: boolean;
-  can_manage_tickets: boolean;
-  can_manage_meetings: boolean;
-  can_create_content: boolean;
-  can_publish_content: boolean;
-  can_view_analytics: boolean;
-  can_view_billing: boolean;
-  can_manage_settings: boolean;
-  can_view_ai_logs: boolean;
+  can_manage_users?: boolean;
+  can_view_all_clients?: boolean;
+  can_edit_clients?: boolean;
+  can_manage_tickets?: boolean;
+  can_manage_meetings?: boolean;
+  can_create_content?: boolean;
+  can_publish_content?: boolean;
+  can_view_analytics?: boolean;
+  can_view_billing?: boolean;
+  can_manage_settings?: boolean;
+  can_view_ai_logs?: boolean;
+  can_manage_roles?: boolean;
+  can_view_audit_logs?: boolean;
+  can_view_security_events?: boolean;
+  can_approve_sensitive_actions?: boolean;
+  can_configure_system?: boolean;
   users_count: number;
 }
 

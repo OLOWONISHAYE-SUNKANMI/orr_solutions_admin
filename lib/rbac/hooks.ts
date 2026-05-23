@@ -3,7 +3,7 @@
  */
 
 import { useAuthStore } from '../hooks/auth';
-import { Permission, RoleName, ROLE_PERMISSIONS } from './permissions';
+import { Permission, RoleName, ROLE_PERMISSIONS, ROUTE_PERMISSIONS } from './permissions';
 
 /**
  * Check if user has a specific permission
@@ -136,4 +136,47 @@ export function useUserPermissions(): Permission[] {
  */
 export function useCanAccessRoute(route: string, requiredPermissions: Permission[]): boolean {
   return useHasAnyPermission(requiredPermissions);
+}
+
+/**
+ * Check if user has a specific permission (alias of usePermission)
+ */
+export function useHasPermission(permission: Permission): boolean {
+  return usePermission(permission);
+}
+
+/**
+ * Universal hook to check access.
+ * Can take a permission (e.g. 'can_view_billing') or a route path (e.g. '/role-management').
+ * Returns true if access is allowed.
+ */
+export function useCanAccess(resource: string): boolean {
+  const { user } = useAuthStore();
+  if (!user) return false;
+
+  // Super admin always bypasses all checks
+  if (user.role_name === 'super_admin') return true;
+
+  // Check if resource is a route (starts with '/')
+  if (resource.startsWith('/')) {
+    // Exact match first
+    let required = ROUTE_PERMISSIONS[resource];
+    
+    // If not found, try to find a matching prefix route
+    if (required === undefined) {
+      const matchedRoute = Object.keys(ROUTE_PERMISSIONS).find(
+        (route) => route !== '/' && resource.startsWith(route)
+      );
+      if (matchedRoute) {
+        required = ROUTE_PERMISSIONS[matchedRoute];
+      }
+    }
+
+    // Default to empty array (public route) if undefined
+    const requiredPermissions = required || [];
+    return useHasAnyPermission(requiredPermissions);
+  }
+
+  // Otherwise, treat as permission string
+  return usePermission(resource as Permission);
 }

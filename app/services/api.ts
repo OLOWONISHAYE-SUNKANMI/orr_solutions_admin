@@ -66,6 +66,19 @@ async function apiCall<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
+  
+  if (typeof window !== 'undefined' && localStorage.getItem('simulate_access_revoked') === 'true') {
+    localStorage.removeItem('simulate_access_revoked');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('auth-token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('auth-storage');
+    window.location.href = '/login?revoked=true';
+    throw new Error('ACCESS_REVOKED');
+  }
+
   // Exclude token for auth endpoints to prevent invalid token errors
   const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
 
@@ -123,12 +136,20 @@ async function apiCall<T>(
         case 401:
           console.warn('🔐 Unauthorized access - token may be expired or invalid');
           if (typeof window !== 'undefined') {
+            const isRevoked = errorData?.code === 'ACCESS_REVOKED' || 
+                              errorData?.message?.includes('ACCESS_REVOKED') ||
+                              localStorage.getItem('simulate_access_revoked') === 'true';
+
+            localStorage.removeItem('simulate_access_revoked');
             localStorage.removeItem('access_token');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('auth-token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('user_data');
             localStorage.removeItem('auth-storage');
+            
             if (!window.location.pathname.includes('/login')) {
-              window.location.href = '/login';
+              window.location.href = isRevoked ? '/login?revoked=true' : '/login';
             }
           }
           break;
