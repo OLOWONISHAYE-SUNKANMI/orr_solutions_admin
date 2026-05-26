@@ -133,15 +133,21 @@ export default function ScheduledConsultationsPage() {
                               <div className="flex items-center gap-2">
                                 <MapPin size={16} className="text-blue-400" />
                                 <span className="font-medium text-blue-300">Meeting Link:</span>
-                                <a 
-                                  href={meeting.meeting_link} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 text-sm"
-                                >
-                                  Join Meeting
-                                  <ExternalLink size={14} />
-                                </a>
+                                {meeting.meeting_link === 'pending-google-workspace' ? (
+                                  <span className="text-yellow-400 text-sm italic font-medium">
+                                    Preparing Google Meet Link...
+                                  </span>
+                                ) : (
+                                  <a 
+                                    href={meeting.meeting_link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 text-sm"
+                                  >
+                                    Join Meeting
+                                    <ExternalLink size={14} />
+                                  </a>
+                                )}
                               </div>
                             </div>
                           )}
