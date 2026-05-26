@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FolderPlus, 
-  Folder, 
-  FolderOpen, 
-  MoreVertical, 
-  ChevronRight, 
-  ChevronDown, 
+import {
+  FolderPlus,
+  Folder,
+  FolderOpen,
+  MoreVertical,
+  ChevronRight,
+  ChevronDown,
   Search,
   Plus,
   Trash2,
@@ -17,24 +17,37 @@ import {
   Briefcase
 } from 'lucide-react';
 import { useVaultStore, Folder as FolderType } from '@/store/vaultStore';
+import { useClientStore } from '@/store/clientStore';
 import Link from 'next/link';
 
 export default function FolderManagementPage() {
   const { folders, documents, fetchFolders, fetchDocuments, createFolder, updateFolder, deleteFolder } = useVaultStore();
+  const { clients, fetchClients } = useClientStore();
 
   React.useEffect(() => {
     fetchFolders();
     fetchDocuments();
-  }, [fetchFolders, fetchDocuments]);
+    fetchClients();
+  }, [fetchFolders, fetchDocuments, fetchClients]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
 
-  const filteredFolders = folders.filter(f => 
-    f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    f.client?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getClientName = (clientId: string | number | undefined) => {
+    if (!clientId) return '';
+    const clientObj = clients.find(c => c.id.toString() === clientId.toString());
+    return clientObj ? `${clientObj.name} (${clientObj.company})` : `Client #${clientId}`;
+  };
+
+  const filteredFolders = folders.filter(f => {
+    const nameMatches = f.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const clientName = f.client ? getClientName(f.client) : '';
+    const clientMatches = clientName.toLowerCase().includes(searchQuery.toLowerCase());
+    return nameMatches || clientMatches;
+  });
 
   const getDocCount = (folderId: string) => {
     return documents.filter(d => d.folderId === folderId).length;
@@ -42,8 +55,9 @@ export default function FolderManagementPage() {
 
   const handleCreateFolder = () => {
     if (!newFolderName) return;
-    createFolder(newFolderName, selectedParentId);
+    createFolder(newFolderName, selectedParentId, selectedClientId || undefined);
     setNewFolderName('');
+    setSelectedClientId('');
     setIsCreateModalOpen(false);
   };
 
@@ -70,7 +84,7 @@ export default function FolderManagementPage() {
             </p>
           </div>
 
-          <button 
+          <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 px-6 py-3 bg-primary text-slate-900 rounded-2xl text-xs font-black uppercase tracking-[0.1em] hover:bg-lemon transition-all shadow-xl shadow-primary/10"
           >
@@ -83,8 +97,8 @@ export default function FolderManagementPage() {
         <div className="bg-card/30 backdrop-blur-md border border-white/10 rounded-3xl p-4 flex flex-col md:flex-row items-center gap-4">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search folders or clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -108,15 +122,15 @@ export default function FolderManagementPage() {
                   <Folder size={28} fill="currentColor" fillOpacity={0.2} />
                 </div>
                 <div className="flex gap-2">
-                   <button className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
-                     <Edit2 size={16} />
-                   </button>
-                   <button 
-                     onClick={() => deleteFolder(folder.id)}
-                     className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
-                   >
-                     <Trash2 size={16} />
-                   </button>
+                  <button className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => deleteFolder(folder.id)}
+                    className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
 
@@ -126,7 +140,7 @@ export default function FolderManagementPage() {
                   {folder.client && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
                       <Users size={12} className="text-primary" />
-                      {folder.client}
+                      {getClientName(folder.client)}
                     </div>
                   )}
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
@@ -140,7 +154,7 @@ export default function FolderManagementPage() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
                   Created {new Date(folder.created_at).toLocaleDateString()}
                 </p>
-                <Link 
+                <Link
                   href={`/document-vault/all?folder=${folder.id}`}
                   className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:text-lemon transition-colors"
                 >
@@ -153,19 +167,19 @@ export default function FolderManagementPage() {
 
         {filteredFolders.length === 0 && (
           <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
-             <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-slate-600">
-                <FolderOpen size={40} />
-             </div>
-             <div>
-                <h3 className="text-xl font-bold text-white">No folders found</h3>
-                <p className="text-slate-400 text-sm">Start by creating a new folder structure.</p>
-             </div>
-             <button 
-               onClick={() => setIsCreateModalOpen(true)}
-               className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
-             >
-                Create First Folder
-             </button>
+            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-slate-600">
+              <FolderOpen size={40} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">No folders found</h3>
+              <p className="text-slate-400 text-sm">Start by creating a new folder structure.</p>
+            </div>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+            >
+              Create First Folder
+            </button>
           </div>
         )}
       </div>
@@ -174,11 +188,11 @@ export default function FolderManagementPage() {
       <AnimatePresence>
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => { setIsCreateModalOpen(false); setSelectedClientId(''); }}
               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             />
             <motion.div
@@ -191,7 +205,7 @@ export default function FolderManagementPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Folder Name</label>
-                  <input 
+                  <input
                     type="text"
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
@@ -199,15 +213,31 @@ export default function FolderManagementPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-primary/50 transition-all"
                   />
                 </div>
-                
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Client Association</label>
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="w-full bg-[#161a22] border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-primary/50 transition-all cursor-pointer text-sm"
+                  >
+                    <option value="" className="bg-slate-900">Global / No Client</option>
+                    {clients.map(client => (
+                      <option key={client.id} value={client.id} className="bg-slate-900">
+                        {client.name} ({client.company})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="flex gap-4 pt-4">
-                  <button 
-                    onClick={() => setIsCreateModalOpen(false)}
+                  <button
+                    onClick={() => { setIsCreateModalOpen(false); setSelectedClientId(''); }}
                     className="flex-1 px-6 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleCreateFolder}
                     className="flex-1 px-6 py-4 bg-primary hover:bg-lemon text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
                   >
