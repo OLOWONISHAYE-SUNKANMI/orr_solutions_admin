@@ -318,15 +318,21 @@ function page() {
                     {selectedEvent.meetingLink && (
                       <div className="flex items-center gap-4 text-blue-400 mb-4">
                         <MapPin size={20} className="text-blue-400" />
-                        <a 
-                          href={selectedEvent.meetingLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-sm hover:underline flex items-center gap-1"
-                        >
-                          {t('schedule_meetings.join_meeting') || 'Join Meeting'}
-                          <ExternalLink size={14} />
-                        </a>
+                        {selectedEvent.meetingLink === 'pending-google-workspace' ? (
+                          <span className="text-yellow-400 text-sm italic font-medium">
+                            Preparing Google Meet Link...
+                          </span>
+                        ) : (
+                          <a 
+                            href={selectedEvent.meetingLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm hover:underline flex items-center gap-1"
+                          >
+                            {t('schedule_meetings.join_meeting') || 'Join Meeting'}
+                            <ExternalLink size={14} />
+                          </a>
+                        )}
                       </div>
                     )}
 

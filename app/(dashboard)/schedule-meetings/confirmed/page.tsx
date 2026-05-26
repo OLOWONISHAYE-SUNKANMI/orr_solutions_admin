@@ -207,15 +207,21 @@ export default function ConfirmedMeetingsPage() {
                                 <div className="flex items-center gap-2">
                                   <MapPin size={16} className="text-blue-400" />
                                   <span className="font-medium text-blue-300">{t('schedule_meetings.meeting_link')}:</span>
-                                  <a 
-                                    href={meeting.meeting_link} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
-                                  >
-                                    {t('schedule_meetings.join_meeting')}
-                                    <ExternalLink size={14} />
-                                  </a>
+                                  {meeting.meeting_link === 'pending-google-workspace' ? (
+                                    <span className="text-yellow-400 text-sm italic font-medium">
+                                      Preparing Google Meet Link...
+                                    </span>
+                                  ) : (
+                                    <a 
+                                      href={meeting.meeting_link} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                                    >
+                                      {t('schedule_meetings.join_meeting')}
+                                      <ExternalLink size={14} />
+                                    </a>
+                                  )}
                                 </div>
                               </div>
                             )}
