@@ -79,7 +79,7 @@ interface VaultStore {
   auditLogs: AuditLog[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchDocuments: (params?: any) => Promise<void>;
   fetchDocumentById: (id: string) => Promise<void>;
@@ -113,31 +113,32 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
       // Map backend fields to frontend interface if necessary
       const docs = data.map((d: any) => {
         let rawType = d.document_type || d.type;
-        
+
         // If type is missing, try to detect from title or link
         if (!rawType) {
-            const nameSource = d.title || d.link || d.webViewLink || '';
-            const match = nameSource.match(/\.([a-z0-9]+)(\?.*)?$/i);
-            if (match) rawType = match[1];
+          const nameSource = d.title || d.link || d.webViewLink || '';
+          const match = nameSource.match(/\.([a-z0-9]+)(\?.*)?$/i);
+          if (match) rawType = match[1];
         }
-        
+
         rawType = (rawType || 'pdf').toLowerCase().replace(/^\./, '');
-        
+
         // Keep original document_source to distinguish between native and uploaded files
         const docSource = d.document_source;
-        
-        const normalizedType = docSource === 'google_doc' ? 'docx' : 
-                             docSource === 'google_sheet' ? 'xlsx' : 
-                             docSource === 'google_slide' ? 'pptx' : 
-                             rawType;
-        
+
+        const normalizedType = docSource === 'google_doc' ? 'docx' :
+          docSource === 'google_sheet' ? 'xlsx' :
+            docSource === 'google_slide' ? 'pptx' :
+              rawType;
+
         // Construct a reliable link - MUST come from backend
         const link = d.link || d.webViewLink || d.document_url || '';
         const finalLink = link ? (link.startsWith('http') ? link : `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}${link}`) : '';
-        
+
         return {
           ...d,
           title: d.title || d.name || 'Untitled Document',
+          content: d.description || '',
           type: normalizedType,
           documentSource: docSource, // Store this explicitly
           scanStatus: d.scan_status || d.scanStatus || 'passed',
@@ -162,11 +163,11 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
       const d = await vaultApi.getDocument(id);
       let rawType = (d.document_type || d.type || 'pdf').toLowerCase().replace(/^\./, '');
       const docSource = d.document_source;
-      
-      const normalizedType = docSource === 'google_doc' ? 'docx' : 
-                           docSource === 'google_sheet' ? 'xlsx' : 
-                           docSource === 'google_slide' ? 'pptx' : 
-                           rawType;
+
+      const normalizedType = docSource === 'google_doc' ? 'docx' :
+        docSource === 'google_sheet' ? 'xlsx' :
+          docSource === 'google_slide' ? 'pptx' :
+            rawType;
 
       // Construct a reliable link - MUST come from backend
       const link = d.link || d.webViewLink || d.document_url || '';
@@ -174,6 +175,7 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
 
       const mappedDoc = {
         ...d,
+        content: d.description || '',
         type: normalizedType,
         documentSource: docSource,
         scanStatus: d.scan_status,
@@ -210,12 +212,12 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await vaultApi.getFolders();
-      set({ 
+      set({
         folders: data.map((f: any) => ({
           ...f,
           createdAt: f.created_at || f.createdAt,
-        })), 
-        isLoading: false 
+        })),
+        isLoading: false
       });
     } catch (error) {
       set({ error: 'Failed to fetch folders', isLoading: false });
