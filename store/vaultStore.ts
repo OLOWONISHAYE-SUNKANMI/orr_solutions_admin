@@ -110,6 +110,11 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await vaultApi.getDocuments(params);
+      if (!Array.isArray(data)) {
+        console.warn('[VaultStore] getDocuments returned non-array:', data);
+        set({ documents: [], isLoading: false });
+        return;
+      }
       // Map backend fields to frontend interface if necessary
       const docs = data.map((d: any) => {
         let rawType = d.document_type || d.type;
@@ -135,6 +140,9 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
         const link = d.link || d.webViewLink || d.document_url || '';
         const finalLink = link ? (link.startsWith('http') ? link : `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}${link}`) : '';
 
+        // Safely build accessRule with defaults
+        const accessRule = d.access_rule || d.accessRule || { type: 'immediate', description: '' };
+
         return {
           ...d,
           title: d.title || d.name || 'Untitled Document',
@@ -142,17 +150,24 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
           type: normalizedType,
           documentSource: docSource, // Store this explicitly
           scanStatus: d.scan_status || d.scanStatus || 'passed',
-          accessRule: d.access_rule || d.accessRule,
+          accessRule,
           createdAt: d.created_at || d.createdAt,
           updatedAt: d.updated_at || d.updatedAt,
           accessCount: d.download_count || d.accessCount || 0,
           folderId: d.folder || d.folderId,
           link: finalLink,
-          client: d.client_name || d.client,
+          client: d.client_name || d.client || '',
+          client_name: d.client_name || d.client || '',
+          versions: d.versions || [],
+          currentVersion: d.current_version || d.currentVersion || 1,
+          visibility: d.visibility || 'client',
+          category: d.category || '',
+          project: d.project || '',
         };
       });
       set({ documents: docs, isLoading: false });
     } catch (error) {
+      console.error('[VaultStore] fetchDocuments error:', error);
       set({ error: 'Failed to fetch documents', isLoading: false });
     }
   },
@@ -178,23 +193,28 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
         content: d.description || '',
         type: normalizedType,
         documentSource: docSource,
-        scanStatus: d.scan_status,
-        accessRule: d.access_rule,
-        createdAt: d.created_at,
-        updatedAt: d.updated_at,
-        accessCount: d.download_count,
-        folderId: d.folder,
+        scanStatus: d.scan_status || d.scanStatus || 'passed',
+        accessRule: d.access_rule || d.accessRule || { type: 'immediate', description: '' },
+        createdAt: d.created_at || d.createdAt,
+        updatedAt: d.updated_at || d.updatedAt,
+        accessCount: d.download_count || d.accessCount || 0,
+        folderId: d.folder || d.folderId,
         link: finalLink,
-        client: d.client_name,
+        client: d.client_name || d.client || '',
+        client_name: d.client_name || d.client || '',
+        currentVersion: d.current_version || d.currentVersion || 1,
+        visibility: d.visibility || 'client',
+        category: d.category || '',
+        project: d.project || '',
         versions: (d.versions || []).map((v: any) => ({
           id: v.id,
-          versionNumber: v.version_number,
+          version_number: v.version_number,
           file: v.file,
-          fileName: v.file_name,
-          fileSize: v.file_size,
-          uploadedBy: v.uploaded_by_name,
+          file_name: v.file_name,
+          file_size: v.file_size,
+          uploaded_by_name: v.uploaded_by_name,
           hash: v.hash,
-          uploadedAt: v.created_at
+          created_at: v.created_at
         }))
       };
       set(state => ({
@@ -212,6 +232,11 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await vaultApi.getFolders();
+      if (!Array.isArray(data)) {
+        console.warn('[VaultStore] getFolders returned non-array:', data);
+        set({ folders: [], isLoading: false });
+        return;
+      }
       set({
         folders: data.map((f: any) => ({
           ...f,
@@ -220,6 +245,7 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
         isLoading: false
       });
     } catch (error) {
+      console.error('[VaultStore] fetchFolders error:', error);
       set({ error: 'Failed to fetch folders', isLoading: false });
     }
   },
@@ -228,8 +254,18 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await vaultApi.getActivity();
-      set({ auditLogs: data, isLoading: false });
+      const logs = Array.isArray(data) ? data.map((log: any) => ({
+        id: log.id || log.pk || String(Math.random()),
+        action: log.action || log.event_type || 'unknown',
+        item: log.item || log.document_title || log.target || '',
+        performedBy: log.performedBy || log.performed_by || log.user || log.user_name || log.admin_name || 'Unknown',
+        timestamp: log.timestamp || log.created_at || new Date().toISOString(),
+        details: log.details || log.description || '',
+        time: log.time || '',
+      })) : [];
+      set({ auditLogs: logs, isLoading: false });
     } catch (error) {
+      console.error('[VaultStore] fetchActivity error:', error);
       set({ error: 'Failed to fetch activity', isLoading: false });
     }
   },

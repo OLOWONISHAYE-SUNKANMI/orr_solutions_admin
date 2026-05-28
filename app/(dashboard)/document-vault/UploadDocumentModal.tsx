@@ -18,6 +18,7 @@ import {
 import { useVaultStore, FileType, Visibility } from '@/store/vaultStore';
 import { useClientStore } from '@/store/clientStore';
 import { useEffect } from 'react';
+import { vaultApi } from '@/lib/vault-api';
 
 interface UploadDocumentModalProps {
    isOpen: boolean;
@@ -53,6 +54,18 @@ export default function UploadDocumentModal({ isOpen, onClose }: UploadDocumentM
          description: 'Available immediately'
       }
    });
+
+   const [clientFolders, setClientFolders] = useState<any[]>([]);
+
+   useEffect(() => {
+      if (formData.client) {
+         vaultApi.getFolders({ client_id: formData.client })
+            .then(data => setClientFolders(data))
+            .catch(err => console.error(err));
+      } else {
+         setClientFolders([]);
+      }
+   }, [formData.client]);
 
    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -219,8 +232,8 @@ export default function UploadDocumentModal({ isOpen, onClose }: UploadDocumentM
                                     className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-primary/50 transition-colors"
                                  >
                                     <option value="">Root Directory</option>
-                                    {folders
-                                       .filter(folder => formData.client && folder.client && folder.client.toString() === formData.client.toString())
+                                    {clientFolders
+                                       
                                        .map(folder => (
                                           <option key={folder.id} value={folder.id}>{folder.name}</option>
                                        ))}

@@ -24,14 +24,18 @@ import { useVaultStore, Document } from '@/store/vaultStore';
 import DocumentDetailView from '@/app/(dashboard)/document-vault/DocumentDetailView';
 
 export default function InternalDocumentsPage() {
-  const { documents, isLoading } = useVaultStore();
+  const { documents, isLoading, fetchDocuments } = useVaultStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
+  React.useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
   const internalDocs = documents.filter(doc => 
     doc.visibility === 'internal' && 
-    (doc.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     doc.client.toLowerCase().includes(searchQuery.toLowerCase()))
+    ((doc.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+     (doc.client || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -105,65 +109,96 @@ export default function InternalDocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {internalDocs.map((doc, idx) => (
-                  <motion.tr 
-                    key={doc.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="group hover:bg-amber-500/[0.02] transition-colors"
-                  >
-                    <td className="py-6 px-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500/10 transition-all duration-300">
-                          <FileLock2 size={24} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-white group-hover:text-amber-400 transition-colors uppercase italic">{doc.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                             <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-[0.1em]">Classified</span>
-                             <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">{doc.category}</p>
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white/10 rounded-2xl" />
+                          <div className="space-y-2">
+                            <div className="h-4 bg-white/10 rounded w-48" />
+                            <div className="h-3 bg-white/5 rounded w-24" />
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    
-                    <td className="py-6 px-8">
-                      <p className="text-xs font-bold text-white uppercase tracking-tight">{doc.client}</p>
-                      <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{doc.project}</p>
-                    </td>
-
-                    <td className="py-6 px-8">
-                       <div className="flex flex-col gap-1">
-                          <p className="text-[10px] font-black text-white uppercase italic">Version {doc.currentVersion}</p>
-                          <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-bold uppercase tracking-widest">
-                             <Clock size={10} /> Updated {new Date(doc.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="space-y-2">
+                          <div className="h-4 bg-white/10 rounded w-24" />
+                          <div className="h-3 bg-white/5 rounded w-16" />
+                        </div>
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="space-y-2">
+                          <div className="h-4 bg-white/10 rounded w-20" />
+                          <div className="h-3 bg-white/5 rounded w-16" />
+                        </div>
+                      </td>
+                      <td className="py-6 px-8 text-right">
+                        <div className="h-10 w-40 bg-white/5 rounded-2xl ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  internalDocs.map((doc, idx) => (
+                    <motion.tr 
+                      key={doc.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="group hover:bg-amber-500/[0.02] transition-colors"
+                    >
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500/10 transition-all duration-300">
+                            <FileLock2 size={24} />
                           </div>
-                       </div>
-                    </td>
+                          <div>
+                            <p className="text-sm font-black text-white group-hover:text-amber-400 transition-colors uppercase italic">{doc.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                               <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-[0.1em]">Classified</span>
+                               <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">{doc.category}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      <td className="py-6 px-8">
+                        <p className="text-xs font-bold text-white uppercase tracking-tight">{doc.client}</p>
+                        <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{doc.project}</p>
+                      </td>
 
-                    <td className="py-6 px-8 text-right">
-                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <button 
-                             onClick={() => setSelectedDoc(doc)}
-                             className="p-3 bg-white/5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-2xl transition-all"
-                             title="View Details"
-                          >
-                             <Eye size={18} />
-                          </button>
-                          <button className="p-3 bg-white/5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-2xl transition-all" title="Download Asset">
-                             <Download size={18} />
-                          </button>
-                          <button className="p-3 bg-white/5 text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-2xl transition-all" title="Configuration">
-                             <Settings2 size={18} />
-                          </button>
-                          <button className="p-3 bg-white/5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-2xl transition-all" title="Archive Asset">
-                             <Trash2 size={18} />
-                          </button>
-                       </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                      <td className="py-6 px-8">
+                         <div className="flex flex-col gap-1">
+                            <p className="text-[10px] font-black text-white uppercase italic">Version {doc.currentVersion}</p>
+                            <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                               <Clock size={10} /> Updated {new Date(doc.updatedAt).toLocaleDateString()}
+                            </div>
+                         </div>
+                      </td>
+
+                      <td className="py-6 px-8 text-right">
+                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <button 
+                               onClick={() => setSelectedDoc(doc)}
+                               className="p-3 bg-white/5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-2xl transition-all"
+                               title="View Details"
+                            >
+                               <Eye size={18} />
+                            </button>
+                            <button className="p-3 bg-white/5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-2xl transition-all" title="Download Asset">
+                               <Download size={18} />
+                            </button>
+                            <button className="p-3 bg-white/5 text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 rounded-2xl transition-all" title="Configuration">
+                               <Settings2 size={18} />
+                            </button>
+                            <button className="p-3 bg-white/5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-2xl transition-all" title="Archive Asset">
+                               <Trash2 size={18} />
+                            </button>
+                         </div>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
