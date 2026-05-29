@@ -30,7 +30,7 @@ api.interceptors.request.use((config) => {
 });
 
 export const vaultApi = {
-    getDocuments: async (params?: any) => {
+    getDocuments: async (params?: Record<string, any>) => {
         const response = await api.get('/admin-portal/v1/vault/documents/', { params });
         const raw = response.data;
         // Handle {data: {data: [...]}}, {data: [...]}, {results: [...]}, or direct array
@@ -72,7 +72,7 @@ export const vaultApi = {
     },
     createGoogleDoc: async (data: { title: string; client_id: string; type: string; folder_id?: string | null }) => {
         const response = await api.post('/admin-portal/v1/vault/documents/create-google-doc/', data);
-        return response.data.data;
+        return response.data?.data || response.data;
     },
     uploadDocument: async (docData: any, file: File) => {
         const formData = new FormData();

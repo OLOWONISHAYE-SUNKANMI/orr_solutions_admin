@@ -24,12 +24,13 @@ import { useVaultStore, Document } from '@/store/vaultStore';
 import DocumentDetailView from '@/app/(dashboard)/document-vault/DocumentDetailView';
 
 export default function InternalDocumentsPage() {
-  const { documents, isLoading, fetchDocuments } = useVaultStore();
+  const { documents, isLoadingDocuments, fetchDocuments } = useVaultStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
   React.useEffect(() => {
-    fetchDocuments();
+    // Fetch with server-side visibility filter
+    fetchDocuments({ visibility: 'internal' }, true);
   }, [fetchDocuments]);
 
   const internalDocs = documents.filter(doc => 
@@ -109,7 +110,7 @@ export default function InternalDocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {isLoading ? (
+                {isLoadingDocuments ? (
                   Array.from({ length: 4 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
                       <td className="py-6 px-8">

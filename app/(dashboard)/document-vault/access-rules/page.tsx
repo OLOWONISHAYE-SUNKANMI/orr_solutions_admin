@@ -20,7 +20,7 @@ import {
 import { useVaultStore, DocumentAccessRule } from '@/store/vaultStore';
 
 export default function AccessRulesPage() {
-  const { documents, fetchDocuments, updateDocumentMetadata, isLoading } = useVaultStore();
+  const { documents, fetchDocuments, updateDocumentMetadata, isLoadingDocuments: isLoading } = useVaultStore();
   
   React.useEffect(() => {
     fetchDocuments();

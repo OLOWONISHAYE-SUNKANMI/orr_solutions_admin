@@ -31,7 +31,7 @@ interface DocumentDetailViewProps {
 }
 
 export default function DocumentDetailView({ doc, onClose }: DocumentDetailViewProps) {
-   const { updateDocumentMetadata, uploadNewVersion, isLoading } = useVaultStore();
+   const { updateDocumentMetadata, uploadNewVersion, isLoadingDocuments: isLoading } = useVaultStore();
    const [activeTab, setActiveTab] = useState<'details' | 'versions' | 'feedback'>('details');
    const [feedbackInput, setFeedbackInput] = useState('');
 
