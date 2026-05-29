@@ -20,7 +20,7 @@ import {
 import { useVaultStore, Document, DocumentVersion } from '@/store/vaultStore';
 
 export default function VersionManagementPage() {
-  const { documents, isLoading, fetchDocuments } = useVaultStore();
+  const { documents, isLoadingDocuments, fetchDocuments } = useVaultStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   React.useEffect(() => {
@@ -82,7 +82,7 @@ export default function VersionManagementPage() {
 
         {/* Version Timeline */}
         <div className="space-y-6">
-          {isLoading ? (
+          {isLoadingDocuments ? (
             Array.from({ length: 3 }).map((_, idx) => (
               <div
                 key={idx}
@@ -186,7 +186,7 @@ export default function VersionManagementPage() {
           )}
         </div>
 
-        {filteredVersions.length === 0 && !isLoading && (
+        {filteredVersions.length === 0 && !isLoadingDocuments && (
            <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-slate-600">
                 <History size={40} />

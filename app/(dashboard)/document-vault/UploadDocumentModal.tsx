@@ -26,7 +26,7 @@ interface UploadDocumentModalProps {
 }
 
 export default function UploadDocumentModal({ isOpen, onClose }: UploadDocumentModalProps) {
-   const { uploadDocument, createGoogleDoc, folders, fetchFolders, isLoading } = useVaultStore();
+   const { uploadDocument, createGoogleDoc, folders, fetchFolders, isLoadingDocuments: isLoading } = useVaultStore();
    const { clients, fetchClients } = useClientStore();
    const fileInputRef = useRef<HTMLInputElement>(null);
 

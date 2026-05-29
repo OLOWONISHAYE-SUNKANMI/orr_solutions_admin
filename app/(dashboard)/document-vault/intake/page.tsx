@@ -23,7 +23,7 @@ import UploadDocumentModal from '../UploadDocumentModal';
 
 export default function IntakeQueuePage() {
   const { t } = useLanguageStore();
-  const { documents, fetchDocuments, deleteDocument, isLoading } = useVaultStore();
+  const { documents, fetchDocuments, deleteDocument, isLoadingDocuments: isLoading } = useVaultStore();
 
   React.useEffect(() => {
     fetchDocuments();

@@ -22,7 +22,7 @@ import {
 import { useVaultStore, AuditLog } from '@/store/vaultStore';
 
 export default function AuditLogsPage() {
-  const { auditLogs, isLoading, fetchActivity } = useVaultStore();
+  const { auditLogs, isLoadingActivity, fetchActivity } = useVaultStore();
 
   React.useEffect(() => {
     fetchActivity();
@@ -134,7 +134,7 @@ export default function AuditLogsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {isLoading ? (
+                {isLoadingActivity ? (
                   Array.from({ length: 6 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
                       <td className="py-6 px-8">

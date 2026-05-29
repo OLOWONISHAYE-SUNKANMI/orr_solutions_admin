@@ -33,7 +33,7 @@ import Link from 'next/link';
 
 export default function DocumentDetailClient({ params }: { params: { id: string } }) {
    const { id } = params;
-   const { documents, fetchDocumentById, updateDocumentMetadata, uploadNewVersion, isLoading } = useVaultStore();
+   const { documents, fetchDocumentById, updateDocumentMetadata, uploadNewVersion, isLoadingDocuments: isLoading } = useVaultStore();
    
    React.useEffect(() => {
       fetchDocumentById(id);

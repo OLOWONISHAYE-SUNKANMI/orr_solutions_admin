@@ -21,14 +21,13 @@ import { useClientStore } from '@/store/clientStore';
 import Link from 'next/link';
 
 export default function FolderManagementPage() {
-  const { folders, documents, isLoading, fetchFolders, fetchDocuments, createFolder, updateFolder, deleteFolder } = useVaultStore();
+  const { folders, isLoadingFolders, fetchFolders, createFolder, updateFolder, deleteFolder } = useVaultStore();
   const { clients, fetchClients } = useClientStore();
 
   React.useEffect(() => {
     fetchFolders();
-    fetchDocuments();
     fetchClients();
-  }, [fetchFolders, fetchDocuments, fetchClients]);
+  }, [fetchFolders, fetchClients]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -49,8 +48,8 @@ export default function FolderManagementPage() {
     return nameMatches || clientMatches;
   });
 
-  const getDocCount = (folderId: string) => {
-    return documents.filter(d => d.folderId === folderId).length;
+  const getDocCount = (folder: any) => {
+    return folder.doc_count || 0;
   };
 
   const handleCreateFolder = () => {
@@ -109,7 +108,7 @@ export default function FolderManagementPage() {
 
         {/* Folders Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
+          {isLoadingFolders ? (
             Array.from({ length: 6 }).map((_, idx) => (
               <div key={idx} className="animate-pulse bg-card/20 border border-white/5 rounded-[32px] p-6 space-y-6">
                 <div className="flex justify-between items-start">
@@ -169,7 +168,7 @@ export default function FolderManagementPage() {
                     )}
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
                       <FolderOpen size={12} className="text-blue-400" />
-                      {getDocCount(folder.id)} Documents
+                      {getDocCount(folder)} Documents
                     </div>
                   </div>
                 </div>

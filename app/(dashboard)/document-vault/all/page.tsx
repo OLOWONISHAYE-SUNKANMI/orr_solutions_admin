@@ -36,8 +36,9 @@ import DocumentDetailView from '@/app/(dashboard)/document-vault/DocumentDetailV
 
 export default function DocumentVaultPage() {
   const { t } = useLanguageStore();
-  const { documents, folders, isLoading, fetchDocuments, fetchFolders, toggleVisibility, deleteDocument, batchUpdate } = useVaultStore();
+  const { documents, folders, isLoadingDocuments, isLoadingFolders, fetchDocuments, fetchFolders, toggleVisibility, deleteDocument, batchUpdate } = useVaultStore();
 
+  // Fetch folders once (stale-data check happens inside the store)
   React.useEffect(() => {
     fetchFolders();
   }, [fetchFolders]);
@@ -61,7 +62,7 @@ export default function DocumentVaultPage() {
   React.useEffect(() => {
     const params: any = {};
     if (filterFolder !== 'all') params.folder_id = filterFolder;
-    fetchDocuments(params);
+    fetchDocuments(params, true);
   }, [fetchDocuments, filterFolder]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -321,7 +322,7 @@ export default function DocumentVaultPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {isLoading ? (
+                {isLoadingDocuments ? (
                   Array.from({ length: 5 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
                       <td className="py-6 px-8">
