@@ -32,19 +32,27 @@ api.interceptors.request.use((config) => {
 export const vaultApi = {
     getDocuments: async (params?: any) => {
         const response = await api.get('/admin-portal/v1/vault/documents/', { params });
-        return response.data.data;
+        const raw = response.data;
+        // Handle {data: {data: [...]}}, {data: [...]}, {results: [...]}, or direct array
+        const result = raw?.data?.data || raw?.data?.results || raw?.data || raw?.results || (Array.isArray(raw) ? raw : []);
+        return Array.isArray(result) ? result : [];
     },
     getDocument: async (id: string) => {
         const response = await api.get(`/admin-portal/v1/vault/documents/${id}/`);
-        return response.data.data;
+        const raw = response.data;
+        return raw?.data?.data || raw?.data || raw;
     },
-    getFolders: async () => {
-        const response = await api.get('/admin-portal/v1/vault/folders/');
-        return response.data.data;
+    getFolders: async (params?: any) => {
+        const response = await api.get('/admin-portal/v1/vault/folders/', { params });
+        const raw = response.data;
+        const result = raw?.data?.data || raw?.data?.results || raw?.data || raw?.results || (Array.isArray(raw) ? raw : []);
+        return Array.isArray(result) ? result : [];
     },
     getActivity: async () => {
         const response = await api.get('/admin-portal/v1/vault/activity/');
-        return response.data.data;
+        const raw = response.data;
+        const result = raw?.data?.data || raw?.data?.results || raw?.data || raw?.results || (Array.isArray(raw) ? raw : []);
+        return Array.isArray(result) ? result : [];
     },
     createFolder: async (data: { name: string; parent?: string; client?: string }) => {
         const response = await api.post('/admin-portal/v1/vault/folders/', data);

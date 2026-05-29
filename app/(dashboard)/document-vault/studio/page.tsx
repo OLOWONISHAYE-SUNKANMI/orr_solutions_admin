@@ -65,10 +65,11 @@ interface DocumentAsset {
 
 import { useVaultStore } from '@/store/vaultStore';
 import { useClientStore } from '@/store/clientStore';
+import { vaultApi } from '@/lib/vault-api';
 
 export default function DocumentStudioPage() {
    const { t } = useLanguageStore();
-   const { documents: drafts, folders: storeFolders, fetchDocuments, fetchFolders, createGoogleDoc, createFolder: storeCreateFolder, updateDocumentMetadata } = useVaultStore();
+   const { documents: drafts, folders: storeFolders, isLoading, fetchDocuments, fetchFolders, createGoogleDoc, createFolder: storeCreateFolder, updateDocumentMetadata } = useVaultStore();
    const { clients, fetchClients } = useClientStore();
 
    React.useEffect(() => {
@@ -113,9 +114,20 @@ export default function DocumentStudioPage() {
    }, [clients, newAssetData.clientId]);
 
    const [folders, setFolders] = useState<any[]>([]);
+   const [clientFolders, setClientFolders] = useState<any[]>([]);
 
    React.useEffect(() => {
-      setFolders(storeFolders.map(f => ({ ...f, isOpen: true })));
+      if (newAssetData.clientId) {
+         vaultApi.getFolders({ client_id: newAssetData.clientId })
+            .then(data => setClientFolders(data))
+            .catch(err => console.error(err));
+      } else {
+         setClientFolders([]);
+      }
+   }, [newAssetData.clientId]);
+
+   React.useEffect(() => {
+      setFolders(storeFolders.map(f => ({ ...f, isOpen: false })));
    }, [storeFolders]);
 
    const handleSave = async () => {
@@ -696,45 +708,55 @@ export default function DocumentStudioPage() {
 
                      <div className="space-y-4">
                         {/* Folders */}
-                        {folders.map(folder => (
-                           <div key={folder.id} className="space-y-1">
-                              <button
-                                 onClick={() => toggleFolder(folder.id)}
-                                 className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all group"
-                              >
-                                 {folder.isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                 <Folder size={16} className={folder.isOpen ? 'text-primary' : 'text-slate-600'} />
-                                 <span className="text-[11px] font-black uppercase tracking-tight flex-1 text-left">{folder.name}</span>
-                                 <span className="text-[9px] font-bold text-slate-700">{drafts.filter(d => d.folderId?.toString() === folder.id.toString()).length}</span>
-                              </button>
+                        {isLoading ? (
+                           Array.from({ length: 4 }).map((_, idx) => (
+                              <div key={idx} className="animate-pulse flex items-center gap-2 p-2">
+                                 <div className="w-4 h-4 bg-white/10 rounded" />
+                                 <div className="w-4 h-4 bg-white/10 rounded" />
+                                 <div className="h-3 bg-white/10 rounded w-24" />
+                              </div>
+                           ))
+                        ) : (
+                           folders.map(folder => (
+                              <div key={folder.id} className="space-y-1">
+                                 <button
+                                    onClick={() => toggleFolder(folder.id)}
+                                    className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all group"
+                                 >
+                                    {folder.isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    <Folder size={16} className={folder.isOpen ? 'text-primary' : 'text-slate-600'} />
+                                    <span className="text-[11px] font-black uppercase tracking-tight flex-1 text-left">{folder.name}</span>
+                                    <span className="text-[9px] font-bold text-slate-700">{drafts.filter(d => d.folderId?.toString() === folder.id.toString()).length}</span>
+                                 </button>
 
-                              {folder.isOpen && (
-                                 <div className="ml-4 pl-4 border-l border-white/5 space-y-2 py-1">
-                                    {drafts.filter(d => d.folderId?.toString() === folder.id.toString()).map(draft => (
-                                       <button
-                                          key={draft.id}
-                                          onClick={() => setActiveDocument(draft as any)}
-                                          className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all border ${activeDocument?.id === draft.id
-                                             ? 'bg-primary/10 border-primary/20 text-white shadow-[0_0_20px_rgba(205,255,0,0.05)]'
-                                             : 'bg-transparent border-transparent text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                                             }`}
-                                       >
-                                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${((draft as any).type === 'docx' || (draft as any).type === 'doc' || (draft as any).type === 'google_doc') ? 'bg-blue-500/20 text-blue-400' : ((draft as any).type === 'xlsx' || (draft as any).type === 'sheet' || (draft as any).type === 'google_sheet') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                                             }`}>
-                                             {((draft as any).type === 'docx' || (draft as any).type === 'doc' || (draft as any).type === 'google_doc') ? <FileText size={16} /> : ((draft as any).type === 'xlsx' || (draft as any).type === 'sheet' || (draft as any).type === 'google_sheet') ? <Grid3X3 size={16} /> : <Presentation size={16} />}
-                                          </div>
-                                          <div className="text-left flex-1 min-w-0">
-                                             <p className="text-[11px] font-black uppercase truncate tracking-tight">{draft.title}</p>
-                                          </div>
-                                       </button>
-                                    ))}
-                                    {drafts.filter(d => d.folderId?.toString() === folder.id.toString()).length === 0 && (
-                                       <p className="text-[9px] text-slate-700 italic py-2">No assets in this container.</p>
-                                    )}
-                                 </div>
-                              )}
-                           </div>
-                        ))}
+                                 {folder.isOpen && (
+                                    <div className="ml-4 pl-4 border-l border-white/5 space-y-2 py-1">
+                                       {drafts.filter(d => d.folderId?.toString() === folder.id.toString()).map(draft => (
+                                          <button
+                                             key={draft.id}
+                                             onClick={() => setActiveDocument(draft as any)}
+                                             className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all border ${activeDocument?.id === draft.id
+                                                ? 'bg-primary/10 border-primary/20 text-white shadow-[0_0_20px_rgba(205,255,0,0.05)]'
+                                                : 'bg-transparent border-transparent text-slate-500 hover:bg-white/5 hover:text-slate-300'
+                                                }`}
+                                          >
+                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${((draft as any).type === 'docx' || (draft as any).type === 'doc' || (draft as any).type === 'google_doc') ? 'bg-blue-500/20 text-blue-400' : ((draft as any).type === 'xlsx' || (draft as any).type === 'sheet' || (draft as any).type === 'google_sheet') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                                                }`}>
+                                                {((draft as any).type === 'docx' || (draft as any).type === 'doc' || (draft as any).type === 'google_doc') ? <FileText size={16} /> : ((draft as any).type === 'xlsx' || (draft as any).type === 'sheet' || (draft as any).type === 'google_sheet') ? <Grid3X3 size={16} /> : <Presentation size={16} />}
+                                             </div>
+                                             <div className="text-left flex-1 min-w-0">
+                                                <p className="text-[11px] font-black uppercase truncate tracking-tight">{draft.title}</p>
+                                             </div>
+                                          </button>
+                                       ))}
+                                       {drafts.filter(d => d.folderId?.toString() === folder.id.toString()).length === 0 && (
+                                          <p className="text-[9px] text-slate-700 italic py-2">No assets in this container.</p>
+                                       )}
+                                    </div>
+                                 )}
+                              </div>
+                           ))
+                        )}
 
                         {/* Uncategorized */}
                         <div className="space-y-1 mt-6">
@@ -1003,11 +1025,9 @@ export default function DocumentStudioPage() {
                                     className="w-full bg-[#1a1f26] border border-white/10 rounded-2xl py-4 px-5 text-xs font-bold focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer text-white"
                                  >
                                     <option value="" className="bg-slate-900 italic">Root Directory</option>
-                                    {storeFolders
-                                       .filter(f => f.client && newAssetData.clientId && f.client.toString() === newAssetData.clientId.toString())
-                                       .map(f => (
-                                          <option key={f.id} value={f.id} className="bg-slate-900">{f.name}</option>
-                                       ))}
+                                    {clientFolders.map(f => (
+                                       <option key={f.id} value={f.id} className="bg-slate-900">{f.name}</option>
+                                    ))}
                                  </select>
                                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                               </div>

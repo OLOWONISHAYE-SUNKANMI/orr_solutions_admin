@@ -23,7 +23,7 @@ import UploadDocumentModal from '../UploadDocumentModal';
 
 export default function IntakeQueuePage() {
   const { t } = useLanguageStore();
-  const { documents, fetchDocuments, deleteDocument } = useVaultStore();
+  const { documents, fetchDocuments, deleteDocument, isLoading } = useVaultStore();
 
   React.useEffect(() => {
     fetchDocuments();
@@ -88,39 +88,57 @@ export default function IntakeQueuePage() {
              </div>
 
              <div className="space-y-4">
-                <AnimatePresence mode='popLayout'>
-                   {pendingDocs.map(doc => (
-                      <motion.div 
-                        key={doc.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 flex items-center justify-between group"
-                      >
+                {isLoading ? (
+                   Array.from({ length: 2 }).map((_, idx) => (
+                      <div key={idx} className="animate-pulse bg-card/40 border border-white/10 rounded-[32px] p-6 flex items-center justify-between">
                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 animate-pulse">
-                               <Loader2 size={24} className="animate-spin" />
-                            </div>
-                            <div>
-                               <p className="text-sm font-black text-white uppercase">{doc.title}</p>
-                               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{doc.client}</p>
+                            <div className="w-12 h-12 rounded-2xl bg-white/10" />
+                            <div className="space-y-2">
+                               <div className="h-4 bg-white/10 rounded w-28" />
+                               <div className="h-3 bg-white/5 rounded w-16" />
                             </div>
                          </div>
-                         <div className="text-right">
-                            <p className="text-[9px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">Scanning for Malware</p>
-                            <div className="h-1 w-32 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                               <motion.div 
-                                 initial={{ width: 0 }}
-                                 animate={{ width: '70%' }}
-                                 className="h-full bg-amber-500" 
-                               />
-                            </div>
+                         <div className="space-y-2 text-right">
+                            <div className="h-3 bg-white/10 rounded w-24 ml-auto" />
+                            <div className="h-1 bg-white/5 rounded-full w-32 ml-auto" />
                          </div>
-                      </motion.div>
-                   ))}
-                </AnimatePresence>
+                      </div>
+                   ))
+                ) : (
+                   <AnimatePresence mode='popLayout'>
+                      {pendingDocs.map(doc => (
+                         <motion.div 
+                           key={doc.id}
+                           initial={{ opacity: 0, x: -20 }}
+                           animate={{ opacity: 1, x: 0 }}
+                           exit={{ opacity: 0, scale: 0.9 }}
+                           className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 flex items-center justify-between group"
+                         >
+                            <div className="flex items-center gap-4">
+                               <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 animate-pulse">
+                                  <Loader2 size={24} className="animate-spin" />
+                               </div>
+                               <div>
+                                  <p className="text-sm font-black text-white uppercase">{doc.title}</p>
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{doc.client}</p>
+                               </div>
+                            </div>
+                            <div className="text-right">
+                               <p className="text-[9px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1">Scanning for Malware</p>
+                               <div className="h-1 w-32 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: '70%' }}
+                                    className="h-full bg-amber-500" 
+                                  />
+                               </div>
+                            </div>
+                         </motion.div>
+                      ))}
+                   </AnimatePresence>
+                )}
                 
-                {pendingDocs.length === 0 && (
+                {!isLoading && pendingDocs.length === 0 && (
                    <div className="py-20 bg-white/[0.02] border border-white/5 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 text-slate-600">
                       <CheckCircle2 size={48} className="opacity-10 text-emerald-500" />
                       <p className="text-[10px] font-black uppercase tracking-widest opacity-30">All Ingestion Scans Complete</p>
@@ -173,30 +191,42 @@ export default function IntakeQueuePage() {
                 </div>
              </section>
 
-             {/* Recent Intake Success */}
-             <section className="space-y-6">
-                <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest px-4 flex items-center gap-2">
-                   <CheckCircle2 size={14} className="text-emerald-500" /> Recent Ingestion
-                </h2>
-                <div className="bg-card/20 backdrop-blur-xl border border-white/5 rounded-[32px] overflow-hidden">
-                   <div className="divide-y divide-white/5">
-                      {recentDocs.map(doc => (
-                         <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
-                            <div className="flex items-center gap-3">
-                               <FileText size={16} className="text-slate-500" />
-                               <div>
-                                  <p className="text-xs font-black text-white uppercase">{doc.title}</p>
-                                  <p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(doc.createdAt).toLocaleTimeString()}</p>
-                               </div>
-                            </div>
-                            <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity text-primary">
-                               <ArrowRight size={16} />
-                            </button>
-                         </div>
-                      ))}
-                   </div>
-                </div>
-             </section>
+              {/* Recent Intake Success */}
+              <section className="space-y-6">
+                 <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest px-4 flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-emerald-500" /> Recent Ingestion
+                 </h2>
+                 <div className="bg-card/20 backdrop-blur-xl border border-white/5 rounded-[32px] overflow-hidden">
+                    <div className="divide-y divide-white/5">
+                       {isLoading ? (
+                          Array.from({ length: 3 }).map((_, idx) => (
+                             <div key={idx} className="animate-pulse p-4 flex items-center gap-3">
+                                <div className="w-4 h-4 bg-white/10 rounded" />
+                                <div className="space-y-2 flex-1">
+                                   <div className="h-3 bg-white/10 rounded w-2/3" />
+                                   <div className="h-2 bg-white/5 rounded w-1/4" />
+                                </div>
+                             </div>
+                          ))
+                       ) : (
+                          recentDocs.map(doc => (
+                             <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+                                <div className="flex items-center gap-3">
+                                   <FileText size={16} className="text-slate-500" />
+                                   <div>
+                                      <p className="text-xs font-black text-white uppercase">{doc.title}</p>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase">{new Date(doc.createdAt).toLocaleTimeString()}</p>
+                                   </div>
+                                </div>
+                                <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity text-primary">
+                                   <ArrowRight size={16} />
+                                </button>
+                             </div>
+                          ))
+                       )}
+                    </div>
+                 </div>
+              </section>
           </div>
         </div>
       </div>

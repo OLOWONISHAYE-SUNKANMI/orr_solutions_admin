@@ -21,7 +21,7 @@ import { useClientStore } from '@/store/clientStore';
 import Link from 'next/link';
 
 export default function FolderManagementPage() {
-  const { folders, documents, fetchFolders, fetchDocuments, createFolder, updateFolder, deleteFolder } = useVaultStore();
+  const { folders, documents, isLoading, fetchFolders, fetchDocuments, createFolder, updateFolder, deleteFolder } = useVaultStore();
   const { clients, fetchClients } = useClientStore();
 
   React.useEffect(() => {
@@ -109,60 +109,85 @@ export default function FolderManagementPage() {
 
         {/* Folders Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredFolders.map((folder) => (
-            <motion.div
-              key={folder.id}
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-card/20 backdrop-blur-xl border border-white/5 hover:border-primary/30 rounded-[32px] p-6 group transition-all duration-500"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500">
-                  <Folder size={28} fill="currentColor" fillOpacity={0.2} />
-                </div>
-                <div className="flex gap-2">
-                  <button className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => deleteFolder(folder.id)}
-                    className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-black text-white group-hover:text-primary transition-colors mb-2">{folder.name}</h3>
-                <div className="flex flex-wrap gap-3">
-                  {folder.client && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
-                      <Users size={12} className="text-primary" />
-                      {getClientName(folder.client)}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
-                    <FolderOpen size={12} className="text-blue-400" />
-                    {getDocCount(folder.id)} Documents
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="animate-pulse bg-card/20 border border-white/5 rounded-[32px] p-6 space-y-6">
+                <div className="flex justify-between items-start">
+                  <div className="w-14 h-14 rounded-2xl bg-white/10" />
+                  <div className="flex gap-2">
+                    <div className="w-8 h-8 bg-white/5 rounded-lg" />
+                    <div className="w-8 h-8 bg-white/5 rounded-lg" />
                   </div>
                 </div>
+                <div className="space-y-3">
+                  <div className="h-6 bg-white/10 rounded w-3/4" />
+                  <div className="flex gap-2">
+                    <div className="h-6 bg-white/5 rounded-full w-24" />
+                    <div className="h-6 bg-white/5 rounded-full w-20" />
+                  </div>
+                </div>
+                <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                  <div className="h-3 bg-white/5 rounded w-24" />
+                  <div className="h-3 bg-white/10 rounded w-16" />
+                </div>
               </div>
+            ))
+          ) : (
+            filteredFolders.map((folder) => (
+              <motion.div
+                key={folder.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card/20 backdrop-blur-xl border border-white/5 hover:border-primary/30 rounded-[32px] p-6 group transition-all duration-500"
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500">
+                    <Folder size={28} fill="currentColor" fillOpacity={0.2} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      onClick={() => deleteFolder(folder.id)}
+                      className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
 
-              <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Created {new Date(folder.created_at).toLocaleDateString()}
-                </p>
-                <Link
-                  href={`/document-vault/all?folder=${folder.id}`}
-                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:text-lemon transition-colors"
-                >
-                  View Contents <ChevronRight size={14} />
-                </Link>
-              </div>
-            </motion.div>
-          ))}
+                <div>
+                  <h3 className="text-xl font-black text-white group-hover:text-primary transition-colors mb-2">{folder.name}</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {folder.client && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
+                        <Users size={12} className="text-primary" />
+                        {getClientName(folder.client)}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-slate-400">
+                      <FolderOpen size={12} className="text-blue-400" />
+                      {getDocCount(folder.id)} Documents
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                    Created {new Date(folder.created_at).toLocaleDateString()}
+                  </p>
+                  <Link
+                    href={`/document-vault/all?folder=${folder.id}`}
+                    className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:text-lemon transition-colors"
+                  >
+                    View Contents <ChevronRight size={14} />
+                  </Link>
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {filteredFolders.length === 0 && (

@@ -75,8 +75,8 @@ export default function DocumentVaultPage() {
 
   const filteredDocuments = useMemo(() => {
     return documents.filter(doc => {
-      const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        doc.client.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (doc.client || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesVisibility = filterVisibility === 'all' || doc.visibility === filterVisibility;
       const matchesCategory = filterCategory === 'all' || doc.category === filterCategory;
       const matchesStatus = filterStatus === 'all' || doc.scanStatus === filterStatus;
@@ -88,7 +88,7 @@ export default function DocumentVaultPage() {
   const stats = useMemo(() => {
     return {
       missingCategory: documents.filter(d => !d.category || d.category === '').length,
-      noUnlockRule: documents.filter(d => d.visibility === 'client' && d.accessRule.type === 'immediate').length, // Warning for high value docs maybe?
+      noUnlockRule: documents.filter(d => d.visibility === 'client' && d.accessRule?.type === 'immediate').length, // Warning for high value docs maybe?
       scanning: documents.filter(d => d.scanStatus === 'scanning').length,
     };
   }, [documents]);
@@ -321,99 +321,133 @@ export default function DocumentVaultPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                <AnimatePresence mode='popLayout'>
-                  {filteredDocuments.map((doc, idx) => (
-                    <motion.tr
-                      key={doc.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="group hover:bg-white/[0.02] transition-colors"
-                    >
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
                       <td className="py-6 px-8">
-                        <input
-                          type="checkbox"
-                          checked={selectedDocs.includes(doc.id)}
-                          onChange={() => toggleSelect(doc.id)}
-                          className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary"
-                        />
+                        <div className="w-4 h-4 bg-white/10 rounded" />
                       </td>
                       <td className="py-6 px-8">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all duration-300">
-                            {getFileIcon(doc.type)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-black text-white group-hover:text-primary transition-colors">{doc.title}</p>
-                              {!doc.category && (
-                                <span title="Missing Category">
-                                  <AlertTriangle size={12} className="text-amber-500" />
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 mt-1">
-                              <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">v{doc.currentVersion} • {doc.versions.length} Total</p>
-                              {doc.visibility === 'internal' && <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-[0.2em]">Restricted</span>}
-                            </div>
+                          <div className="w-12 h-12 bg-white/10 rounded-2xl" />
+                          <div className="space-y-2">
+                            <div className="h-4 bg-white/10 rounded w-48" />
+                            <div className="h-3 bg-white/5 rounded w-24" />
                           </div>
                         </div>
                       </td>
-
                       <td className="py-6 px-8">
-                        <p className="text-xs font-bold text-white uppercase tracking-tight">{doc.client}</p>
-                        <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{doc.project}</p>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-white/10 rounded w-24" />
+                          <div className="h-3 bg-white/5 rounded w-16" />
+                        </div>
                       </td>
-
                       <td className="py-6 px-8">
                         <div className="flex flex-col items-center gap-2">
-                          {getScanBadge(doc.scanStatus)}
-                          <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest">
-                            {doc.accessRule.type === 'immediate' ? (
-                              <span className="text-emerald-500/60">Immediate</span>
-                            ) : (
-                              <span className="text-amber-500/60 flex items-center gap-1"><Lock size={8} /> {doc.accessRule.linkedId}</span>
-                            )}
-                          </div>
+                          <div className="h-4 bg-white/10 rounded w-16" />
+                          <div className="h-3 bg-white/5 rounded w-12" />
                         </div>
                       </td>
-
                       <td className="py-6 px-8 text-right">
-                        <Link
-                          href={`/document-vault/${doc.id}`}
-                          className="p-3 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all inline-block"
-                        >
-                          <ChevronRight size={18} />
-                        </Link>
-                      </td>
-                    </motion.tr>
-                  ))}
-                  {filteredDocuments.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-32 text-center">
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="flex flex-col items-center gap-6"
-                        >
-                          <div className="w-24 h-24 rounded-[40px] bg-white/5 border border-white/10 flex items-center justify-center text-slate-700">
-                            <FileText size={48} />
-                          </div>
-                          <div className="space-y-2">
-                            <h3 className="text-2xl font-black text-white uppercase italic">Vault Empty</h3>
-                            <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">No documents matching your current filters. Start by uploading a new repository asset.</p>
-                          </div>
-                          <button
-                            onClick={() => setIsUploadModalOpen(true)}
-                            className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all"
-                          >
-                            Initialize Upload
-                          </button>
-                        </motion.div>
+                        <div className="h-8 w-8 bg-white/10 rounded-2xl ml-auto" />
                       </td>
                     </tr>
-                  )}
-                </AnimatePresence>
+                  ))
+                ) : (
+                  <AnimatePresence mode='popLayout'>
+                    {filteredDocuments.map((doc, idx) => (
+                      <motion.tr
+                        key={doc.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="group hover:bg-white/[0.02] transition-colors"
+                      >
+                        <td className="py-6 px-8">
+                          <input
+                            type="checkbox"
+                            checked={selectedDocs.includes(doc.id)}
+                            onChange={() => toggleSelect(doc.id)}
+                            className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary"
+                          />
+                        </td>
+                        <td className="py-6 px-8">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all duration-300">
+                              {getFileIcon(doc.type)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-black text-white group-hover:text-primary transition-colors">{doc.title}</p>
+                                {!doc.category && (
+                                  <span title="Missing Category">
+                                    <AlertTriangle size={12} className="text-amber-500" />
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">v{doc.currentVersion || 1} • {(doc.versions || []).length} Total</p>
+                                {doc.visibility === 'internal' && <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-[0.2em]">Restricted</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-6 px-8">
+                          <p className="text-xs font-bold text-white uppercase tracking-tight">{doc.client}</p>
+                          <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{doc.project}</p>
+                        </td>
+
+                        <td className="py-6 px-8">
+                          <div className="flex flex-col items-center gap-2">
+                            {getScanBadge(doc.scanStatus)}
+                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest">
+                              {doc.accessRule?.type === 'immediate' ? (
+                                <span className="text-emerald-500/60">Immediate</span>
+                              ) : (
+                                <span className="text-amber-500/60 flex items-center gap-1"><Lock size={8} /> {doc.accessRule?.linkedId || doc.accessRule?.type || 'Locked'}</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-6 px-8 text-right">
+                          <Link
+                            href={`/document-vault/${doc.id}`}
+                            className="p-3 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl transition-all inline-block"
+                          >
+                            <ChevronRight size={18} />
+                          </Link>
+                        </td>
+                      </motion.tr>
+                    ))}
+                    {filteredDocuments.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-32 text-center">
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex flex-col items-center gap-6"
+                          >
+                            <div className="w-24 h-24 rounded-[40px] bg-white/5 border border-white/10 flex items-center justify-center text-slate-700">
+                              <FileText size={48} />
+                            </div>
+                            <div className="space-y-2">
+                              <h3 className="text-2xl font-black text-white uppercase italic">Vault Empty</h3>
+                              <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">No documents matching your current filters. Start by uploading a new repository asset.</p>
+                            </div>
+                            <button
+                              onClick={() => setIsUploadModalOpen(true)}
+                              className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all"
+                            >
+                              Initialize Upload
+                            </button>
+                          </motion.div>
+                        </td>
+                      </tr>
+                    )}
+                  </AnimatePresence>
+                )}
               </tbody>
             </table>
           </div>

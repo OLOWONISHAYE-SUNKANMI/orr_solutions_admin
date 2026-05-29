@@ -22,7 +22,7 @@ import {
 import { useVaultStore, AuditLog } from '@/store/vaultStore';
 
 export default function AuditLogsPage() {
-  const { auditLogs, fetchActivity } = useVaultStore();
+  const { auditLogs, isLoading, fetchActivity } = useVaultStore();
 
   React.useEffect(() => {
     fetchActivity();
@@ -134,58 +134,89 @@ export default function AuditLogsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredLogs.map((log, idx) => (
-                  <motion.tr 
-                    key={log.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
-                    className="group hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="py-6 px-8">
-                       <div className="flex items-center gap-4">
-                          <div className="flex flex-col items-center">
-                             <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                                {getActionIcon(log.action)}
-                             </div>
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-full bg-white/10" />
+                          <div className="space-y-2">
+                            <div className="h-3.5 bg-white/10 rounded w-28" />
+                            <div className="h-2.5 bg-white/5 rounded w-16" />
                           </div>
-                          <div>
-                             <div className="flex items-center gap-2">
-                                {getActionBadge(log.action)}
-                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">
-                                   {new Date(log.timestamp).toLocaleTimeString()}
-                                </span>
-                             </div>
-                             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                                {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                             </p>
-                          </div>
-                       </div>
-                    </td>
+                        </div>
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-white/10" />
+                          <div className="h-3 bg-white/10 rounded w-24" />
+                        </div>
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-white/10 rounded" />
+                          <div className="h-3 bg-white/10 rounded w-32" />
+                        </div>
+                      </td>
+                      <td className="py-6 px-8 text-right">
+                        <div className="h-3.5 bg-white/5 rounded w-48 ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  filteredLogs.map((log, idx) => (
+                    <motion.tr 
+                      key={log.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className="group hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="py-6 px-8">
+                         <div className="flex items-center gap-4">
+                            <div className="flex flex-col items-center">
+                               <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                                  {getActionIcon(log.action)}
+                               </div>
+                            </div>
+                            <div>
+                               <div className="flex items-center gap-2">
+                                  {getActionBadge(log.action)}
+                                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">
+                                     {new Date(log.timestamp).toLocaleTimeString()}
+                                  </span>
+                               </div>
+                               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                                  {new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                               </p>
+                            </div>
+                         </div>
+                      </td>
 
-                    <td className="py-6 px-8">
-                       <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary uppercase">
-                             {log.performedBy.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <p className="text-xs font-black text-white uppercase italic tracking-tight">{log.performedBy}</p>
-                       </div>
-                    </td>
+                      <td className="py-6 px-8">
+                         <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary uppercase">
+                               {(log.performedBy || 'U').split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <p className="text-xs font-black text-white uppercase italic tracking-tight">{log.performedBy}</p>
+                         </div>
+                      </td>
 
-                    <td className="py-6 px-8">
-                       <div className="flex items-center gap-2">
-                          <FileText size={14} className="text-slate-500" />
-                          <p className="text-xs font-bold text-slate-200 uppercase tracking-tight">{log.item}</p>
-                       </div>
-                    </td>
+                      <td className="py-6 px-8">
+                         <div className="flex items-center gap-2">
+                            <FileText size={14} className="text-slate-500" />
+                            <p className="text-xs font-bold text-slate-200 uppercase tracking-tight">{log.item}</p>
+                         </div>
+                      </td>
 
-                    <td className="py-6 px-8 text-right">
-                       <p className="text-[10px] text-slate-400 font-medium leading-relaxed max-w-[250px] ml-auto">
-                          {log.details}
-                       </p>
-                    </td>
-                  </motion.tr>
-                ))}
+                      <td className="py-6 px-8 text-right">
+                         <p className="text-[10px] text-slate-400 font-medium leading-relaxed max-w-[250px] ml-auto">
+                            {log.details}
+                         </p>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

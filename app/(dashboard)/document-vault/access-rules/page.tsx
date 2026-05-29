@@ -20,15 +20,15 @@ import {
 import { useVaultStore, DocumentAccessRule } from '@/store/vaultStore';
 
 export default function AccessRulesPage() {
-  const { documents, fetchDocuments, updateDocumentMetadata } = useVaultStore();
+  const { documents, fetchDocuments, updateDocumentMetadata, isLoading } = useVaultStore();
   
   React.useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
   
   const clientFacingDocs = documents.filter(d => d.visibility === 'client');
-  const lockedDocs = clientFacingDocs.filter(d => d.accessRule.type !== 'immediate');
-  const immediateDocs = clientFacingDocs.filter(d => d.accessRule.type === 'immediate');
+  const lockedDocs = clientFacingDocs.filter(d => d.accessRule?.type && d.accessRule.type !== 'immediate');
+  const immediateDocs = clientFacingDocs.filter(d => !d.accessRule?.type || d.accessRule.type === 'immediate');
 
   return (
     <div className="min-h-screen pb-24 text-white relative">
@@ -101,59 +101,90 @@ export default function AccessRulesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {clientFacingDocs.map((doc, idx) => (
-                  <motion.tr 
-                    key={doc.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="group hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="py-6 px-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
-                          <FileText size={18} />
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse border-b border-white/5 bg-white/[0.01]">
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white/10 rounded-xl" />
+                          <div className="space-y-2">
+                            <div className="h-4 bg-white/10 rounded w-36" />
+                            <div className="h-3 bg-white/5 rounded w-20" />
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-black text-white uppercase italic tracking-tight">{doc.title}</p>
-                          <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest mt-0.5">ID: {doc.id}</p>
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="space-y-2">
+                          <div className="h-4 bg-white/10 rounded w-24" />
+                          <div className="h-3 bg-white/5 rounded w-16" />
                         </div>
-                      </div>
-                    </td>
-                    
-                    <td className="py-6 px-8">
-                       <p className="text-xs font-bold text-white uppercase tracking-tight">{doc.client}</p>
-                       <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{doc.project}</p>
-                    </td>
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="space-y-2">
+                          <div className="h-4 bg-white/10 rounded w-28" />
+                          <div className="h-3 bg-white/5 rounded w-20" />
+                        </div>
+                      </td>
+                      <td className="py-6 px-8 text-right">
+                        <div className="h-8 w-28 bg-white/5 rounded-xl ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  clientFacingDocs.map((doc, idx) => (
+                    <motion.tr 
+                      key={doc.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="group hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:text-primary transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-white uppercase italic tracking-tight">{doc.title}</p>
+                            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest mt-0.5">ID: {doc.id}</p>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      <td className="py-6 px-8">
+                         <p className="text-xs font-bold text-white uppercase tracking-tight">{doc.client}</p>
+                         <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-0.5">{doc.project}</p>
+                      </td>
 
-                    <td className="py-6 px-8">
-                       {doc.accessRule.type === 'immediate' ? (
-                         <div className="flex items-center gap-2 text-emerald-400">
-                            <Unlock size={14} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Public / Immediate</span>
-                         </div>
-                       ) : (
-                         <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 text-amber-500">
-                               <Lock size={14} />
-                               <span className="text-[10px] font-black uppercase tracking-widest">
-                                 {doc.accessRule.type.replace('_', ' ')}
-                               </span>
-                            </div>
-                            <p className="text-[9px] text-slate-500 font-bold max-w-[200px] leading-relaxed uppercase">
-                               {doc.accessRule.description}
-                            </p>
-                         </div>
-                       )}
-                    </td>
+                      <td className="py-6 px-8">
+                         {(!doc.accessRule || doc.accessRule.type === 'immediate') ? (
+                           <div className="flex items-center gap-2 text-emerald-400">
+                              <Unlock size={14} />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Public / Immediate</span>
+                           </div>
+                         ) : (
+                           <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2 text-amber-500">
+                                 <Lock size={14} />
+                                 <span className="text-[10px] font-black uppercase tracking-widest">
+                                   {doc.accessRule.type.replace('_', ' ')}
+                                 </span>
+                              </div>
+                              <p className="text-[9px] text-slate-500 font-bold max-w-[200px] leading-relaxed uppercase">
+                                 {doc.accessRule.description}
+                              </p>
+                           </div>
+                         )}
+                      </td>
 
-                    <td className="py-6 px-8 text-right">
-                       <button className="px-4 py-2 bg-white/5 hover:bg-primary/20 hover:text-primary border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-                          Configure Rule
-                       </button>
-                    </td>
-                  </motion.tr>
-                ))}
+                      <td className="py-6 px-8 text-right">
+                         <button className="px-4 py-2 bg-white/5 hover:bg-primary/20 hover:text-primary border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                            Configure Rule
+                         </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
