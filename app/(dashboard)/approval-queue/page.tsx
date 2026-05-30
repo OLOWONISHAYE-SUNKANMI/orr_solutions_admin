@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/hooks/auth";
 import { useApprovalStore, ApprovalRequest } from "@/store/approvalStore";
 import { 
@@ -17,13 +17,14 @@ import {
   RefreshCw,
   Search,
   Trash2,
-  Lock
+  Lock,
+  Loader2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ApprovalQueuePage() {
   const { user } = useAuthStore();
-  const { requests, approveRequest, rejectRequest, clearHistory } = useApprovalStore();
+  const { requests, isLoading, fetchRequests, approveRequest, rejectRequest, clearHistory } = useApprovalStore();
   
   // Permission Guard
   const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_approve_sensitive_actions;
@@ -41,6 +42,12 @@ export default function ApprovalQueuePage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [securityKey, setSecurityKey] = useState("");
   const [securityKeyError, setSecurityKeyError] = useState("");
+
+  useEffect(() => {
+    if (hasPermission) {
+      fetchRequests();
+    }
+  }, [hasPermission, fetchRequests]);
 
   if (!hasPermission) {
     return (
@@ -64,6 +71,50 @@ export default function ApprovalQueuePage() {
               Return to Safety
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading && requests.length === 0) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto space-y-8 text-white min-h-[90vh]">
+        {/* Header Panel Skeleton */}
+        <div className="bg-slate-900/40 border border-white/5 p-8 rounded-3xl space-y-4 animate-pulse">
+          <div className="h-4 w-28 bg-slate-800 rounded-full" />
+          <div className="h-8 w-80 bg-slate-800 rounded-full" />
+          <div className="h-4 w-full bg-slate-800/60 rounded-full" />
+        </div>
+
+        {/* Filters and Search Row Skeleton */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 animate-pulse">
+          <div className="h-10 w-80 bg-slate-900/60 border border-white/5 rounded-2xl" />
+          <div className="h-10 w-64 bg-slate-900/60 border border-white/5 rounded-2xl" />
+        </div>
+
+        {/* Requests List Cards Skeleton */}
+        <div className="space-y-4 pt-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-3 animate-pulse">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-800 rounded-2xl" />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-16 bg-slate-800 rounded-full" />
+                      <div className="h-4 w-24 bg-slate-800 rounded-full" />
+                    </div>
+                    <div className="h-4 w-48 bg-slate-800 rounded-full" />
+                    <div className="h-2 w-36 bg-slate-800/60 rounded-full" />
+                  </div>
+                </div>
+                <div className="space-y-2 text-right">
+                  <div className="h-5 w-24 bg-slate-800 rounded-full" />
+                  <div className="h-2 w-16 bg-slate-800/60 rounded-full" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

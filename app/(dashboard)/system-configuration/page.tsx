@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/hooks/auth";
+import api from '@/app/services/api';
 import { 
   ShieldAlert, 
   Settings, 
@@ -35,9 +36,33 @@ export default function SystemConfigurationPage() {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupProgress, setBackupProgress] = useState(0);
   const [backupSuccess, setBackupSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Overwrite state policy alert
   const [policyModified, setPolicyModified] = useState(false);
+
+  useEffect(() => {
+    if (hasPermission) {
+      loadConfig();
+    }
+  }, [hasPermission]);
+
+  const loadConfig = async () => {
+    setIsLoading(true);
+    try {
+      const config = await api.systemConfig.getSystemConfig() as any;
+      setMfaEnforced(config.mfa_enforced);
+      setStrictInterceptor(config.strict_interceptors);
+      setMaintenanceMode(config.maintenance_mode);
+      setVerboseLogging(config.verbose_logging);
+      setSessionTimeout(config.session_timeout);
+      setIpWhiteList(config.ip_bounds_restricted);
+    } catch (error) {
+      console.error("Failed to load config", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!hasPermission) {
     return (
@@ -66,65 +91,96 @@ export default function SystemConfigurationPage() {
     );
   }
 
-  const handleBackupSubmit = () => {
+  if (isLoading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto space-y-8 text-white min-h-[90vh]">
+        {/* Header Panel Skeleton */}
+        <div className="bg-slate-900/40 border border-white/5 p-8 rounded-3xl space-y-4 animate-pulse">
+          <div className="h-4 w-28 bg-slate-800 rounded-full" />
+          <div className="h-8 w-80 bg-slate-800 rounded-full" />
+          <div className="h-4 w-full bg-slate-800/60 rounded-full" />
+        </div>
+
+        {/* 2 Column Layout Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Settings Parameters Skeleton */}
+          <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-4 pt-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex justify-between items-center bg-slate-950/20 p-4 border border-white/5 rounded-2xl">
+                  <div className="space-y-2">
+                    <div className="h-4 w-40 bg-slate-800 rounded-full" />
+                    <div className="h-3 w-72 bg-slate-800/60 rounded-full" />
+                  </div>
+                  <div className="h-6 w-11 bg-slate-800 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Backup parameters Skeleton */}
+          <div className="lg:col-span-5 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-6 pt-4">
+              <div className="bg-slate-950/40 p-5 border border-white/5 rounded-2xl space-y-3 text-center">
+                <div className="w-12 h-12 bg-slate-800 rounded-full mx-auto" />
+                <div className="h-4 w-32 bg-slate-800 rounded-full mx-auto" />
+                <div className="h-3 w-48 bg-slate-800/60 rounded-full mx-auto" />
+              </div>
+              <div className="bg-slate-950/40 p-5 border border-white/5 rounded-2xl space-y-2">
+                <div className="h-4 w-32 bg-slate-800 rounded-full" />
+                <div className="h-3 w-full bg-slate-800/60 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleBackupSubmit = async () => {
     setIsBackingUp(true);
     setBackupProgress(0);
     setBackupSuccess(false);
 
-    const interval = setInterval(() => {
-      setBackupProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsBackingUp(false);
-          setBackupSuccess(true);
-          
-          // Log to simulated global audit log
-          try {
-            const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-            const newAudit = {
-              id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-              username: user?.full_name || user?.username || "Super Admin",
-              user_full_name: user?.full_name || user?.username || "Super Admin",
-              action: "BACKUP_SUCCESS",
-              model_name: "ManualBackup",
-              object_id: `db-snapshot-manual-${Math.floor(Math.random() * 1000)}`,
-              description: `Manually triggered full database backup snapshot successfully completed. Database allocation audited at 248.4 MB. Snapshot uploaded to AWS vault.`,
-              ip_address: "192.168.1.1",
-              user_agent: navigator.userAgent,
-              timestamp: new Date().toISOString()
-            };
-            localStorage.setItem('orr_admin_audit_logs', JSON.stringify([newAudit, ...auditLogs]));
-          } catch (e) {}
-
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 250);
+    try {
+      await api.systemConfig.triggerBackup();
+      
+      const interval = setInterval(() => {
+        setBackupProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsBackingUp(false);
+            setBackupSuccess(true);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 250);
+    } catch (error) {
+      console.error("Backup failed", error);
+      setIsBackingUp(false);
+      alert("Failed to trigger backup.");
+    }
   };
 
-  const handleSavePolicy = () => {
-    setPolicyModified(false);
-    
-    // Log configuration rewrite
+  const handleSavePolicy = async () => {
     try {
-      const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-      const newAudit = {
-        id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-        username: user?.full_name || user?.username || "Super Admin",
-        user_full_name: user?.full_name || user?.username || "Super Admin",
-        action: "SYSTEM_RECONFIG",
-        model_name: "SystemConfig",
-        object_id: "global-settings",
-        description: `Modified administrative system parameters: Strict API Error Handlers = ${strictInterceptor}, MFA Enforcement = ${mfaEnforced}, Maintenance Mode = ${maintenanceMode}.`,
-        ip_address: "192.168.1.1",
-        user_agent: navigator.userAgent,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem('orr_admin_audit_logs', JSON.stringify([newAudit, ...auditLogs]));
-    } catch (e) {}
-
-    alert("Administrative platform settings successfully reconfigured & committed to system environment variables.");
+      await api.systemConfig.updateSystemConfig({
+        mfa_enforced: mfaEnforced,
+        strict_interceptors: strictInterceptor,
+        session_timeout: sessionTimeout,
+        maintenance_mode: maintenanceMode,
+        verbose_logging: verboseLogging,
+        ip_bounds_restricted: ipWhiteList,
+      });
+      setPolicyModified(false);
+      alert("Administrative platform settings successfully reconfigured & committed to system environment variables.");
+    } catch (error) {
+      console.error("Failed to update config", error);
+      alert("Failed to update system config.");
+    }
   };
 
   const toggleSwitch = (value: boolean, setter: (val: boolean) => void) => {

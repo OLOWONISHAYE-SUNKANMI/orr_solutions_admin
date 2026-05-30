@@ -1494,6 +1494,160 @@ export const cmsAPI = {
 };
 
 // ============================================================================
+// SECURITY, AUDIT, & APPROVAL ENDPOINTS
+// ============================================================================
+
+export const auditSecurityAPI = {
+  getAuditLogs: (filters?: Record<string, any>) => {
+    console.log('[API] Fetching security audit logs', filters);
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return apiCall(`/admin-portal/v1/audit/logs/${queryString ? `?${queryString}` : ''}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch audit logs:', error);
+      throw error;
+    });
+  },
+
+  getAdminSessions: () => {
+    console.log('[API] Fetching active admin sessions');
+    return apiCall("/admin-portal/v1/security/sessions/").catch(error => {
+      console.error('[API ERROR] Failed to fetch admin sessions:', error);
+      throw error;
+    });
+  },
+
+  revokeSession: (sessionId: string) => {
+    console.log(`[API] Revoking session ${sessionId}`);
+    return apiCall(`/admin-portal/v1/security/sessions/${sessionId}/`, {
+      method: "DELETE",
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to revoke session ${sessionId}:`, error);
+      throw error;
+    });
+  },
+
+  revokeAllSessions: (userId: string) => {
+    console.log(`[API] Revoking all sessions for user ${userId}`);
+    return apiCall("/admin-portal/v1/security/revoke-all/", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to revoke all sessions for user ${userId}:`, error);
+      throw error;
+    });
+  },
+};
+
+export const approvalQueueAPI = {
+  getApprovalQueue: (status?: string) => {
+    console.log(`[API] Fetching approval queue${status ? ` (status: ${status})` : ''}`);
+    const qs = status ? `?status=${status}` : '';
+    return apiCall(`/admin-portal/v1/approvals/queue/${qs}`).catch(error => {
+      console.error('[API ERROR] Failed to fetch approval queue:', error);
+      throw error;
+    });
+  },
+
+  createApprovalRequest: (actionType: string, payload: any) => {
+    console.log(`[API] Creating approval request for ${actionType}`);
+    return apiCall("/admin-portal/v1/approvals/queue/", {
+      method: "POST",
+      body: JSON.stringify({ action_type: actionType, payload }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to create approval request for ${actionType}:`, error);
+      throw error;
+    });
+  },
+
+  decideApproval: (id: string, decision: 'APPROVED' | 'REJECTED', reason: string = '') => {
+    console.log(`[API] Deciding approval ${id}: ${decision}`);
+    return apiCall(`/admin-portal/v1/approvals/queue/${id}/decide/`, {
+      method: "POST",
+      body: JSON.stringify({ decision, reason }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to decide approval ${id}:`, error);
+      throw error;
+    });
+  },
+};
+
+export const systemConfigAPI = {
+  getSystemConfig: () => {
+    console.log('[API] Fetching system configuration');
+    return apiCall("/admin-portal/v1/system/config/").catch(error => {
+      console.error('[API ERROR] Failed to fetch system configuration:', error);
+      throw error;
+    });
+  },
+
+  updateSystemConfig: (data: Record<string, any>) => {
+    console.log('[API] Updating system configuration:', data);
+    return apiCall("/admin-portal/v1/system/config/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to update system configuration:', error);
+      throw error;
+    });
+  },
+
+  triggerBackup: () => {
+    console.log('[API] Triggering system backup');
+    return apiCall("/admin-portal/v1/system/backup/", {
+      method: "POST",
+    }).catch(error => {
+      console.error('[API ERROR] Failed to trigger system backup:', error);
+      throw error;
+    });
+  },
+};
+
+// ============================================================================
+// ROLE MANAGEMENT ENDPOINTS
+// ============================================================================
+
+export const roleManagementAPI = {
+  updateRolePermissions: (roleId: number, permissions: Record<string, boolean>) => {
+    console.log(`[API] Updating role permissions for role ${roleId}:`, permissions);
+    return apiCall(`/admin-portal/v1/role-management/roles/${roleId}/permissions/`, {
+      method: "PUT",
+      body: JSON.stringify({ permissions }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update permissions for role ${roleId}:`, error);
+      throw error;
+    });
+  },
+
+  deactivateUser: (userId: number) => {
+    console.log(`[API] Deactivating user ${userId}`);
+    return apiCall(`/admin-portal/v1/role-management/users/${userId}/deactivate/`, {
+      method: "POST",
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to deactivate user ${userId}:`, error);
+      throw error;
+    });
+  },
+
+  editUser: (userId: number, data: { user?: Record<string, any>; profile?: Record<string, any> }) => {
+    console.log(`[API] Editing user ${userId}:`, data);
+    return apiCall(`/admin-portal/v1/role-management/users/${userId}/edit/`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to edit user ${userId}:`, error);
+      throw error;
+    });
+  },
+};
+
+// ============================================================================
 // EXPORT ALL APIS
 // ============================================================================
 
@@ -1511,4 +1665,8 @@ export default {
   ticket: ticketAPI,
   billing: billingAPI,
   cms: cmsAPI,
+  auditSecurity: auditSecurityAPI,
+  approvalQueue: approvalQueueAPI,
+  systemConfig: systemConfigAPI,
+  roleManagement: roleManagementAPI,
 };

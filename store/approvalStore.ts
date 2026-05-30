@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import api from '@/app/services/api';
 
 export type ApprovalActionType = 'HARD_DELETE' | 'ROLE_CHANGE' | 'MASS_REASSIGN';
 
@@ -26,6 +27,8 @@ export interface ApprovalRequest {
 
 interface ApprovalState {
   requests: ApprovalRequest[];
+  isLoading: boolean;
+  fetchRequests: (status?: string) => Promise<void>;
   initiateRequest: (
     actionType: ApprovalActionType,
     requestedBy: { name: string; email: string; role: string },
@@ -36,219 +39,101 @@ interface ApprovalState {
   clearHistory: () => void;
 }
 
-// Initial realistic mock data to populate the Operations Console immediately
-const initialMockRequests: ApprovalRequest[] = [
-  {
-    id: 'REQ-1092',
-    actionType: 'HARD_DELETE',
-    requestedBy: {
-      name: 'Sarah Jenkins',
-      email: 'sarah.jenkins@orr.solutions',
-      role: 'Admin'
-    },
-    details: {
-      targetId: 'DOC-772',
-      targetName: 'Tax_Audit_Report_2025.pdf',
-      description: 'Hard deletion of client-facing financial statement in Zenith Digital Workspace.',
-      meta: { clientId: '4', company: 'Zenith Digital' }
-    },
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 3600000 * 2.5).toISOString() // 2.5 hours ago
-  },
-  {
-    id: 'REQ-1093',
-    actionType: 'ROLE_CHANGE',
-    requestedBy: {
-      name: 'Sarah Jenkins',
-      email: 'sarah.jenkins@orr.solutions',
-      role: 'Admin'
-    },
-    details: {
-      targetId: 'USR-881',
-      targetName: 'David Kim',
-      description: 'Elevate user role from Operational Operator to Standard Administrator.',
-      meta: { currentRole: 'operator', newRole: 'admin' }
-    },
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 3600000 * 0.8).toISOString() // 48 mins ago
-  },
-  {
-    id: 'REQ-1094',
-    actionType: 'MASS_REASSIGN',
-    requestedBy: {
-      name: 'Sarah Jenkins',
-      email: 'sarah.jenkins@orr.solutions',
-      role: 'Admin'
-    },
-    details: {
-      targetId: 'REASSIGN-09',
-      targetName: 'David Kim → Robert Chen',
-      description: 'Mass reassign all 14 active clients under Operator David Kim to Operator Robert Chen due to transition of accounts.',
-      meta: { clientCount: 14, sourceUser: 'David Kim', targetUser: 'Robert Chen' }
-    },
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 600000 * 2).toISOString() // 20 mins ago
-  },
-  // Completed History Mock Data
-  {
-    id: 'REQ-1088',
-    actionType: 'HARD_DELETE',
-    requestedBy: {
-      name: 'Sarah Jenkins',
-      email: 'sarah.jenkins@orr.solutions',
-      role: 'Admin'
-    },
-    details: {
-      targetId: 'DOC-512',
-      targetName: 'Old_Marketing_Draft_2023.zip',
-      description: 'Hard deletion of obsolete legacy files.',
-      meta: { clientId: '9', company: 'Apex Global' }
-    },
-    status: 'APPROVED',
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    reviewedBy: 'Super Admin Override',
-    reviewedAt: new Date(Date.now() - 3600000 * 22).toISOString()
-  },
-  {
-    id: 'REQ-1089',
-    actionType: 'ROLE_CHANGE',
-    requestedBy: {
-      name: 'Sarah Jenkins',
-      email: 'sarah.jenkins@orr.solutions',
-      role: 'Admin'
-    },
-    details: {
-      targetId: 'USR-902',
-      targetName: 'Lisa Vance',
-      description: 'Elevate Lisa Vance to Super Admin role.',
-      meta: { currentRole: 'admin', newRole: 'super_admin' }
-    },
-    status: 'REJECTED',
-    createdAt: new Date(Date.now() - 3600000 * 26).toISOString(),
-    reviewedBy: 'Super Admin Override',
-    reviewedAt: new Date(Date.now() - 3600000 * 25.5).toISOString(),
-    rejectionReason: 'Elevation of external administrators to Super Admin is forbidden without formal corporate approval.'
-  }
-];
-
 export const useApprovalStore = create<ApprovalState>()(
   persist(
     (set, get) => ({
-      requests: initialMockRequests,
+      requests: [],
+      isLoading: false,
+
+      fetchRequests: async (status?: string) => {
+        set({ isLoading: true });
+        try {
+          const response = await api.approvalQueue.getApprovalQueue(status) as any;
+          const rawResults = response?.data?.results || response?.data || response?.results || (Array.isArray(response) ? response : []);
+          const mappedRequests = rawResults.map((r: any) => ({
+            id: r.id,
+            actionType: r.action_type,
+            requestedBy: {
+              name: r.requested_by_name,
+              email: '', // Backend might not return email currently, can add later if needed
+              role: r.requested_by_role,
+            },
+            details: r.payload,
+            status: r.status,
+            createdAt: r.requested_at,
+            reviewedBy: r.decided_by_name,
+            reviewedAt: r.decided_at,
+            rejectionReason: r.rejection_reason,
+          }));
+          set({ requests: mappedRequests, isLoading: false });
+        } catch (error) {
+          console.error("Failed to fetch approval queue:", error);
+          set({ isLoading: false });
+        }
+      },
 
       initiateRequest: async (actionType, requestedBy, details) => {
-        const id = `REQ-${Math.floor(1000 + Math.random() * 9000)}`;
-        const newRequest: ApprovalRequest = {
-          id,
-          actionType,
-          requestedBy,
-          details,
-          status: 'PENDING',
-          createdAt: new Date().toISOString()
-        };
-
-        // Add request to list
-        set((state) => ({
-          requests: [newRequest, ...state.requests]
-        }));
-
-        // Log to simulated global audit log
         try {
-          const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-          const newAudit = {
-            id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-            username: requestedBy.name,
-            user_full_name: requestedBy.name,
-            action: `INITIATED_APPROVAL`,
-            model_name: actionType,
-            object_id: details.targetId,
-            description: `Initiated dual-approval request ${id} for sensitive action: ${details.description}`,
-            ip_address: '192.168.1.104',
-            user_agent: navigator.userAgent,
-            timestamp: new Date().toISOString()
+          const response = await api.approvalQueue.createApprovalRequest(actionType, details) as any;
+          const newRequest: ApprovalRequest = {
+            id: response.request_id,
+            actionType,
+            requestedBy,
+            details,
+            status: 'PENDING',
+            createdAt: new Date().toISOString()
           };
-          localStorage.setItem('orr_admin_audit_logs', JSON.stringify([newAudit, ...auditLogs]));
-        } catch (e) {
-          console.warn('Simulated audit log write failed:', e);
+          
+          set((state) => ({
+            requests: [newRequest, ...state.requests]
+          }));
+          return response.request_id;
+        } catch (error) {
+          console.error("Failed to initiate request:", error);
+          throw error;
         }
-
-        return id;
       },
 
       approveRequest: async (id, reviewerName) => {
-        const request = get().requests.find((r) => r.id === id);
-        if (!request) return;
-
-        set((state) => ({
-          requests: state.requests.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  status: 'APPROVED',
-                  reviewedBy: reviewerName,
-                  reviewedAt: new Date().toISOString()
-                }
-              : r
-          )
-        }));
-
-        // Trigger simulated actual execution logs into audit trail
         try {
-          const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-          const actionAudit = {
-            id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-            username: reviewerName,
-            user_full_name: reviewerName,
-            action: `APPROVED_ACTION`,
-            model_name: request.actionType,
-            object_id: request.details.targetId,
-            description: `Approved and executed dual-approval request ${id}: ${request.details.description}`,
-            ip_address: '192.168.1.1',
-            user_agent: navigator.userAgent,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('orr_admin_audit_logs', JSON.stringify([actionAudit, ...auditLogs]));
-        } catch (e) {
-          console.warn('Simulated audit log write failed:', e);
+          await api.approvalQueue.decideApproval(id, 'APPROVED');
+          set((state) => ({
+            requests: state.requests.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    status: 'APPROVED',
+                    reviewedBy: reviewerName,
+                    reviewedAt: new Date().toISOString()
+                  }
+                : r
+            )
+          }));
+        } catch (error) {
+          console.error("Failed to approve request:", error);
+          throw error;
         }
       },
 
       rejectRequest: async (id, reviewerName, reason) => {
-        const request = get().requests.find((r) => r.id === id);
-        if (!request) return;
-
-        set((state) => ({
-          requests: state.requests.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  status: 'REJECTED',
-                  reviewedBy: reviewerName,
-                  reviewedAt: new Date().toISOString(),
-                  rejectionReason: reason
-                }
-              : r
-          )
-        }));
-
-        // Log to simulated global audit log
         try {
-          const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-          const actionAudit = {
-            id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-            username: reviewerName,
-            user_full_name: reviewerName,
-            action: `REJECTED_ACTION`,
-            model_name: request.actionType,
-            object_id: request.details.targetId,
-            description: `Rejected dual-approval request ${id} with reason: "${reason}". Action: ${request.details.description}`,
-            ip_address: '192.168.1.1',
-            user_agent: navigator.userAgent,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('orr_admin_audit_logs', JSON.stringify([actionAudit, ...auditLogs]));
-        } catch (e) {
-          console.warn('Simulated audit log write failed:', e);
+          await api.approvalQueue.decideApproval(id, 'REJECTED', reason);
+          set((state) => ({
+            requests: state.requests.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    status: 'REJECTED',
+                    reviewedBy: reviewerName,
+                    reviewedAt: new Date().toISOString(),
+                    rejectionReason: reason
+                  }
+                : r
+            )
+          }));
+        } catch (error) {
+          console.error("Failed to reject request:", error);
+          throw error;
         }
       },
 
@@ -259,7 +144,8 @@ export const useApprovalStore = create<ApprovalState>()(
       }
     }),
     {
-      name: 'approval-queue-storage'
+      name: 'approval-queue-storage',
+      partialize: (state) => ({ requests: state.requests }), // Persist only requests locally, but fetch overrides on mount
     }
   )
 );

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/hooks/auth";
-import { dashboardAPI } from "@/app/services/api";
+import api, { dashboardAPI } from "@/app/services/api";
 import { 
   ShieldAlert, 
   Terminal, 
@@ -33,51 +33,46 @@ interface ActiveSession {
   isSelf: boolean;
 }
 
-const mockSessions: ActiveSession[] = [
-  {
-    id: "SESS-881",
-    name: "Robert Chen",
-    role: "Super Admin",
-    email: "robert.chen@orr.solutions",
-    ip: "192.168.1.1",
-    location: "Lagos, Nigeria (Secure VPN Zone)",
-    device: "MacBook Pro / Chrome 120",
-    activeTime: "Active now",
-    isSelf: true
-  },
-  {
-    id: "SESS-882",
-    name: "Sarah Jenkins",
-    role: "Admin",
-    email: "sarah.jenkins@orr.solutions",
-    ip: "192.168.1.104",
-    location: "London, UK",
-    device: "iPad Pro / Safari 17.2",
-    activeTime: "Active 4m ago",
-    isSelf: false
-  },
-  {
-    id: "SESS-883",
-    name: "David Kim",
-    role: "Operator",
-    email: "david.kim@orr.solutions",
-    ip: "192.168.1.112",
-    location: "Toronto, Canada",
-    device: "Windows 11 / Firefox 121",
-    activeTime: "Active 18m ago",
-    isSelf: false
-  }
-];
-
 export default function SecurityMonitoringPage() {
   const { user } = useAuthStore();
   const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_view_security_events;
 
   const [threatLevel, setThreatLevel] = useState<number>(15); // 0 - 100 percentage
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
-  const [sessions, setSessions] = useState<ActiveSession[]>(mockSessions);
+  const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [isSimulatingRevoke, setIsSimulatingRevoke] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const consoleBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hasPermission) {
+      loadSessions();
+    }
+  }, [hasPermission]);
+
+  const loadSessions = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.auditSecurity.getAdminSessions() as any;
+      const rawResults = res?.data?.results || res?.data || res?.results || (Array.isArray(res) ? res : []);
+      const mapped = rawResults.map((s: any) => ({
+        id: s.id,
+        name: s.full_name || s.username,
+        role: "Admin", // Need role in API if detailed
+        email: s.email,
+        ip: s.ip_address || "Unknown IP",
+        location: s.location || "Unknown Location",
+        device: s.user_agent || "Unknown Device",
+        activeTime: `Active since ${new Date(s.created_at).toLocaleTimeString()}`,
+        isSelf: s.is_self,
+      }));
+      setSessions(mapped);
+    } catch (error) {
+      console.error("Failed to load sessions:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Auto-scroll console stream
   useEffect(() => {
@@ -156,14 +151,23 @@ export default function SecurityMonitoringPage() {
     setThreatLevel(15);
   };
 
-  const handleForceTerminate = (session: ActiveSession) => {
+  const handleForceTerminate = async (session: ActiveSession) => {
     if (confirm(`Are you sure you want to instantly terminate the administrative session ${session.id} for ${session.name}? This will instantly log them out.`)) {
-      setSessions(prev => prev.filter(s => s.id !== session.id));
-      setConsoleLogs(prev => [
-        ...prev,
-        `[${new Date().toLocaleTimeString()}] 🚨 FORCE_EVICTION: Revoked administrative session token for ${session.name} (${session.email}) from IP ${session.ip}.`,
-        `[${new Date().toLocaleTimeString()}] 📡 API: Broadcasted instant session logout eviction package to client.`
-      ]);
+      try {
+        await api.auditSecurity.revokeSession(session.id);
+        
+        setConsoleLogs(prev => [
+          ...prev,
+          `[${new Date().toLocaleTimeString()}] 🚨 FORCE_EVICTION: Revoked administrative session token for ${session.name} (${session.email}) from IP ${session.ip}.`,
+          `[${new Date().toLocaleTimeString()}] 📡 API: Broadcasted instant session logout eviction package to client.`
+        ]);
+        
+        // Refresh sessions from backend
+        loadSessions();
+      } catch (error) {
+        console.error("Failed to revoke session", error);
+        alert("Failed to terminate session.");
+      }
     }
   };
 
@@ -188,6 +192,64 @@ export default function SecurityMonitoringPage() {
             >
               Return to Safety
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading && sessions.length === 0) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto space-y-8 text-white min-h-[90vh]">
+        {/* Header Panel Skeleton */}
+        <div className="bg-slate-900/40 border border-white/5 p-8 rounded-3xl space-y-4 animate-pulse">
+          <div className="h-4 w-28 bg-slate-800 rounded-full" />
+          <div className="h-8 w-80 bg-slate-800 rounded-full" />
+          <div className="h-4 w-full bg-slate-800/60 rounded-full" />
+        </div>
+
+        {/* 4 Cards Grid Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-slate-900/20 border border-white/5 p-5 rounded-2xl space-y-2">
+              <div className="h-3 w-16 bg-slate-800 rounded-full" />
+              <div className="h-6 w-24 bg-slate-800 rounded-full" />
+              <div className="h-2 w-12 bg-slate-800/60 rounded-full" />
+            </div>
+          ))}
+        </div>
+
+        {/* Terminal and Session Details Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Terminal Console Skeleton */}
+          <div className="lg:col-span-8 bg-slate-950 border border-white/5 p-6 rounded-3xl space-y-4 animate-pulse">
+            <div className="flex justify-between items-center pb-2">
+              <div className="h-5 w-48 bg-slate-800 rounded-full" />
+              <div className="h-4 w-12 bg-slate-800 rounded-full" />
+            </div>
+            <div className="space-y-3 bg-black/40 p-4 rounded-2xl h-48">
+              <div className="h-3 w-full bg-slate-900 rounded-full" />
+              <div className="h-3 w-4/5 bg-slate-900 rounded-full" />
+              <div className="h-3 w-3/4 bg-slate-900 rounded-full" />
+              <div className="h-3 w-2/3 bg-slate-900 rounded-full" />
+            </div>
+          </div>
+
+          {/* Active Sessions Skeleton */}
+          <div className="lg:col-span-4 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-4 pt-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-slate-950/40 p-4 border border-white/5 rounded-2xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 w-32 bg-slate-800 rounded-full" />
+                    <div className="h-3 w-12 bg-slate-800/60 rounded-full" />
+                  </div>
+                  <div className="h-3 w-48 bg-slate-800/60 rounded-full" />
+                  <div className="h-3 w-24 bg-slate-800/60 rounded-full" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
