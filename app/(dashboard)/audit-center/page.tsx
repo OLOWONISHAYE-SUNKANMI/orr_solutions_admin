@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import api from '@/app/services/api';
 import { useAuthStore } from "@/lib/hooks/auth";
 import { 
   ShieldAlert, 
@@ -37,81 +38,6 @@ interface AuditLog {
   timestamp: string;
 }
 
-const initialMockLogs: AuditLog[] = [
-  {
-    id: "AUDIT-90182",
-    username: "robert.chen@orr.solutions",
-    user_full_name: "Robert Chen",
-    action: "POLICY_CHANGE",
-    model_name: "RoleMatrix",
-    object_id: "global-policy",
-    description: "Globally reconfigured the Identity & Role Authorization Matrix: Enabled 'can_view_security_events' for Administrator role.",
-    ip_address: "192.168.1.1",
-    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    timestamp: new Date(Date.now() - 3600000 * 0.4).toISOString() // 24 mins ago
-  },
-  {
-    id: "AUDIT-90181",
-    username: "sarah.jenkins@orr.solutions",
-    user_full_name: "Sarah Jenkins",
-    action: "INITIATED_APPROVAL",
-    model_name: "HARD_DELETE",
-    object_id: "DOC-772",
-    description: "Initiated dual-approval request REQ-1092 for sensitive action: Hard deletion of client-facing financial statement (Tax_Audit_Report_2025.pdf) in Zenith Digital Workspace.",
-    ip_address: "192.168.1.104",
-    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
-    timestamp: new Date(Date.now() - 3600000 * 2.5).toISOString() // 2.5 hours ago
-  },
-  {
-    id: "AUDIT-90180",
-    username: "robert.chen@orr.solutions",
-    user_full_name: "Robert Chen",
-    action: "APPROVED_ACTION",
-    model_name: "HARD_DELETE",
-    object_id: "DOC-512",
-    description: "Approved and executed dual-approval request REQ-1088: Hard deletion of obsolete legacy files (Old_Marketing_Draft_2023.zip) under client Apex Global.",
-    ip_address: "192.168.1.1",
-    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    timestamp: new Date(Date.now() - 3600000 * 22).toISOString() // 22 hours ago
-  },
-  {
-    id: "AUDIT-90179",
-    username: "sarah.jenkins@orr.solutions",
-    user_full_name: "Sarah Jenkins",
-    action: "AUTHENTICATION_SUCCESS",
-    model_name: "AuthSession",
-    object_id: "session-active",
-    description: "Administrator user authenticated successfully via administrative workspace login portal.",
-    ip_address: "192.168.1.104",
-    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
-    timestamp: new Date(Date.now() - 3600000 * 24).toISOString() // 24 hours ago
-  },
-  {
-    id: "AUDIT-90178",
-    username: "robert.chen@orr.solutions",
-    user_full_name: "Robert Chen",
-    action: "SUSPEND_USER",
-    model_name: "AdminUser",
-    object_id: "USR-005",
-    description: "Suspended administrative user account Jonathan Vance (jonathan.vance@orr.solutions) due to anomalous geo-location activity & threat compliance flags.",
-    ip_address: "192.168.1.1",
-    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    timestamp: new Date(Date.now() - 3600000 * 48).toISOString() // 2 days ago
-  },
-  {
-    id: "AUDIT-90177",
-    username: "SYSTEM",
-    user_full_name: "ORR Automated Agent",
-    action: "BACKUP_SUCCESS",
-    model_name: "SystemCron",
-    object_id: "db-snapshot-daily",
-    description: "Triggered daily automated secure database backup and synced snapshot snapshot_db_2026_05_20_0001.gz to AWS glacier storage successfully.",
-    ip_address: "127.0.0.1",
-    user_agent: "Internal Automated Daemon V4.2.1",
-    timestamp: new Date(Date.now() - 3600000 * 54).toISOString() // 2.2 days ago
-  }
-];
-
 export default function AuditCenterPage() {
   const { user } = useAuthStore();
   const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_view_audit_logs;
@@ -120,28 +46,36 @@ export default function AuditCenterPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"ALL" | "AUTH" | "DESTRUCTIVE" | "APPROVALS" | "SYSTEM">("ALL");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize and populate logs
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("orr_admin_audit_logs");
-      if (stored) {
-        setLogs(JSON.parse(stored));
-      } else {
-        localStorage.setItem("orr_admin_audit_logs", JSON.stringify(initialMockLogs));
-        setLogs(initialMockLogs);
-      }
+    if (hasPermission) {
+      refreshLogs();
     }
-  }, []);
+  }, [hasPermission]);
 
-  const refreshLogs = () => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("orr_admin_audit_logs");
-      if (stored) {
-        setLogs(JSON.parse(stored));
-      } else {
-        setLogs(initialMockLogs);
-      }
+  const refreshLogs = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.auditSecurity.getAuditLogs() as any;
+      const rawResults = response?.data?.results || response?.data || response?.results || (Array.isArray(response) ? response : []);
+      const mappedLogs: AuditLog[] = rawResults.map((log: any) => ({
+        id: String(log.id),
+        username: log.user_email,
+        user_full_name: log.user_email,
+        action: log.event_category,
+        model_name: log.event_name,
+        object_id: "", // Or construct if available
+        description: JSON.stringify(log.metadata),
+        ip_address: log.ip_address,
+        user_agent: log.user_agent,
+        timestamp: log.event_timestamp,
+      }));
+      setLogs(mappedLogs);
+    } catch (error) {
+      console.error("Failed to fetch logs", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -175,6 +109,61 @@ export default function AuditCenterPage() {
             >
               Return to Safety
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading && logs.length === 0) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto space-y-8 text-white min-h-[90vh]">
+        {/* Header Panel Skeleton */}
+        <div className="bg-slate-900/40 border border-white/5 p-8 rounded-3xl space-y-4 animate-pulse">
+          <div className="h-4 w-28 bg-slate-800 rounded-full" />
+          <div className="h-8 w-80 bg-slate-800 rounded-full" />
+          <div className="h-4 w-full bg-slate-800/60 rounded-full" />
+        </div>
+
+        {/* Warning Alert Skeleton */}
+        <div className="bg-slate-950/40 p-4 border border-white/5 rounded-2xl h-12 w-full animate-pulse bg-slate-900/20" />
+
+        {/* Filters and Search Row Skeleton */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 animate-pulse">
+          <div className="h-10 w-96 bg-slate-900/60 border border-white/5 rounded-2xl" />
+          <div className="h-10 w-64 bg-slate-900/60 border border-white/5 rounded-2xl" />
+        </div>
+
+        {/* Two-Column Grid Skeleton */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          {/* Timeline Skeleton */}
+          <div className="xl:col-span-8 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-4 pt-4 border-l border-white/10 pl-6 ml-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-slate-950/40 border border-white/5 p-5 rounded-2xl space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-16 bg-slate-800 rounded-full" />
+                      <div className="h-4 w-24 bg-slate-800 rounded-full" />
+                    </div>
+                    <div className="h-3 w-20 bg-slate-800/60 rounded-full" />
+                  </div>
+                  <div className="h-3 w-72 bg-slate-800 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Details Card Skeleton */}
+          <div className="xl:col-span-4 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-4 pt-4">
+              <div className="w-16 h-16 bg-slate-800 rounded-2xl mx-auto" />
+              <div className="h-4 w-32 bg-slate-800 rounded-full mx-auto" />
+              <div className="h-3 w-24 bg-slate-800/60 rounded-full mx-auto" />
+              <div className="h-24 w-full bg-slate-950/30 rounded-2xl" />
+            </div>
           </div>
         </div>
       </div>

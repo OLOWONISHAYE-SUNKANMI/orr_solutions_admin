@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthStore } from "@/lib/hooks/auth";
+import api from "@/app/services/api";
 import { 
   ROLE_PERMISSIONS, 
   Permission, 
@@ -33,65 +34,15 @@ interface AdminUserRecord {
   ipAddress: string;
 }
 
-const initialAdminUsers: AdminUserRecord[] = [
-  {
-    id: "USR-001",
-    name: "Robert Chen",
-    email: "robert.chen@orr.solutions",
-    role: "super_admin",
-    department: "Security & Operations",
-    status: "ACTIVE",
-    lastActive: "Just now",
-    ipAddress: "192.168.1.1"
-  },
-  {
-    id: "USR-002",
-    name: "Sarah Jenkins",
-    email: "sarah.jenkins@orr.solutions",
-    role: "admin",
-    department: "Administrative Support",
-    status: "ACTIVE",
-    lastActive: "15 mins ago",
-    ipAddress: "192.168.1.104"
-  },
-  {
-    id: "USR-003",
-    name: "David Kim",
-    email: "david.kim@orr.solutions",
-    role: "operator",
-    department: "Client Services",
-    status: "ACTIVE",
-    lastActive: "3 hours ago",
-    ipAddress: "192.168.1.112"
-  },
-  {
-    id: "USR-004",
-    name: "Emily Stone",
-    email: "emily.stone@orr.solutions",
-    role: "content_editor",
-    department: "Marketing & Strategy",
-    status: "ACTIVE",
-    lastActive: "Yesterday",
-    ipAddress: "192.168.1.155"
-  },
-  {
-    id: "USR-005",
-    name: "Jonathan Vance",
-    email: "jonathan.vance@orr.solutions",
-    role: "admin",
-    department: "Financial Relations",
-    status: "SUSPENDED",
-    lastActive: "3 weeks ago",
-    ipAddress: "192.168.2.22"
-  }
-];
-
 export default function RoleManagementPage() {
   const { user } = useAuthStore();
   const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_manage_roles;
 
   // State Management
-  const [usersList, setUsersList] = useState<AdminUserRecord[]>(initialAdminUsers);
+  const [usersList, setUsersList] = useState<AdminUserRecord[]>([]);
+  const [rolesList, setRolesList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUserRecord | null>(null);
   
@@ -105,6 +56,86 @@ export default function RoleManagementPage() {
   const [confirmError, setConfirmError] = useState("");
 
   const [elevatingUser, setElevatingUser] = useState<AdminUserRecord | null>(null);
+
+  useEffect(() => {
+    if (hasPermission) {
+      fetchData();
+    }
+  }, [hasPermission]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const [usersResponse, rolesResponse] = await Promise.all([
+        api.settings.listUsers(),
+        api.settings.listRoles(),
+      ]) as [any, any];
+
+      const usersData = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || []);
+      const rolesData = Array.isArray(rolesResponse) ? rolesResponse : (rolesResponse?.data || []);
+
+      setRolesList(rolesData);
+
+      // Construct matrix from rolesData
+      const newMatrix: Record<RoleName, Permission[]> = {
+        super_admin: [],
+        admin: [],
+        operator: [],
+        content_editor: [],
+      };
+
+      const permissionKeys: Permission[] = [
+        'can_manage_users', 'can_view_all_clients', 'can_edit_clients', 'can_manage_tickets',
+        'can_manage_meetings', 'can_create_content', 'can_publish_content', 'can_view_analytics',
+        'can_view_billing', 'can_manage_settings', 'can_view_ai_logs', 'can_manage_roles',
+        'can_view_audit_logs', 'can_view_security_events', 'can_approve_sensitive_actions',
+        'can_configure_system'
+      ];
+
+      rolesData.forEach((roleObj: any) => {
+        const roleName = roleObj.name as RoleName;
+        if (roleName) {
+          const permissionsArray: Permission[] = [];
+          permissionKeys.forEach(key => {
+            if (roleObj[key] === true) {
+              permissionsArray.push(key);
+            }
+          });
+          newMatrix[roleName] = permissionsArray;
+        }
+      });
+      
+      setMatrix(newMatrix);
+      setMatrixModified(false);
+
+      // Convert backend users (admin profiles) to AdminUserRecord
+      const formattedUsers: AdminUserRecord[] = usersData.map((profile: any) => {
+        const status: "ACTIVE" | "SUSPENDED" = profile.is_active ? "ACTIVE" : "SUSPENDED";
+        
+        const matchingRole = rolesData.find((r: any) => r.id === profile.role);
+        const roleName: RoleName = matchingRole ? (matchingRole.name as RoleName) : "operator";
+
+        return {
+          id: String(profile.user_id || profile.id),
+          name: profile.full_name || profile.username || "Anonymous Admin",
+          email: profile.email || "",
+          role: roleName,
+          department: profile.department || "General Operations",
+          status,
+          lastActive: profile.last_login ? new Date(profile.last_login).toLocaleString() : "Never",
+          ipAddress: profile.last_login_ip || "N/A",
+        };
+      });
+
+      setUsersList(formattedUsers);
+    } catch (error) {
+      console.error("[FETCH DATA ERROR] Failed to fetch RBAC directory:", error);
+      setErrorMessage("System authorization error: failed to fetch RBAC directory services.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!hasPermission) {
     return (
@@ -161,10 +192,43 @@ export default function RoleManagementPage() {
     setMatrixModified(true);
   };
 
-  const handleSaveMatrix = () => {
-    setMatrixModified(false);
-    // Visual notification could go here - mock success
-    alert("Role Authorization Matrix policy has been globally reconfigured and pushed to directory services!");
+  const handleSaveMatrix = async () => {
+    setIsLoading(true);
+    try {
+      const targetRoles: RoleName[] = ["admin", "operator", "content_editor"];
+      
+      const permissionKeys: Permission[] = [
+        'can_manage_users', 'can_view_all_clients', 'can_edit_clients', 'can_manage_tickets',
+        'can_manage_meetings', 'can_create_content', 'can_publish_content', 'can_view_analytics',
+        'can_view_billing', 'can_manage_settings', 'can_view_ai_logs', 'can_manage_roles',
+        'can_view_audit_logs', 'can_view_security_events', 'can_approve_sensitive_actions',
+        'can_configure_system'
+      ];
+
+      await Promise.all(
+        targetRoles.map(roleName => {
+          const roleObj = rolesList.find(r => r.name === roleName);
+          if (!roleObj) return Promise.resolve();
+
+          const permissionsDict: Record<string, boolean> = {};
+          
+          permissionKeys.forEach(key => {
+            permissionsDict[key] = matrix[roleName]?.includes(key) || false;
+          });
+
+          return api.roleManagement.updateRolePermissions(roleObj.id, permissionsDict);
+        })
+      );
+
+      setMatrixModified(false);
+      await fetchData();
+      alert("Role Authorization Matrix policy has been globally reconfigured and pushed to directory services!");
+    } catch (error) {
+      console.error("[MATRIX UPDATE ERROR]", error);
+      alert("Failed to commit Matrix policies. Ensure SOC2 directory master bypass is authorized.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSuspendClick = (admin: AdminUserRecord) => {
@@ -173,63 +237,59 @@ export default function RoleManagementPage() {
     setConfirmError("");
   };
 
-  const handleConfirmSuspend = () => {
+  const handleConfirmSuspend = async () => {
     if (confirmInput.toUpperCase() !== "SUSPEND") {
       setConfirmError("Incorrect keyword. Please type SUSPEND exactly.");
       return;
     }
 
     if (suspendingUser) {
-      setUsersList(prev => prev.map(u => 
-        u.id === suspendingUser.id 
-          ? { ...u, status: u.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" }
-          : u
-      ));
-      
-      // Log audit
+      setIsLoading(true);
       try {
-        const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-        const newAudit = {
-          id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-          username: user?.full_name || user?.username || "Super Admin",
-          user_full_name: user?.full_name || user?.username || "Super Admin",
-          action: suspendingUser.status === "ACTIVE" ? "SUSPEND_USER" : "REINSTATE_USER",
-          model_name: "AdminUser",
-          object_id: suspendingUser.id,
-          description: `${suspendingUser.status === "ACTIVE" ? "Suspended" : "Reinstated"} administrative user account ${suspendingUser.name} (${suspendingUser.email}).`,
-          ip_address: "192.168.1.1",
-          user_agent: navigator.userAgent,
-          timestamp: new Date().toISOString()
-        };
-        localStorage.setItem('orr_admin_audit_logs', JSON.stringify([newAudit, ...auditLogs]));
-      } catch (e) {}
+        const isCurrentlyActive = suspendingUser.status === "ACTIVE";
+        
+        if (isCurrentlyActive) {
+          await api.roleManagement.deactivateUser(Number(suspendingUser.id));
+        } else {
+          await api.roleManagement.editUser(Number(suspendingUser.id), {
+            user: {
+              is_active: true
+            }
+          });
+        }
 
-      setSuspendingUser(null);
+        setSuspendingUser(null);
+        await fetchData();
+        alert(`Administrator account status successfully updated!`);
+      } catch (error) {
+        console.error("[SUSPENSION ERROR]", error);
+        alert("Failed to modify administrator directory status. System security bypass blocked.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleElevateRole = (admin: AdminUserRecord, newRole: RoleName) => {
-    setUsersList(prev => prev.map(u => 
-      u.id === admin.id ? { ...u, role: newRole } : u
-    ));
-
-    // Log audit
+  const handleElevateRole = async (admin: AdminUserRecord, newRole: RoleName) => {
+    setIsLoading(true);
     try {
-      const auditLogs = JSON.parse(localStorage.getItem('orr_admin_audit_logs') || '[]');
-      const newAudit = {
-        id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
-        username: user?.full_name || user?.username || "Super Admin",
-        user_full_name: user?.full_name || user?.username || "Super Admin",
-        action: "CHANGE_ROLE",
-        model_name: "AdminUser",
-        object_id: admin.id,
-        description: `Modified role for user ${admin.name} from ${admin.role} to ${newRole}.`,
-        ip_address: "192.168.1.1",
-        user_agent: navigator.userAgent,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem('orr_admin_audit_logs', JSON.stringify([newAudit, ...auditLogs]));
-    } catch (e) {}
+      const matchingRole = rolesList.find(r => r.name === newRole);
+      if (!matchingRole) throw new Error("Target security role not found in directory.");
+
+      await api.roleManagement.editUser(Number(admin.id), {
+        profile: {
+          role_name: newRole
+        }
+      });
+
+      await fetchData();
+      alert(`Security Role for administrator ${admin.name} successfully elevated to ${newRole.toUpperCase()}.`);
+    } catch (error) {
+      console.error("[ROLE ELEVATION ERROR]", error);
+      alert("Failed to elevate administrator's role. Verify you possess adequate SOC2 elevation clearance.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const permissionsList: { name: Permission; display: string; desc: string }[] = [
@@ -242,9 +302,65 @@ export default function RoleManagementPage() {
     { name: "can_edit_clients", display: "Modify Client Profiles", desc: "Full edit credentials over operational workspaces and company charts." }
   ];
 
+  if (isLoading && usersList.length === 0) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto space-y-8 text-white min-h-[90vh]">
+        {/* Header Panel Skeleton */}
+        <div className="bg-slate-900/40 border border-white/5 p-8 rounded-3xl space-y-4 animate-pulse">
+          <div className="h-4 w-28 bg-slate-800 rounded-full" />
+          <div className="h-8 w-80 bg-slate-800 rounded-full" />
+          <div className="h-4 w-full bg-slate-800/60 rounded-full" />
+        </div>
+
+        {/* Directory Columns Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-4 pt-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 pb-4 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-800" />
+                    <div className="space-y-2">
+                      <div className="h-3 w-32 bg-slate-800 rounded-full" />
+                      <div className="h-2 w-48 bg-slate-800/60 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="h-5 w-24 bg-slate-800 rounded-lg" />
+                  <div className="h-4 w-12 bg-slate-800 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-5 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 animate-pulse">
+            <div className="h-6 w-48 bg-slate-800 rounded-full" />
+            <div className="space-y-4 pt-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 pb-4 last:border-0">
+                  <div className="space-y-2">
+                    <div className="h-3 w-40 bg-slate-800 rounded-full" />
+                    <div className="h-2 w-64 bg-slate-800/60 rounded-full" />
+                  </div>
+                  <div className="h-4 w-4 bg-slate-800 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 text-white min-h-[90vh]">
       
+      {errorMessage && (
+        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex gap-3 text-red-400 text-xs font-bold animate-in fade-in duration-300">
+          <AlertTriangle className="flex-shrink-0" size={16} />
+          <p>{errorMessage}</p>
+        </div>
+      )}
+
       {/* Header Panel */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40 border border-white/5 backdrop-blur-md p-8 rounded-3xl relative overflow-hidden">
         <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
@@ -260,7 +376,12 @@ export default function RoleManagementPage() {
       </div>
 
       {/* Grid: User Directory */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[2px] flex items-center justify-center z-10 rounded-[2rem] transition-all duration-300">
+            <RefreshCw className="animate-spin text-primary animate-spin-slow" size={32} />
+          </div>
+        )}
         
         {/* Left Hand: Administrator Table */}
         <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 p-6 rounded-3xl space-y-6 backdrop-blur-sm">
@@ -314,8 +435,8 @@ export default function RoleManagementPage() {
                       <select 
                         value={admin.role}
                         onChange={(e) => handleElevateRole(admin, e.target.value as RoleName)}
-                        disabled={admin.role === "super_admin" && usersList.filter(u => u.role === "super_admin").length === 1}
-                        className="bg-slate-950/80 border border-white/10 rounded-lg text-[11px] font-bold px-2 py-1 focus:outline-none focus:border-primary/50 text-white cursor-pointer"
+                        disabled={Number(admin.id) === user?.id || (admin.role === "super_admin" && usersList.filter(u => u.role === "super_admin").length === 1)}
+                        className="bg-slate-950/80 border border-white/10 rounded-lg text-[11px] font-bold px-2 py-1 focus:outline-none focus:border-primary/50 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Administrator</option>
@@ -339,7 +460,7 @@ export default function RoleManagementPage() {
                     <td className="py-4 text-right pr-2">
                       <button
                         onClick={() => handleSuspendClick(admin)}
-                        disabled={admin.id === "USR-001"} // CISO cannot suspend self
+                        disabled={Number(admin.id) === user?.id} // Cannot suspend self
                         className={`p-2 rounded-lg border transition cursor-pointer ${
                           admin.status === "ACTIVE" 
                             ? "border-red-500/20 bg-red-500/5 hover:bg-red-500/15 text-red-400" 
