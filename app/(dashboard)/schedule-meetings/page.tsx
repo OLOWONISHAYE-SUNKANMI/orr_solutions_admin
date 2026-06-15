@@ -152,9 +152,9 @@ function page() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[600px] bg-[#202124] text-[#e8eaed] font-sans">
+    <div className="flex flex-col h-full min-h-[600px] bg-card backdrop-blur-sm rounded-2xl border border-white/10 text-[#e8eaed] font-sans overflow-hidden">
       {/* Top Navigation Bar - Google Calendar Style */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-[#3c4043] bg-[#202124] flex-shrink-0 min-h-[64px] overflow-x-auto">
+      <header className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-transparent flex-shrink-0 min-h-[64px] overflow-x-auto">
         <div className="flex items-center gap-4">
 
 
@@ -197,10 +197,10 @@ function page() {
             onChange={(e) => setView(e.target.value as View)}
             className="bg-transparent text-[#e8eaed] text-sm font-medium border border-[#5f6368] rounded px-3 py-1.5 hover:bg-white/5 outline-none cursor-pointer"
           >
-            <option className="bg-[#202124]" value="month">{t('schedule_meetings.month')}</option>
-            <option className="bg-[#202124]" value="week">{t('schedule_meetings.week')}</option>
-            <option className="bg-[#202124]" value="day">{t('schedule_meetings.day')}</option>
-            <option className="bg-[#202124]" value="agenda">{t('schedule_meetings.agenda')}</option>
+            <option className="bg-card" value="month">{t('schedule_meetings.month')}</option>
+            <option className="bg-card" value="week">{t('schedule_meetings.week')}</option>
+            <option className="bg-card" value="day">{t('schedule_meetings.day')}</option>
+            <option className="bg-card" value="agenda">{t('schedule_meetings.agenda')}</option>
           </select>
 
           {currentUser && (
@@ -215,7 +215,7 @@ function page() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Left Sidebar */}
-        <aside className="w-[256px] flex-shrink-0 flex flex-col bg-[#202124] overflow-y-auto hidden lg:flex">
+        <aside className="w-[256px] flex-shrink-0 flex flex-col bg-transparent border-r border-white/10 overflow-y-auto hidden lg:flex">
           <div className="p-4 pl-6">
             <button className="flex items-center gap-3 bg-white text-[#202124] px-4 py-3 rounded-[24px] hover:bg-gray-100 transition-shadow shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] w-auto font-medium mb-8">
               <Plus size={20} className="text-red-500" />
@@ -249,7 +249,7 @@ function page() {
         </aside>
 
         {/* Calendar Grid Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#202124] relative">
+        <main className="flex-1 flex flex-col min-w-0 bg-transparent relative">
           <div className="flex-1 calendar-wrapper">
             <Calendar
               localizer={localizer}
@@ -284,10 +284,10 @@ function page() {
 
           {/* Floating Selected Event Details (Google Calendar style card) */}
           {selectedEvent && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[448px] max-w-[90vw] bg-[#202124] rounded-lg shadow-[0_24px_38px_3px_rgba(0,0,0,0.14),0_9px_46px_8px_rgba(0,0,0,0.12),0_11px_15px_-7px_rgba(0,0,0,0.2)] border border-[#3c4043] z-50 overflow-hidden animate-fade-in flex flex-col">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[448px] max-w-[90vw] bg-card backdrop-blur-md rounded-xl shadow-2xl border border-white/20 z-50 overflow-hidden animate-fade-in flex flex-col">
 
               {/* Card Header with controls */}
-              <div className="flex justify-end items-center p-2 bg-[#202124]">
+              <div className="flex justify-end items-center p-2 bg-transparent">
                 <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#9aa0a6] hover:text-[#e8eaed]">
                   <span className="sr-only">Close</span>
                   <svg width="20" height="20" viewBox="0 0 24 24" focusable="false" className="fill-current"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"></path></svg>
