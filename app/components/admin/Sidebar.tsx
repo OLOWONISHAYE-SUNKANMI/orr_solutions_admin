@@ -312,22 +312,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
 
           <nav className="space-y-10">
-            {/* Group: Security Operations (SUPER_ADMIN only) */}
-            {securityItems.length > 0 && (
-              <SidebarGroup
-                label="Security & Operations"
-                icon={<Shield size={24} className="text-amber-500 animate-pulse" />}
-                open={open.security}
-                isMinimized={isMinimized}
-                onClick={() => toggle("security")}
-                items={securityItems}
-                pathname={pathname}
-                subOpen={subOpen}
-                toggleSub={toggleSub}
-                onLinkClick={onClose}
-              />
-            )}
-
             {/* Group: Home */}
             {homeItems.length > 0 && (
               <SidebarGroup
@@ -449,6 +433,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 isMinimized={isMinimized}
                 onClick={() => toggle("analytics")}
                 items={analyticsItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
+
+            {/* Group: Security Operations (SUPER_ADMIN only) */}
+            {securityItems.length > 0 && (
+              <SidebarGroup
+                label="Security & Operations"
+                icon={<Shield size={24} className="text-amber-500 animate-pulse" />}
+                open={open.security}
+                isMinimized={isMinimized}
+                onClick={() => toggle("security")}
+                items={securityItems}
                 pathname={pathname}
                 subOpen={subOpen}
                 toggleSub={toggleSub}
