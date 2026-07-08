@@ -270,6 +270,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Premium Super Admin operations & security sections
   const securityItems = filterGroupItems([
     { label: "Approval Queue", href: "/approval-queue" },
+    { label: "Project Requests", href: "/project-requests" },
     { label: "Role Management", href: "/role-management" },
     { label: "Audit Center", href: "/audit-center" },
     { label: "Security Monitoring", href: "/security-monitoring" },
