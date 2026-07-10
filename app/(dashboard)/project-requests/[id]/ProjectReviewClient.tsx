@@ -20,7 +20,10 @@ export default function ProjectReviewPage() {
     requestPmInputForSourcing,
     sourceProjectInternally,
     sourceProjectExternally,
-    selectConsultant
+    selectConsultant,
+    updateShortlistStatus,
+    updateSelectionNotes,
+    activateProjectAccess
   } = useAdminProjectStore();
   
   const project = projects.find(p => p.id === projectId);
@@ -30,6 +33,7 @@ export default function ProjectReviewPage() {
   
   const [isPmInputModalOpen, setIsPmInputModalOpen] = useState(false);
   const [pmInputNotes, setPmInputNotes] = useState("");
+  const [selectedAccessLevel, setSelectedAccessLevel] = useState<'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access'>('Assignment Brief Only');
   
   const [isExternalModalOpen, setIsExternalModalOpen] = useState(false);
   const [externalEmail, setExternalEmail] = useState("");
@@ -287,32 +291,146 @@ export default function ProjectReviewPage() {
               {project.interestedConsultants.map(c => {
                 const isSelected = project.selectedConsultantId === c.id;
                 return (
-                  <div key={c.id} className={`p-5 border rounded-2xl transition-all ${isSelected ? 'bg-purple-900/20 border-purple-500/50' : 'bg-black/20 border-white/5'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="font-bold text-white">{c.name}</h3>
-                        <p className="text-xs text-slate-400">{c.expertise}</p>
+                  <div key={c.id} className={`p-6 border rounded-3xl transition-all ${isSelected ? 'bg-purple-900/20 border-purple-500/50' : 'bg-black/20 border-white/5'}`}>
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+
+                      {/* Left Column: Basic Info */}
+                      <div className="flex-1 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-white text-lg">{c.name}</h3>
+                            <p className="text-sm text-slate-400">{c.expertise}</p>
+                          </div>
+                          <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg border border-emerald-400/20">{c.cost}</span>
+                        </div>
+
+                        {/* Shortlisted Status Dropdown */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Shortlist Status</label>
+                          <select
+                            value={c.shortlistStatus || 'Pending'}
+                            onChange={(e) => updateShortlistStatus(project.id, c.id, e.target.value as any)}
+                            disabled={!!project.selectedConsultantId}
+                            className={`w-full max-w-xs bg-slate-900 border rounded-xl p-2.5 text-sm focus:outline-none transition-colors appearance-none ${c.shortlistStatus === 'Shortlisted' ? 'border-emerald-500/30 text-emerald-400' :
+                                c.shortlistStatus === 'Not Shortlisted' ? 'border-rose-500/30 text-rose-400' :
+                                  c.shortlistStatus === 'Reserve' ? 'border-amber-500/30 text-amber-400' :
+                                    c.shortlistStatus === 'Needs Follow-up' ? 'border-blue-500/30 text-blue-400' :
+                                      'border-white/10 text-white focus:border-purple-500/50'
+                              }`}
+                          >
+                            <option value="Pending">Pending Evaluation</option>
+                            <option value="Shortlisted">Shortlisted</option>
+                            <option value="Not Shortlisted">Not Shortlisted</option>
+                            <option value="Reserve">Reserve</option>
+                            <option value="Needs Follow-up">Needs Follow-up</option>
+                          </select>
+                        </div>
+
+                        {/* Status & Timeline block */}
+                        <div className="bg-black/30 rounded-xl p-4 border border-white/5 space-y-3">
+                          <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Response Status</span>
+                            <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">{c.responseStatus || 'Interested'}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Response Submitted</span>
+                            <span className="text-[10px] font-mono text-slate-300">
+                              {c.responseTimestamp ? new Date(c.responseTimestamp).toLocaleString() : 'Just now'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Last Updated</span>
+                            <span className="text-[10px] font-mono text-slate-300">
+                              {c.lastUpdated ? new Date(c.lastUpdated).toLocaleString() : 'Just now'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20">{c.cost}</span>
+
+                      {/* Right Column: Notes & Actions */}
+                      <div className="flex-1 flex flex-col space-y-4">
+                        <div className="flex-1 space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Admin / PM Selection Notes (Internal)</label>
+                          <textarea
+                            value={c.selectionNotes || ''}
+                            onChange={(e) => updateSelectionNotes(project.id, c.id, e.target.value)}
+                            disabled={!!project.selectedConsultantId}
+                            placeholder="Add internal notes for comparison..."
+                            className="w-full h-full min-h-[100px] bg-slate-900 border border-white/10 rounded-xl p-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500/50 transition-colors resize-none shadow-inner disabled:opacity-50"
+                          />
+                        </div>
+
+                        {isSelected ? (
+                          <div className="w-full py-3.5 bg-purple-500/20 text-purple-300 rounded-xl text-sm font-black text-center border border-purple-500/30 flex items-center justify-center gap-2">
+                            <CheckCircle2 size={16} />
+                            Selected & Assignment Pending
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleSelectConsultant(c.id)}
+                            disabled={!!project.selectedConsultantId}
+                            className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-black transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Select as Consultant
+                          </button>
+                        )}
+                      </div>
+
                     </div>
-                    {isSelected ? (
-                      <div className="w-full py-2.5 bg-purple-500/20 text-purple-300 rounded-xl text-xs font-bold text-center border border-purple-500/30">
-                        Selection Pending Compliance
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleSelectConsultant(c.id)}
-                        disabled={!!project.selectedConsultantId}
-                        className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
-                      >
-                        Select Consultant
-                      </button>
-                    )}
                   </div>
                 );
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Access Control Section */}
+      {(project.status === 'Consultant Assignment Pending' || project.status === 'Active') && project.selectedConsultantId && (
+        <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm space-y-6 mt-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <Shield size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-white">Access Control</h2>
+              <p className="text-xs text-slate-400">Set the workspace access level for the selected consultant.</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-950/50 border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+            <div className="space-y-3 flex-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Workspace Access Level</label>
+              <select
+                value={project.accessLevel || selectedAccessLevel}
+                onChange={(e) => setSelectedAccessLevel(e.target.value as any)}
+                disabled={project.isAccessActivated}
+                className="w-full max-w-md bg-slate-900 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none disabled:opacity-50"
+              >
+                <option value="Assignment Brief Only">Assignment Brief Only</option>
+                <option value="Selected Documents Only">Selected Documents Only</option>
+                <option value="Full Project Workspace">Full Project Workspace</option>
+                <option value="Restricted Custom Access">Restricted Custom Access</option>
+              </select>
+            </div>
+
+            <div className="flex-1 flex justify-end">
+              {project.isAccessActivated ? (
+                <div className="px-6 py-3.5 bg-emerald-500/20 text-emerald-300 rounded-xl text-sm font-black border border-emerald-500/30 flex items-center gap-2">
+                  <Shield size={16} className="text-emerald-400" />
+                  Access Activated: {project.accessLevel}
+                </div>
+              ) : (
+                <button
+                  onClick={() => activateProjectAccess(project.id, selectedAccessLevel)}
+                  className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                >
+                  Activate Project Access
+                  <CheckCircle2 size={18} />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

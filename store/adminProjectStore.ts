@@ -12,6 +12,21 @@ export type AdminProjectStatus =
   | 'Active'
   | 'Completed';
 
+export type ShortlistStatus = 'Pending' | 'Shortlisted' | 'Not Shortlisted' | 'Reserve' | 'Needs Follow-up';
+export type OpportunityResponseStatus = 'Invited' | 'Viewed' | 'Interested' | 'Clarification Requested' | 'Declined' | 'Shortlisted' | 'Not Shortlisted' | 'Selected' | 'Assignment Offered' | 'Assignment Accepted' | 'Assignment Declined' | 'Conflict Review Required' | 'Access Activated';
+
+export interface InterestedConsultant {
+  id: string;
+  name: string;
+  expertise: string;
+  cost: string;
+  shortlistStatus?: ShortlistStatus;
+  selectionNotes?: string;
+  responseStatus?: OpportunityResponseStatus;
+  responseTimestamp?: string;
+  lastUpdated?: string;
+}
+
 export interface AdminProjectBrief {
   id: string;
   dbId: number;
@@ -31,8 +46,10 @@ export interface AdminProjectBrief {
   clarificationNotes?: string;
   consultantFacingSummaryDraft?: string;
   pmInputRequestNotes?: string;
-  interestedConsultants?: { id: string; name: string; expertise: string; cost: string }[];
+  interestedConsultants?: InterestedConsultant[];
   selectedConsultantId?: string;
+  accessLevel?: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access';
+  isAccessActivated?: boolean;
 }
 
 interface AdminProjectState {
@@ -48,6 +65,9 @@ interface AdminProjectState {
   sourceProjectExternally: (id: string, email: string) => Promise<void>;
   selectConsultant: (id: string, consultantId: string) => Promise<void>;
   completeProject: (id: string) => Promise<void>;
+  updateShortlistStatus: (projectId: string, consultantId: string, status: ShortlistStatus) => void;
+  updateSelectionNotes: (projectId: string, consultantId: string, notes: string) => void;
+  activateProjectAccess: (id: string, accessLevel: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access') => void;
 }
 
 // Mock Data Removed
@@ -376,4 +396,49 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       throw error;
     }
   },
+
+  updateShortlistStatus: (projectId, consultantId, status) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? {
+        ...p,
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === consultantId ? { 
+            ...c, 
+            shortlistStatus: status,
+            responseStatus: status === 'Shortlisted' ? 'Shortlisted' : status === 'Not Shortlisted' ? 'Not Shortlisted' : c.responseStatus,
+            lastUpdated: new Date().toISOString()
+          } : c
+        )
+      } : p
+    )
+  })),
+
+  updateSelectionNotes: (projectId, consultantId, notes) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? {
+        ...p,
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === consultantId ? { ...c, selectionNotes: notes } : c
+        )
+      } : p
+    )
+  })),
+
+  activateProjectAccess: (id, accessLevel) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === id ? { 
+        ...p, 
+        accessLevel,
+        isAccessActivated: true,
+        status: 'Active',
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === p.selectedConsultantId ? {
+            ...c,
+            responseStatus: 'Access Activated',
+            lastUpdated: new Date().toISOString()
+          } : c
+        )
+      } : p
+    )
+  })),
 }));
