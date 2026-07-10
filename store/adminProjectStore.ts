@@ -11,6 +11,21 @@ export type AdminProjectStatus =
   | 'Consultant Assignment Pending'
   | 'Active';
 
+export type ShortlistStatus = 'Pending' | 'Shortlisted' | 'Not Shortlisted' | 'Reserve' | 'Needs Follow-up';
+export type OpportunityResponseStatus = 'Invited' | 'Viewed' | 'Interested' | 'Clarification Requested' | 'Declined' | 'Shortlisted' | 'Not Shortlisted' | 'Selected' | 'Assignment Offered' | 'Assignment Accepted' | 'Assignment Declined' | 'Conflict Review Required' | 'Access Activated';
+
+export interface InterestedConsultant {
+  id: string;
+  name: string;
+  expertise: string;
+  cost: string;
+  shortlistStatus?: ShortlistStatus;
+  selectionNotes?: string;
+  responseStatus?: OpportunityResponseStatus;
+  responseTimestamp?: string;
+  lastUpdated?: string;
+}
+
 export interface AdminProjectBrief {
   id: string;
   pmId: string;
@@ -27,8 +42,13 @@ export interface AdminProjectBrief {
   clarificationNotes?: string;
   consultantFacingSummaryDraft?: string;
   pmInputRequestNotes?: string;
-  interestedConsultants?: { id: string; name: string; expertise: string; cost: string }[];
+  interestedConsultants?: InterestedConsultant[];
   selectedConsultantId?: string;
+  accessLevel?: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access';
+  isAccessActivated?: boolean;
+  createdBy?: string;
+  sentTo?: string[];
+  summaryVersionSent?: string;
 }
 
 interface AdminProjectState {
@@ -42,6 +62,9 @@ interface AdminProjectState {
   sourceProjectInternally: (id: string) => void;
   sourceProjectExternally: (id: string, email: string) => void;
   selectConsultant: (id: string, consultantId: string) => void;
+  updateShortlistStatus: (projectId: string, consultantId: string, status: ShortlistStatus) => void;
+  updateSelectionNotes: (projectId: string, consultantId: string, notes: string) => void;
+  activateProjectAccess: (id: string, accessLevel: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access') => void;
 }
 
 // Mock initial data bridging from the PM dashboard concepts
@@ -59,6 +82,9 @@ const MOCK_PROJECTS: AdminProjectBrief[] = [
     scope: 'Analyze European market entry feasibility and regulatory requirements for Acme Corp.',
     confidentiality: 'Highly Confidential',
     consultantsNeeded: 2,
+    createdBy: 'System',
+    sentTo: [],
+    summaryVersionSent: 'none'
   },
   {
     id: 'ORR-PROJ-000002',
@@ -73,6 +99,9 @@ const MOCK_PROJECTS: AdminProjectBrief[] = [
     scope: 'Comprehensive security audit of cloud infrastructure and internal networks.',
     confidentiality: 'Standard',
     consultantsNeeded: 1,
+    createdBy: 'System',
+    sentTo: [],
+    summaryVersionSent: 'none'
   }
 ];
 
@@ -124,7 +153,10 @@ This project requires ${p.consultantsNeeded} consultant(s). The work is highly s
       p.id === id ? { 
         ...p, 
         consultantFacingSummaryDraft: editedSummary, 
-        status: 'Approved for Sourcing' 
+        status: 'Approved for Sourcing',
+        createdBy: "Admin System",
+        sentTo: ["ORR-CONS-8492", "ORR-CONS-1102"],
+        summaryVersionSent: "v1.0"
       } : p
     )
   })),
@@ -144,7 +176,9 @@ This project requires ${p.consultantsNeeded} consultant(s). The work is highly s
       projects: state.projects.map(p => 
         p.id === id ? { 
           ...p, 
-          status: 'Sourcing Internally' 
+          status: 'Sourcing Internally',
+          sentTo: p.interestedConsultants?.map(c => c.id) || [],
+          summaryVersionSent: 'v1.0 (Auto-match)'
         } : p
       )
     }));
@@ -170,8 +204,11 @@ This project requires ${p.consultantsNeeded} consultant(s). The work is highly s
       p.id === id ? { 
         ...p, 
         status: 'Sourcing Externally',
+        sentTo: [...(p.sentTo || []), email],
+        summaryVersionSent: 'v1.0 (External)',
         interestedConsultants: [
-          { id: 'EXT-001', name: email, expertise: 'External Consultant', cost: 'TBD' }
+          ...(p.interestedConsultants || []),
+          { id: 'EXT-' + Math.random().toString(36).substr(2, 5), name: email, expertise: 'External Consultant', cost: 'TBD' }
         ]
       } : p
     )
@@ -182,7 +219,59 @@ This project requires ${p.consultantsNeeded} consultant(s). The work is highly s
       p.id === id ? { 
         ...p, 
         status: 'Consultant Assignment Pending',
-        selectedConsultantId: consultantId
+        selectedConsultantId: consultantId,
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === consultantId ? {
+            ...c,
+            responseStatus: 'Selected',
+            lastUpdated: new Date().toISOString()
+          } : c
+        )
+      } : p
+    )
+  })),
+
+  updateShortlistStatus: (projectId, consultantId, status) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? {
+        ...p,
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === consultantId ? { 
+            ...c, 
+            shortlistStatus: status,
+            responseStatus: status === 'Shortlisted' ? 'Shortlisted' : status === 'Not Shortlisted' ? 'Not Shortlisted' : c.responseStatus,
+            lastUpdated: new Date().toISOString()
+          } : c
+        )
+      } : p
+    )
+  })),
+
+  updateSelectionNotes: (projectId, consultantId, notes) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? {
+        ...p,
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === consultantId ? { ...c, selectionNotes: notes } : c
+        )
+      } : p
+    )
+  })),
+
+  activateProjectAccess: (id, accessLevel) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === id ? { 
+        ...p, 
+        accessLevel,
+        isAccessActivated: true,
+        status: 'Active',
+        interestedConsultants: p.interestedConsultants?.map(c => 
+          c.id === p.selectedConsultantId ? {
+            ...c,
+            responseStatus: 'Access Activated',
+            lastUpdated: new Date().toISOString()
+          } : c
+        )
       } : p
     )
   })),
