@@ -12,7 +12,7 @@ interface EditableImageProps {
   fill?: boolean;
 }
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}`;
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}`;
 
 export default function EditableImage({
   src,

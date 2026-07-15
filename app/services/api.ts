@@ -4,7 +4,7 @@
  * Base URL: /admin-portal/v1/
  */
 
-const BASE_URL =  `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}`;
+const BASE_URL =  `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}`;
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -1648,6 +1648,31 @@ export const roleManagementAPI = {
 };
 
 // ============================================================================
+// CONSULTANT APPROVALS API
+// ============================================================================
+
+export const consultantApprovalAPI = {
+  listPending: () => {
+    console.log('[API] Fetching pending consultant approvals');
+    return apiCall("/admin-portal/v1/consultant-approvals/").catch(error => {
+      console.error('[API ERROR] Failed to fetch pending consultant approvals:', error);
+      throw error;
+    });
+  },
+
+  performAction: (id: number, action: "approve" | "reject", notes?: string) => {
+    console.log(`[API] Performing action '${action}' on consultant application ${id}`);
+    return apiCall(`/admin-portal/v1/consultant-approvals/${id}/action/`, {
+      method: "POST",
+      body: JSON.stringify({ action, notes }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to perform action '${action}' on application ${id}:`, error);
+      throw error;
+    });
+  },
+};
+
+// ============================================================================
 // EXPORT ALL APIS
 // ============================================================================
 
@@ -1669,4 +1694,5 @@ export default {
   approvalQueue: approvalQueueAPI,
   systemConfig: systemConfigAPI,
   roleManagement: roleManagementAPI,
+  consultantApproval: consultantApprovalAPI,
 };

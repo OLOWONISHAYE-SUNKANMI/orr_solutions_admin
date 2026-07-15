@@ -142,6 +142,20 @@ export const SIDEBAR_PERMISSIONS: Record<string, NavPermission> = {
       },
     },
   },
+  consultantNetwork: {
+    label: 'Consultant Network',
+    permissions: ['can_manage_users', 'can_manage_meetings'],
+    children: {
+      onboardingApprovals: {
+        label: 'Onboarding Approvals',
+        permissions: ['can_manage_users', 'can_manage_meetings'],
+      },
+      consultantDirectory: {
+        label: 'Consultant Directory',
+        permissions: ['can_manage_meetings'],
+      }
+    }
+  },
   tickets: {
     label: 'Tickets & Communication',
     permissions: ['can_manage_tickets'],
@@ -296,8 +310,11 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
   '/consultations': ['can_manage_meetings'],
   '/consultations/past': ['can_manage_meetings'],
   '/consultations/scheduled': ['can_manage_meetings'],
-  '/consultations/consultants': ['can_manage_meetings'],
   '/consultations/reports': ['can_manage_meetings'],
+  
+  // Consultant Network
+  '/consultations/approvals': ['can_manage_users', 'can_manage_meetings'],
+  '/consultations/consultants': ['can_manage_meetings'],
   
   // Tickets & Communication
   '/tickets': ['can_manage_tickets'],

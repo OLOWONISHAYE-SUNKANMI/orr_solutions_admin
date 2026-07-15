@@ -90,5 +90,21 @@ export const vaultApi = {
         
         const response = await api.post('/admin-portal/v1/vault/documents/', formData);
         return response.data.data;
+    },
+    askAIAssistant: async (message: string, context?: string, history?: any[]) => {
+        const response = await api.post('/admin-portal/v1/ai/chat/', {
+            message,
+            context,
+            conversation_history: history || [],
+        });
+        return response.data?.reply || response.data?.data?.reply || 'No response from AI.';
+    },
+    summarizeDocument: async (text: string, title?: string, documentId?: string) => {
+        const response = await api.post('/admin-portal/v1/ai/document-summary/', {
+            text,
+            title: title || 'Untitled',
+            document_id: documentId,
+        });
+        return response.data?.summary || response.data?.data?.summary || 'No summary generated.';
     }
 };

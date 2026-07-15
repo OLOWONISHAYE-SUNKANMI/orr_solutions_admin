@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MessageSquare, AlertCircle, TrendingUp, Eye, Loader } from "lucide-react";
+import { Search, MessageSquare, AlertCircle, TrendingUp, Eye, Loader, Sparkles } from "lucide-react";
 import { aiOversightAPI } from "@/app/services";
 import type { AIConversationListItem, AIConversation } from "@/app/services/types";
 import { useLanguageStore } from "@/store/languageStore";
@@ -237,7 +237,34 @@ export default function AIOversightPage() {
 
                     {/* Conversation Thread */}
                     <div className="flex-1 flex flex-col gap-4">
-                      <h3 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">{t('ai_oversight.full_conversation')}</h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">{t('ai_oversight.full_conversation')}</h3>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const userMsg = "Please summarize this conversation and evaluate its quality: " + selectedChat.summary;
+                              const response = await fetch("https://orr-backend-105825824472.asia-southeast2.run.app/api/v1/ai/document-summary/", {
+                                method: "POST",
+                                headers: { 
+                                  "Content-Type": "application/json",
+                                  "Authorization": `Bearer ${localStorage.getItem('access_token')}`
+                                },
+                                body: JSON.stringify({ text: userMsg })
+                              });
+                              if (response.ok) {
+                                const data = await response.json();
+                                alert("AI Analysis: " + (data.summary || data.error || "Completed"));
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5"
+                        >
+                          <Sparkles size={12} />
+                          Analyze with AI
+                        </button>
+                      </div>
                       <div className="bg-white/5 rounded-lg p-4 border border-white/10 space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
                         <div className="flex gap-3">
                           <div className="w-8 h-8 bg-blue-500 rounded-full flex-shrink-0" />

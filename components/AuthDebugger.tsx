@@ -33,7 +33,7 @@ export default function AuthDebugger() {
   const testApiCall = async () => {
     try {
       const response = await auth.makeAuthenticatedRequest(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/cms/business-system-section/`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/cms/business-system-section/`,
         { method: 'GET' }
       );
       

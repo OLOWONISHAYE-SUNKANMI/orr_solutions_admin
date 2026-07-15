@@ -44,6 +44,7 @@ type OpenState = {
   vault: boolean;
   settings: boolean;
   security: boolean;
+  consultantNetwork: boolean;
 };
 
 type NavItem = {
@@ -72,6 +73,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     vault: true,
     settings: true,
     security: true,
+    consultantNetwork: true,
   });
   const [subOpen, setSubOpen] = useState<{ [key: string]: boolean }>({});
   const [isMinimized, setIsMinimized] = useState(false);
@@ -194,7 +196,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { label: t('sidebar.upcoming'), href: "/consultations/scheduled" }
       ]
     },
-    { label: t('sidebar.assigned_consultants'), href: "/consultations/consultants" },
     { label: t('sidebar.reports_drafts'), href: "/consultations/reports" },
     {
       label: t('sidebar.meeting_management'),
@@ -205,6 +206,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { label: t('sidebar.confirmed_meetings'), href: "/schedule-meetings/confirmed" }
       ]
     }
+  ]);
+
+  const consultantNetworkItems = filterGroupItems([
+    { label: "Onboarding Approvals", href: "/consultations/approvals" },
+    { label: "Consultant Directory", href: "/consultations/consultants" }
   ]);
 
   const vaultItems = filterGroupItems([
@@ -270,7 +276,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Premium Super Admin operations & security sections
   const securityItems = filterGroupItems([
     { label: "Approval Queue", href: "/approval-queue" },
+    { label: "Client Requests", href: "/client-requests" },
     { label: "Project Requests", href: "/project-requests" },
+    { label: "Project Management", href: "/project-service-management" },
     { label: "Role Management", href: "/role-management" },
     { label: "Audit Center", href: "/audit-center" },
     { label: "Security Monitoring", href: "/security-monitoring" },
@@ -354,6 +362,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 isMinimized={isMinimized}
                 onClick={() => toggle("consultation")}
                 items={consultationItems}
+                pathname={pathname}
+                subOpen={subOpen}
+                toggleSub={toggleSub}
+                onLinkClick={onClose}
+              />
+            )}
+
+            {/* Group: Consultant Network */}
+            {consultantNetworkItems.length > 0 && (
+              <SidebarGroup
+                label="Consultant Network"
+                icon={<UserCheck size={24} />}
+                open={open.consultantNetwork}
+                isMinimized={isMinimized}
+                onClick={() => toggle("consultantNetwork")}
+                items={consultantNetworkItems}
                 pathname={pathname}
                 subOpen={subOpen}
                 toggleSub={toggleSub}
