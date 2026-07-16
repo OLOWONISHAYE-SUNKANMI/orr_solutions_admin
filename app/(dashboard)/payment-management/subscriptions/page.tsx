@@ -12,7 +12,7 @@ export default function SubscriptionsManagementPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/subscriptions/management/`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/subscriptions/management/`);
         if (response.ok) {
           const result = await response.json();
           setData(result.data || result);

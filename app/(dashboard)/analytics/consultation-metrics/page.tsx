@@ -81,8 +81,8 @@ export default function ConsultationMetricsPage() {
     const fetchData = async () => {
       try {
         const [consultationRes, schedulingRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/consultation-metrics/performance/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/consultation-metrics/scheduling-analytics/`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/consultation-metrics/performance/`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/consultation-metrics/scheduling-analytics/`)
         ]);
         
         if (consultationRes.ok && schedulingRes.ok) {

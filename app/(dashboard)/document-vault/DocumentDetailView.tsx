@@ -223,7 +223,23 @@ export default function DocumentDetailView({ doc, onClose }: DocumentDetailViewP
                                           </div>
                                        </div>
                                        <div className="flex gap-2">
-                                          <button className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all shadow-sm">
+                                          <button 
+                                             onClick={() => {
+                                                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+                                                const url = v.file?.startsWith('http') ? v.file : `${apiBase}${v.file}`;
+                                                
+                                                // Create a temporary anchor element to trigger download
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = v.file_name || 'document';
+                                                a.target = '_blank';
+                                                a.rel = 'noopener noreferrer';
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                             }}
+                                             className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all shadow-sm"
+                                          >
                                              <Download size={16} />
                                           </button>
                                           <button className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-primary hover:bg-primary/20 transition-all shadow-sm">

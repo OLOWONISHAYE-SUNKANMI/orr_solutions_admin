@@ -21,7 +21,7 @@ export default function EscalationsPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/tickets/?is_escalated=true`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/tickets/?is_escalated=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }

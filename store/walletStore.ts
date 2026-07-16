@@ -61,169 +61,13 @@ interface WalletState {
   exportTransactions: () => string; // Returns CSV content
 }
 
-// Mock Data
-const MOCK_WALLETS: UserWallet[] = [
-  {
-    userId: 'c1',
-    userName: 'Acme Corp',
-    userEmail: 'billing@acme.com',
-    balance: 10000,
-    currency: 'USD',
-    lastUpdated: '2026-04-20T10:00:00Z'
-  },
-  {
-    userId: 'c2',
-    userName: 'Global Tech',
-    userEmail: 'finance@globaltech.io',
-    balance: 4215,
-    currency: 'USD',
-    lastUpdated: '2026-04-21T09:00:00Z'
-  },
-  {
-    userId: 'c3',
-    userName: 'Nexus Systems',
-    userEmail: 'accounts@nexus.sys',
-    balance: 0,
-    currency: 'USD',
-    lastUpdated: '2026-03-15T11:00:00Z'
-  },
-  {
-    userId: 'c4',
-    userName: 'Olowonishaye Sunkanmi',
-    userEmail: 'sunkanmi@olowonishaye.com',
-    balance: 1500,
-    currency: 'USD',
-    lastUpdated: '2026-04-28T10:00:00Z'
-  },
-  {
-    userId: 'c5',
-    userName: 'Abdulhammed Shittu',
-    userEmail: 'shittu@abdulhammed.com',
-    balance: 2400,
-    currency: 'USD',
-    lastUpdated: '2026-04-28T11:00:00Z'
-  }
-];
-
-const MOCK_TRANSACTIONS: WalletTransaction[] = [
-  {
-    id: 'tx1',
-    userId: 'c1',
-    userName: 'Acme Corp',
-    type: 'credit',
-    amount: 5000,
-    currency: 'USD',
-    description: 'Manual wallet top-up',
-    status: 'completed',
-    timestamp: '2026-04-20T10:00:00Z'
-  },
-  {
-    id: 'tx2',
-    userId: 'c2',
-    userName: 'Global Tech',
-    type: 'debit',
-    amount: 750,
-    currency: 'USD',
-    description: 'Payment for Invoice ORR-2026-0002',
-    status: 'completed',
-    timestamp: '2026-04-21T09:00:00Z',
-    referenceId: '2'
-  },
-  {
-    id: 'tx3',
-    userId: 'c1',
-    userName: 'Acme Corp',
-    type: 'debit',
-    amount: 45,
-    currency: 'USD',
-    description: 'Expert Consultation Meeting - 30 mins',
-    status: 'completed',
-    timestamp: '2026-04-25T14:00:00Z'
-  },
-  {
-    id: 'tx4',
-    userId: 'c3',
-    userName: 'Nexus Systems',
-    type: 'debit',
-    amount: 220,
-    currency: 'USD',
-    description: 'Quarterly Strategic Analysis Report',
-    status: 'completed',
-    timestamp: '2026-04-26T11:30:00Z'
-  },
-  {
-    id: 'tx5',
-    userId: 'c2',
-    userName: 'Global Tech',
-    type: 'debit',
-    amount: 150,
-    currency: 'USD',
-    description: 'Monthly Maintenance Fee',
-    status: 'completed',
-    timestamp: '2026-04-27T10:00:00Z'
-  },
-  {
-    id: 'tx6',
-    userId: 'c1',
-    userName: 'Acme Corp',
-    type: 'debit',
-    amount: 45,
-    currency: 'USD',
-    description: 'Expert Consultation Meeting - 30 mins',
-    status: 'completed',
-    timestamp: '2026-04-28T09:00:00Z'
-  },
-  {
-    id: 'tx7',
-    userId: 'c4',
-    userName: 'Olowonishaye Sunkanmi',
-    type: 'debit',
-    amount: 199.99,
-    currency: 'USD',
-    description: 'Monthly Pro Subscription',
-    status: 'completed',
-    timestamp: '2026-04-28T10:05:00Z'
-  },
-  {
-    id: 'tx8',
-    userId: 'c5',
-    userName: 'Abdulhammed Shittu',
-    type: 'debit',
-    amount: 450,
-    currency: 'USD',
-    description: 'Strategic Infrastructure Audit',
-    status: 'completed',
-    timestamp: '2026-04-28T11:15:00Z'
-  },
-  {
-    id: 'tx9',
-    userId: 'c1',
-    userName: 'Acme Corp',
-    type: 'debit',
-    amount: 1500,
-    currency: 'USD',
-    description: 'Annual Security Retainer',
-    status: 'completed',
-    timestamp: '2026-04-28T12:00:00Z'
-  },
-  {
-    id: 'tx10',
-    userId: 'c2',
-    userName: 'Global Tech',
-    type: 'debit',
-    amount: 850,
-    currency: 'USD',
-    description: 'Cloud Infrastructure Management',
-    status: 'completed',
-    timestamp: '2026-04-28T13:30:00Z'
-  }
-];
+// Mock Data Removed
 
 export const useWalletStore = create<WalletState>()(
   persist(
     (set, get) => ({
-      wallets: MOCK_WALLETS,
-      transactions: MOCK_TRANSACTIONS,
+      wallets: [],
+      transactions: [],
       systemEvents: [
         {
           id: 'ev1',
@@ -240,7 +84,7 @@ export const useWalletStore = create<WalletState>()(
         set({ isLoading: true });
         try {
           const auth = AuthService.getInstance();
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions';
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
           
           // Fetch Wallets
           const walletsRes = await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/wallet-logs/wallets/`);
@@ -328,7 +172,7 @@ export const useWalletStore = create<WalletState>()(
         set({ isLoading: true });
         try {
           const auth = AuthService.getInstance();
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions';
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
           
           await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/wallet-logs/adjust-balance/`, {
             method: 'POST',

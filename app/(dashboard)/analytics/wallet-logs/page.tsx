@@ -100,9 +100,9 @@ export default function WalletLogsPage() {
     const fetchData = async () => {
       try {
         const [logsRes, analyticsRes, auditRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/wallet-logs/transactions/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/wallet-logs/activity-analytics/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/wallet-logs/audit-trail/`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/wallet-logs/transactions/`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/wallet-logs/activity-analytics/`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/wallet-logs/audit-trail/`)
         ]);
         
         if (logsRes.ok) {

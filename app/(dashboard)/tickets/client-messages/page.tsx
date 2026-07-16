@@ -20,7 +20,7 @@ export default function ClientMessagesPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/tickets/?source=manual_request`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/tickets/?source=manual_request`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -46,7 +46,7 @@ export default function ClientMessagesPage() {
     try {
       setSendingReply(ticketId);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/tickets/${ticketId}/auto-reply/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/tickets/${ticketId}/auto-reply/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,

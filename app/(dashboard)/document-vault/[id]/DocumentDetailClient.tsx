@@ -118,7 +118,43 @@ export default function DocumentDetailClient({ params }: { params: { id: string 
                      </div>
                      <div className="h-10 w-px bg-white/5 hidden md:block" />
                      <div className="flex-1 flex justify-end">
-                        <button className="flex items-center gap-2 px-6 py-3 bg-primary text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lemon transition-all shadow-lg shadow-primary/20">
+                        <button 
+                           onClick={() => {
+                              const isMock = doc.google_drive_id?.startsWith('mock_') || doc.link?.includes('mock_');
+                              if (isMock) {
+                                 alert("This is a mock document generated for preview purposes and cannot be downloaded.");
+                                 return;
+                              }
+
+                              const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+                              let url = doc.link;
+                              let filename = doc.title;
+                              if (doc.versions && doc.versions.length > 0) {
+                                 const latestVersion = doc.versions[0];
+                                 url = latestVersion.file?.startsWith('http') ? latestVersion.file : `${apiBase}${latestVersion.file}`;
+                                 filename = latestVersion.file_name || doc.title;
+                              } else if (url && !url.startsWith('http')) {
+                                 url = `${apiBase}${url}`;
+                              }
+                              
+                              if (url && url.includes('docs.google.com')) {
+                                 window.open(url, '_blank', 'noopener,noreferrer');
+                                 return;
+                              }
+                              
+                              if (url) {
+                                 const a = document.createElement('a');
+                                 a.href = url;
+                                 a.download = filename;
+                                 a.target = '_blank';
+                                 a.rel = 'noopener noreferrer';
+                                 document.body.appendChild(a);
+                                 a.click();
+                                 document.body.removeChild(a);
+                              }
+                           }}
+                           className="flex items-center gap-2 px-6 py-3 bg-primary text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lemon transition-all shadow-lg shadow-primary/20"
+                        >
                            <Download size={16} /> Download Source
                         </button>
                      </div>

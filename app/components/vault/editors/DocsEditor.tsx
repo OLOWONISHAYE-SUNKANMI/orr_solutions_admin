@@ -25,7 +25,8 @@ import { CharacterCount } from '@tiptap/extension-character-count';
 import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { FontFamily } from '@tiptap/extension-font-family';
-import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Superscript as SuperscriptIcon, Subscript as SubscriptIcon, Highlighter, Link as LinkIcon, RemoveFormatting, AlignLeft, AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Table as TableIcon, List, ListOrdered, CheckSquare, ChevronDown, Plus, Minus, Type, X } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Superscript as SuperscriptIcon, Subscript as SubscriptIcon, Highlighter, Link as LinkIcon, RemoveFormatting, AlignLeft, AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Table as TableIcon, List, ListOrdered, CheckSquare, ChevronDown, Plus, Minus, Type, X, Sparkles, Loader2 } from 'lucide-react';
+import { vaultApi } from '@/lib/vault-api';
 
 const LineHeight = Extension.create({
    name: 'lineHeight',
@@ -42,8 +43,8 @@ const LineHeight = Extension.create({
             attributes: {
                lineHeight: {
                   default: this.options.defaultLineHeight,
-                  parseHTML: element => element.style.lineHeight || this.options.defaultLineHeight,
-                  renderHTML: attributes => {
+                  parseHTML: (element: any) => element.style.lineHeight || this.options.defaultLineHeight,
+                  renderHTML: (attributes: any) => {
                      if (attributes.lineHeight === this.options.defaultLineHeight) return {};
                      return { style: `line-height: ${attributes.lineHeight}` };
                   },
@@ -54,10 +55,10 @@ const LineHeight = Extension.create({
    },
    addCommands() {
       return {
-         setLineHeight: (lineHeight: string) => ({ commands }) => {
+         setLineHeight: (lineHeight: string) => ({ commands }: any) => {
             return this.options.types.every((type: string) => commands.updateAttributes(type, { lineHeight }));
          },
-         unsetLineHeight: () => ({ commands }) => {
+         unsetLineHeight: () => ({ commands }: any) => {
             return this.options.types.every((type: string) => commands.resetAttributes(type, 'lineHeight'));
          },
       };
@@ -80,6 +81,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
       initialValue: string;
       onSubmit: (val: string) => void;
    }>({ isOpen: false, title: '', placeholder: '', initialValue: '', onSubmit: () => {} });
+   const [isAILoading, setIsAILoading] = useState(false);
    const insertMenuRef = useRef<HTMLDivElement>(null);
 
    useEffect(() => {
@@ -91,7 +93,6 @@ const MenuBar = ({ editor }: { editor: any }) => {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
    }, []);
-
 
 
    const openPrompt = useCallback((title: string, placeholder: string, initialValue: string, onSubmit: (val: string) => void) => {
@@ -367,11 +368,59 @@ const MenuBar = ({ editor }: { editor: any }) => {
                      >
                         <Minus size={14} className="text-gray-500" /> Horizontal Rule
                      </button>
-                  </motion.div>
-               )}
-            </AnimatePresence>
-         </div>
-      </div>
+                   </motion.div>
+                )}
+             </AnimatePresence>
+          </div>
+
+          <div className="flex items-center border-l border-gray-300 pl-3 ml-2">
+             <button
+                onClick={() => {
+                   const { from, to } = editor.state.selection;
+                   const selectedText = editor.state.doc.textBetween(from, to, ' ');
+                   const hasSelection = from !== to && selectedText.trim().length > 0;
+                   
+                   openPrompt(
+                      hasSelection ? 'AI Magic (Edit)' : 'AI Magic (Generate)', 
+                      hasSelection ? 'E.g., Make it more professional, summarize...' : 'What should I write about?', 
+                      '', 
+                      async (instruction) => {
+                         if (!instruction) return;
+                         setIsAILoading(true);
+                         try {
+                            const prompt = hasSelection 
+                               ? `Task: ${instruction}\n\nApply this task to the following text and return ONLY the resulting text with no extra commentary:\n\n${selectedText}`
+                               : `Task: ${instruction}\n\nPlease generate text for this request. Return ONLY the resulting text, formatted using basic HTML tags (like <p>, <strong>, <ul>) suitable for a rich text editor. No markdown.`;
+                            
+                            const result = await vaultApi.askAIAssistant(prompt);
+                            if (result.includes("I'm experiencing a temporary issue") || result.includes("RESOURCE_EXHAUSTED")) {
+                               alert('AI Quota Exceeded. Please check your Google Cloud Billing limits for the Gemini API.');
+                               return;
+                            }
+                            
+                            if (hasSelection) {
+                               editor.chain().focus().insertContentAt({ from, to }, result).run();
+                            } else {
+                               editor.chain().focus().insertContent(result).run();
+                            }
+                         } catch (error) {
+                            console.error('AI Error:', error);
+                            alert('Failed to generate AI content.');
+                         } finally {
+                            setIsAILoading(false);
+                         }
+                      }
+                   );
+                }}
+                disabled={isAILoading}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all ${isAILoading ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+                title="AI Magic"
+             >
+                {isAILoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {isAILoading ? 'Thinking...' : 'AI Magic'}
+             </button>
+          </div>
+       </div>
 
       <AnimatePresence>
          {promptState.isOpen && (
@@ -458,7 +507,7 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
          FontFamily
       ],
       content: content || '<p>Start typing...</p>',
-      onUpdate: ({ editor }) => {
+      onUpdate: ({ editor }: any) => {
          onChange(editor.getHTML());
       },
       editorProps: {

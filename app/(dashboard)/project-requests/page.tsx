@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAdminProjectStore } from "@/store/adminProjectStore";
 import { Clock, Search, Filter, ShieldCheck, ChevronRight, AlertCircle, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ProjectRequestsPage() {
-  const { projects } = useAdminProjectStore();
+  const { projects, fetchProjects } = useAdminProjectStore();
+  
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
   const [filter, setFilter] = useState<"ALL" | "Pending Admin Review" | "Needs PM Clarification" | "Drafting Consultant Summary" | "PM Input Required" | "Approved for Sourcing">("Pending Admin Review");
   const [searchTerm, setSearchTerm] = useState("");
 

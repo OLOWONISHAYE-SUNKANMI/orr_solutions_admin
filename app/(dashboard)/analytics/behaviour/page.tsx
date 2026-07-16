@@ -52,8 +52,8 @@ export default function BehaviourAnalyticsPage() {
     const fetchData = async () => {
       try {
         const [behaviorRes, journeyRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/behavior-analytics/user-behavior/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/behavior-analytics/user-journey/`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/behavior-analytics/user-behavior/`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/behavior-analytics/user-journey/`)
         ]);
 
         if (behaviorRes.ok && journeyRes.ok) {

@@ -30,7 +30,7 @@ export default function AutoReplySettingsPage() {
     try {
       setLoading(true);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend.orr.solutions'}/admin-portal/v1/tickets/auto-reply-templates/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/tickets/auto-reply-templates/`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
