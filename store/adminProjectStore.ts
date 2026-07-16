@@ -9,7 +9,8 @@ export type AdminProjectStatus =
   | 'Sourcing Internally'
   | 'Sourcing Externally'
   | 'Consultant Assignment Pending'
-  | 'Active';
+  | 'Active'
+  | 'Completed';
 
 export interface AdminProjectBrief {
   id: string;
@@ -84,6 +85,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         'consultant_assignment_pending': 'Consultant Assignment Pending',
         'active': 'Active',
         'draft': 'Pending Admin Review',
+        'completed': 'Completed',
       };
 
       const mappedProjects: AdminProjectBrief[] = projectList.map((p: any) => {

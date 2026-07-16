@@ -1654,7 +1654,7 @@ export const roleManagementAPI = {
 export const consultantApprovalAPI = {
   listPending: () => {
     console.log('[API] Fetching pending consultant approvals');
-    return apiCall("/admin-portal/v1/consultant-approvals/").catch(error => {
+    return apiCall<any>("/admin-portal/v1/consultant-approvals/").catch(error => {
       console.error('[API ERROR] Failed to fetch pending consultant approvals:', error);
       throw error;
     });
@@ -1662,7 +1662,7 @@ export const consultantApprovalAPI = {
 
   performAction: (id: number, action: "approve" | "reject", notes?: string) => {
     console.log(`[API] Performing action '${action}' on consultant application ${id}`);
-    return apiCall(`/admin-portal/v1/consultant-approvals/${id}/action/`, {
+    return apiCall<any>(`/admin-portal/v1/consultant-approvals/${id}/action/`, {
       method: "POST",
       body: JSON.stringify({ action, notes }),
     }).catch(error => {
