@@ -65,7 +65,7 @@ export default function PaymentsBillingPage() {
   const fetchSubscriptionData = async () => {
     try {
       console.log('Fetching subscription data...');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/subscriptions/management/`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/admin-portal/v1/subscriptions/management/`);
       
       console.log('Response status:', response.status);
       console.log('Response headers:', response.headers);

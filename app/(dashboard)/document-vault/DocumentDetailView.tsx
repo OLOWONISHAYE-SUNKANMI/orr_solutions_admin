@@ -225,7 +225,7 @@ export default function DocumentDetailView({ doc, onClose }: DocumentDetailViewP
                                        <div className="flex gap-2">
                                           <button 
                                              onClick={() => {
-                                                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+                                                const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
                                                 const url = v.file?.startsWith('http') ? v.file : `${apiBase}${v.file}`;
                                                 
                                                 // Create a temporary anchor element to trigger download

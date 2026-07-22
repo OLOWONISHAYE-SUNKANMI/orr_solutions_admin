@@ -85,7 +85,7 @@ function page() {
             contentAPI.listContent({ limit: 5 }).catch(() => ({ data: [] })),
             billingAPI.getAllPaymentStats().catch(() => null),
             clientAPI.getStats().catch(() => null),
-            fetch("https://orr-backend-105825824472.asia-southeast2.run.app/api/v1/ai/dashboard-insights/", {
+            fetch("http://127.0.0.1:8000/api/v1/ai/dashboard-insights/", {
               headers: { "Authorization": `Bearer ${localStorage.getItem('access_token')}` }
             }).then(r => r.ok ? r.json() : null).catch(() => null)
           ]);

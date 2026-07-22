@@ -28,7 +28,7 @@ export function useHomepageContent() {
       setLoading(true);
       setError(null);
 
-      const endpoint = `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/cms/all-content/`;
+      const endpoint = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/admin-portal/v1/cms/all-content/`;
       console.log('🏠 Homepage fetching data from endpoint:', endpoint);
       
       const response = await fetch(endpoint);

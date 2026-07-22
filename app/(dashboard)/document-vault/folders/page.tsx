@@ -34,6 +34,9 @@ export default function FolderManagementPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [editingFolder, setEditingFolder] = useState<FolderType | null>(null);
+  const [editFolderName, setEditFolderName] = useState('');
+  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
 
   const getClientName = (clientId: string | number | undefined) => {
     if (!clientId) return '';
@@ -58,6 +61,19 @@ export default function FolderManagementPage() {
     setNewFolderName('');
     setSelectedClientId('');
     setIsCreateModalOpen(false);
+  };
+
+  const handleEditFolder = async () => {
+    if (!editingFolder || !editFolderName.trim()) return;
+    await updateFolder(editingFolder.id, { name: editFolderName.trim() });
+    setEditingFolder(null);
+    setEditFolderName('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingFolderId) return;
+    await deleteFolder(deletingFolderId);
+    setDeletingFolderId(null);
   };
 
   return (
@@ -145,11 +161,14 @@ export default function FolderManagementPage() {
                     <Folder size={28} fill="currentColor" fillOpacity={0.2} />
                   </div>
                   <div className="flex gap-2">
-                    <button className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
+                    <button
+                      onClick={() => { setEditingFolder(folder); setEditFolderName(folder.name); }}
+                      className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors"
+                    >
                       <Edit2 size={16} />
                     </button>
                     <button
-                      onClick={() => deleteFolder(folder.id)}
+                      onClick={() => setDeletingFolderId(folder.id)}
                       className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
                     >
                       <Trash2 size={16} />
@@ -268,6 +287,107 @@ export default function FolderManagementPage() {
                     Create
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingFolder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setEditingFolder(null); setEditFolderName(''); }}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-card border border-white/10 rounded-[40px] p-8 shadow-2xl"
+            >
+              <h2 className="text-2xl font-black text-white uppercase italic mb-6">Rename <span className="text-primary">Folder</span></h2>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Folder Name</label>
+                  <input
+                    type="text"
+                    value={editFolderName}
+                    onChange={(e) => setEditFolderName(e.target.value)}
+                    placeholder="Enter new folder name..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-primary/50 transition-all"
+                    onKeyDown={(e) => e.key === 'Enter' && handleEditFolder()}
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={() => { setEditingFolder(null); setEditFolderName(''); }}
+                    className="flex-1 px-6 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEditFolder}
+                    disabled={!editFolderName.trim()}
+                    className="flex-1 px-6 py-4 bg-primary hover:bg-lemon text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingFolderId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingFolderId(null)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-card border border-rose-500/20 rounded-[40px] p-8 shadow-2xl"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-400">
+                  <Trash2 size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white uppercase italic">Delete <span className="text-rose-400">Folder</span></h2>
+                  <p className="text-slate-400 text-sm mt-1">This action cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-slate-300 text-sm mb-8">
+                Documents inside the folder will <strong>not</strong> be deleted — they will be moved to the root level. 
+                Any sub-folders will also be moved to the root level.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setDeletingFolderId(null)}
+                  className="flex-1 px-6 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="flex-1 px-6 py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-rose-500/20"
+                >
+                  Delete
+                </button>
               </div>
             </motion.div>
           </div>

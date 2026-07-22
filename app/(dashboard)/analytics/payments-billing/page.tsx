@@ -48,8 +48,8 @@ export default function PaymentsBillingPage() {
       if (filters.end_date) queryParams.append('end_date', filters.end_date);
 
       const [statsRes, historyRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/billing-history/stats/`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/billing-history/?${queryParams}`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/admin-portal/v1/billing-history/stats/`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/admin-portal/v1/billing-history/?${queryParams}`)
       ]);
       
       if (statsRes.ok && historyRes.ok) {

@@ -59,7 +59,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
   fetchProjects: async () => {
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/`);
       const result = await response.json();
       
@@ -138,7 +138,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       const project = get().projects.find(p => p.id === id);
       if (!project) return;
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/review/`, {
         method: 'POST',
         body: JSON.stringify({ action: 'clarify', notes })
@@ -163,7 +163,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         return;
       }
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/generate-summary/`, { 
         method: 'POST',
@@ -201,7 +201,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       const project = get().projects.find(p => p.id === id);
       if (!project) return;
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       // If admin edited the summary, save it first
       if (editedSummary && editedSummary !== project.consultantSummary) {
@@ -239,7 +239,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       const project = get().projects.find(p => p.id === id);
       if (!project) return;
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/match-consultants/`, {
         method: 'POST'
@@ -278,7 +278,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       const project = get().projects.find(p => p.id === id);
       if (!project) return;
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/source-externally/`, {
         method: 'POST',
@@ -314,7 +314,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       const project = get().projects.find(p => p.id === id);
       if (!project) return;
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       // 1. Assign Consultant
       const assignRes = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/assign/`, {
@@ -360,7 +360,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       const project = get().projects.find(p => p.id === id);
       if (!project) return;
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/`, {
         method: 'PATCH',

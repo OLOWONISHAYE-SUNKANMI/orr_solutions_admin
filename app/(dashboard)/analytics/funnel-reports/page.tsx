@@ -90,8 +90,8 @@ export default function FunnelReportsPage() {
     const fetchData = async () => {
       try {
         const [conversionRes, timeRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/funnel-reports/conversion-funnel/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/funnel-reports/time-based-funnel/`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/admin-portal/v1/funnel-reports/conversion-funnel/`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/admin-portal/v1/funnel-reports/time-based-funnel/`)
         ]);
         
         if (conversionRes.ok && timeRes.ok) {

@@ -9,6 +9,8 @@ import { authAPI } from "@/app/services/api";
 import { useLanguageStore } from "@/store/languageStore";
 import LanguageToggle from "@/app/components/ui/LanguageToggle";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { GoogleButton } from "@/components/ui/GoogleButton";
+import { useGoogleAuth } from "@/lib/hooks/useGoogleAuth";
 
 export default function RootPage() {
   const { t } = useLanguageStore();
@@ -24,6 +26,7 @@ export default function RootPage() {
   const [isRevoked, setIsRevoked] = useState(false);
   const router = useRouter();
   const { login } = useAuthStore();
+  const { signInWithGoogle, isLoading: isGoogleLoading, renderGoogleButton } = useGoogleAuth();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -183,6 +186,22 @@ export default function RootPage() {
 
           </form>
         
+          <div className="mt-8">
+            <div className="relative flex items-center justify-center py-2">
+              <div className="absolute w-full h-[1px] bg-gray-300/20" />
+              <span className="relative px-4 text-xs font-black uppercase text-gray-500 bg-background tracking-widest font-mono">
+                OR
+              </span>
+            </div>
+
+            <div className="mt-6">
+              <GoogleButton
+                onClick={signInWithGoogle}
+                isLoading={isGoogleLoading}
+                renderGoogleButton={renderGoogleButton}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
