@@ -243,7 +243,7 @@ export default function AIOversightPage() {
                           onClick={async () => {
                             try {
                               const userMsg = "Please summarize this conversation and evaluate its quality: " + selectedChat.summary;
-                              const response = await fetch("http://127.0.0.1:8000/api/v1/ai/document-summary/", {
+                              const response = await fetch("https://orr-backend-105825824472.asia-southeast2.run.app/api/v1/ai/document-summary/", {
                                 method: "POST",
                                 headers: { 
                                   "Content-Type": "application/json",

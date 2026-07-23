@@ -83,7 +83,7 @@ export const useAdminClientRequestStore = create<AdminClientRequestState>((set, 
     set({ isLoading: true, error: null });
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
       let url = `${baseUrl}/api/admin/requests/`;
       if (statusFilter && statusFilter !== 'ALL') {
         url += `?status=${encodeURIComponent(statusFilter)}`;
@@ -117,7 +117,7 @@ export const useAdminClientRequestStore = create<AdminClientRequestState>((set, 
     set({ isLoading: true, error: null });
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/api/admin/requests/${id}/`);
       const result = await response.json();
       
@@ -140,7 +140,7 @@ export const useAdminClientRequestStore = create<AdminClientRequestState>((set, 
   fetchProjectManagers: async () => {
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/api/admin/pms/`);
       const result = await response.json();
       
@@ -175,7 +175,7 @@ export const useAdminClientRequestStore = create<AdminClientRequestState>((set, 
     set({ isLoading: true, error: null });
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
       
       const payload: any = { action };
       if (notes) payload.admin_review_notes = notes;
@@ -216,7 +216,7 @@ export const useAdminClientRequestStore = create<AdminClientRequestState>((set, 
     set({ isLoading: true, error: null });
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
       
       const payload = { 
         project_title: projectTitle,
@@ -256,7 +256,7 @@ export const useAdminClientRequestStore = create<AdminClientRequestState>((set, 
     set({ isLoading: true, error: null });
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
       
       const response = await auth.makeAuthenticatedRequest(`${baseUrl}/api/admin/requests/create/`, {
         method: 'POST',

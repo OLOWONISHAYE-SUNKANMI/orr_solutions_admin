@@ -84,7 +84,7 @@ export const useWalletStore = create<WalletState>()(
         set({ isLoading: true });
         try {
           const auth = AuthService.getInstance();
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
           
           // Fetch Wallets
           const walletsRes = await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/wallet-logs/wallets/`);
@@ -172,7 +172,7 @@ export const useWalletStore = create<WalletState>()(
         set({ isLoading: true });
         try {
           const auth = AuthService.getInstance();
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
           
           await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/wallet-logs/adjust-balance/`, {
             method: 'POST',

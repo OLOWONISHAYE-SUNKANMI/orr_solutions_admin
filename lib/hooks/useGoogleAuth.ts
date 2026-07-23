@@ -14,7 +14,7 @@ export function useGoogleAuth() {
   const handleCredentialResponse = useCallback(async (response: any) => {
     try {
       setIsLoading(true);
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}`;
       const res = await fetch(`${apiUrl}/api/auth/google-login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

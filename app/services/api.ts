@@ -4,7 +4,7 @@
  * Base URL: /admin-portal/v1/
  */
 
-const BASE_URL =  `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}`;
+const BASE_URL =  `${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}`;
 
 // ============================================================================
 // UTILITY FUNCTIONS

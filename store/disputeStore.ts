@@ -28,7 +28,7 @@ interface DisputeState {
   fetchDisputes: () => Promise<void>;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
 
 export const useDisputeStore = create<DisputeState>((set) => ({
   disputes: [],
