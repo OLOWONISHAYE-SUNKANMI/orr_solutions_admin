@@ -58,6 +58,14 @@ export const vaultApi = {
         const response = await api.post('/admin-portal/v1/vault/folders/', data);
         return response.data.data;
     },
+    updateFolder: async (id: string, updates: { name?: string; parent?: string | null; client?: string }) => {
+        const response = await api.patch(`/admin-portal/v1/vault/folders/${id}/`, updates);
+        return response.data.data;
+    },
+    deleteFolder: async (id: string) => {
+        const response = await api.delete(`/admin-portal/v1/vault/folders/${id}/`);
+        return response.data;
+    },
     updateDocument: async (id: string, updates: any) => {
         const response = await api.patch(`/admin-portal/v1/vault/documents/${id}/`, updates);
         return response.data.data;

@@ -402,10 +402,21 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   },
 
   updateFolder: async (id, updates) => {
-    // API call
+    try {
+      await vaultApi.updateFolder(id, updates);
+      await get().fetchFolders(true);
+    } catch (error) {
+      set({ error: 'Failed to update folder' });
+    }
   },
 
   deleteFolder: async (id) => {
-    // API call
+    try {
+      await vaultApi.deleteFolder(id);
+      // Optimistic removal
+      set(state => ({ folders: state.folders.filter(f => f.id !== id) }));
+    } catch (error) {
+      set({ error: 'Failed to delete folder' });
+    }
   }
 }));
