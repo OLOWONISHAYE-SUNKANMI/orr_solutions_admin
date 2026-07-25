@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 // import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ChevronLeft, Eye, EyeOff, Shield } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff, Shield, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/hooks/auth";
 import { authAPI } from "@/app/services/api";
@@ -135,7 +135,13 @@ export default function RootPage() {
               </div>
             )}
             {error && (
-              <div className="text-red-500 text-sm text-center">{error}</div>
+              <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs font-semibold flex gap-2.5 items-start">
+                <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
+                <div className="space-y-0.5">
+                  <strong className="block text-red-400 uppercase tracking-wider text-[9px] font-mono">Gateway Warning</strong>
+                  <span>{error}</span>
+                </div>
+              </div>
             )}
             <input
               type="text"
