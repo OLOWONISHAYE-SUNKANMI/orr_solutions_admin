@@ -232,3 +232,13 @@ html {
   scrollbar-width: thin;
   scrollbar-color: var(--color-primary) var(--color-background);
 }
+
+/* Fix for native select options dropdown rendering white on white in some browsers */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #1a1a1a !important;
+  color: white !important;
+}

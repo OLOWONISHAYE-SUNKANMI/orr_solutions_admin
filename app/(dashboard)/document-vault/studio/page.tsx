@@ -149,25 +149,26 @@ export default function DocumentStudioPage() {
    const renderEditor = () => {
       if (!activeDocument) return null;
 
-      const onChange = (newContent: string) => {
-         // Optionally debounce save here
-         setActiveDocument((prev: any) => ({ ...prev, content: newContent }));
-         handleSave(activeDocument.id, activeDocument.title, newContent);
+      const content = activeDocument.content || activeDocument.description || '';
+      const title = activeDocument.title || '';
+
+      const handleContentChange = (newContent: string) => {
+         setActiveDocument({ ...activeDocument, content: newContent });
       };
 
-      const onTitleChange = (newTitle: string) => {
-         setActiveDocument((prev: any) => ({ ...prev, title: newTitle }));
+      const handleTitleChange = (newTitle: string) => {
+         setActiveDocument({ ...activeDocument, title: newTitle });
          handleSave(activeDocument.id, newTitle, activeDocument.content || '');
       };
 
       if (activeDocument.type === 'doc' || activeDocument.type === 'docx' || activeDocument.type === 'google_doc') {
-         return <DocsEditor content={activeDocument.content || ''} onChange={onChange} title={activeDocument.title} onTitleChange={onTitleChange} />;
+         return <DocsEditor content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       if (activeDocument.type === 'sheet' || activeDocument.type === 'xlsx' || activeDocument.type === 'google_sheet') {
-         return <SheetsEditor content={activeDocument.content || ''} onChange={onChange} title={activeDocument.title} onTitleChange={onTitleChange} />;
+         return <SheetsEditor content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       if (activeDocument.type === 'slide' || activeDocument.type === 'pptx' || activeDocument.type === 'google_slide') {
-         return <SlidesEditor content={activeDocument.content || ''} onChange={onChange} title={activeDocument.title} onTitleChange={onTitleChange} />;
+         return <SlidesEditor content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       return null;
    };

@@ -318,6 +318,22 @@ export const analyticsAPI = {
     });
   },
 
+  getWorkspaceUsage: () => {
+    console.log('[API] Fetching workspace usage analytics');
+    return apiCall("/admin-portal/v1/workspace-usage/analytics/").catch(error => {
+      console.error('[API ERROR] Failed to fetch workspace usage analytics:', error);
+      throw error;
+    });
+  },
+
+  getFeatureAdoption: () => {
+    console.log('[API] Fetching feature adoption analytics');
+    return apiCall("/admin-portal/v1/workspace-usage/feature-adoption/").catch(error => {
+      console.error('[API ERROR] Failed to fetch feature adoption analytics:', error);
+      throw error;
+    });
+  },
+
   exportData: (format: "csv" | "pdf", dateRange?: { start: string; end: string }) => {
     console.log(`[API] Exporting analytics data in ${format} format:`, dateRange);
     return apiCall("/admin-portal/v1/analytics/export/", {

@@ -5,6 +5,7 @@ import { Search, Filter, Users, FileText, Calendar, Eye, Edit, ToggleLeft, Toggl
 import { clientAPI } from "@/app/services";
 import type { ClientListItem, Client } from "@/app/services/types";
 import ClientDocumentsModal from "@/app/components/client/ClientDocumentsModal";
+import ClientDetailsModal from "@/app/components/client/ClientDetailsModal";
 import Pagination from "@/app/components/common/Pagination";
 import { useLanguageStore } from "@/store/languageStore";
 
@@ -38,8 +39,16 @@ export default function page() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEngagementModal, setShowEngagementModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(7);
+
+  // Helper for translations that return key when missing
+  const safeT = (key: string, fallback: string) => {
+    const val = t(key);
+    return val === key ? fallback : val;
+  };
 
   useEffect(() => {
     fetchClients();
@@ -76,12 +85,12 @@ export default function page() {
   const fetchClientDetails = async (id: number) => {
     try {
       setDetailsLoading(true);
-      const [clientData, engagementData] = await Promise.all([
-        clientAPI.getClient(id) as Promise<Client>,
-        clientAPI.getEngagementHistory(id).catch(() => null),
+      const [clientRes, engagementRes] = await Promise.all([
+        clientAPI.getClient(id) as any,
+        clientAPI.getEngagementHistory(id).catch(() => null) as any,
       ]);
-      setSelectedClient(clientData);
-      setClientEngagement(engagementData);
+      setSelectedClient(clientRes?.data || clientRes);
+      setClientEngagement(engagementRes?.data || engagementRes);
     } catch (err) {
       console.error("Failed to fetch client details:", err);
       setError(t('common.error') + ": Failed to load client details");
@@ -191,7 +200,7 @@ export default function page() {
                       </div>
 
                       <div>
-                        <label className="text-xs text-gray-400 mb-1 block">{t('clients.labels.pillar') || "Primary Pillar"}</label>
+                        <label className="text-xs text-gray-400 mb-1 block">{safeT('clients.labels.pillar', 'Primary Pillar')}</label>
                         <select
                           value={filterPillar}
                           onChange={(e) => setFilterPillar(e.target.value)}
@@ -402,7 +411,7 @@ export default function page() {
 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs text-gray-400">{t('clients.labels.pillar') || "Primary Pillar"}</label>
+                        <label className="text-xs text-gray-400">{safeT('clients.labels.pillar', 'Primary Pillar')}</label>
                         <p className={`text-sm font-medium ${selectedClient.primary_pillar ? pillarColors[selectedClient.primary_pillar] || "text-white" : "text-white"}`}>
                           {selectedClient.primary_pillar ? t(`clients.pillars.${selectedClient.primary_pillar}`) : ''}
                         </p>
@@ -417,7 +426,7 @@ export default function page() {
 
                       <div>
                         <label className="text-xs text-gray-400">{t('clients.labels.date_joined')}</label>
-                        <p className="text-sm font-medium text-white">{formatDate(selectedClient.date_joined || "")}</p>
+                        <p className="text-sm font-medium text-white">{formatDate(selectedClient.date_joined || selectedClient.created_at || "")}</p>
                       </div>
 
                       <div>
@@ -446,7 +455,10 @@ export default function page() {
                     )}
 
                     <div className="flex items-center gap-3 pt-4 border-t border-white/10">
-                      <button className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 rounded-lg text-white text-sm font-medium transition-all duration-200">
+                      <button 
+                        onClick={() => setShowEditModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/80 rounded-lg text-white text-sm font-medium transition-all duration-200"
+                      >
                         <Edit size={16} />
                         {t('clients.edit_client')}
                       </button>
@@ -457,7 +469,10 @@ export default function page() {
                         <FileText size={16} />
                         {t('clients.manage_documents')}
                       </button>
-                      <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200">
+                      <button 
+                        onClick={() => setShowEngagementModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200"
+                      >
                         <Eye size={16} />
                         {t('clients.view_engagement')}
                       </button>
@@ -483,6 +498,55 @@ export default function page() {
         isOpen={showDocuments}
         onClose={() => setShowDocuments(false)}
       />
+
+      {/* Edit Client Modal */}
+      {selectedClient && (
+        <ClientDetailsModal
+          client={selectedClient}
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onUpdate={() => fetchClientDetails(selectedClient.id)}
+        />
+      )}
+
+      {/* Engagement History Modal */}
+      {showEngagementModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#111111] border border-white/10 rounded-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">Engagement History</h3>
+                <p className="text-sm text-gray-400">Activity timeline for {selectedClient?.full_name}</p>
+              </div>
+              <button onClick={() => setShowEngagementModal(false)} className="text-gray-400 hover:text-white transition">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {clientEngagement ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-300">
+                    <strong>Recent Tickets:</strong> {clientEngagement.tickets?.length || 0}
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    <strong>Recent Meetings:</strong> {clientEngagement.meetings?.length || 0}
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    <strong>Recent Documents:</strong> {clientEngagement.documents?.length || 0}
+                  </p>
+                  <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-lg">
+                    <pre className="text-xs text-gray-400 whitespace-pre-wrap">{JSON.stringify(clientEngagement, null, 2)}</pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No engagement history available.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
