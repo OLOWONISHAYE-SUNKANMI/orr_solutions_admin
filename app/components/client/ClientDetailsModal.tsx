@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Edit, Eye, Calendar, FileText, ToggleLeft, ToggleRight, Loader, Save, AlertCircle } from "lucide-react";
 import { clientService } from "@/app/services/clientService";
 import type { Client } from "@/app/services/types";
+import { clientAPI } from "@/app/services";
 import ClientDocumentsModal from "./ClientDocumentsModal";
 
 interface ClientDetailsModalProps {
@@ -34,6 +35,18 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
   const [error, setError] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Client>>({});
   const [showDocuments, setShowDocuments] = useState(false);
+  const [showEngagementModal, setShowEngagementModal] = useState(false);
+  const [clientEngagement, setClientEngagement] = useState<any>(null);
+
+  useEffect(() => {
+    if (isOpen && client) {
+      clientAPI.getEngagementHistory(client.id)
+        .then((res: any) => {
+          setClientEngagement(res?.data || res);
+        })
+        .catch(() => setClientEngagement(null));
+    }
+  }, [isOpen, client]);
 
   if (!isOpen || !client) return null;
 
@@ -362,7 +375,10 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                     <FileText size={16} />
                     Manage Documents
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200">
+                  <button 
+                    onClick={() => setShowEngagementModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm transition-all duration-200"
+                  >
                     <Eye size={16} />
                     View Engagement History
                   </button>
@@ -380,6 +396,45 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
         isOpen={showDocuments}
         onClose={() => setShowDocuments(false)}
       />
+
+      {/* Engagement History Modal */}
+      {showEngagementModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#111111] border border-white/10 rounded-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">Engagement History</h3>
+                <p className="text-sm text-gray-400">Activity timeline for {client?.full_name}</p>
+              </div>
+              <button onClick={() => setShowEngagementModal(false)} className="text-gray-400 hover:text-white transition">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {clientEngagement ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-300">
+                    <strong>Recent Tickets:</strong> {clientEngagement.tickets?.length || 0}
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    <strong>Recent Meetings:</strong> {clientEngagement.meetings?.length || 0}
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    <strong>Recent Documents:</strong> {clientEngagement.documents?.length || 0}
+                  </p>
+                  <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-lg">
+                    <pre className="text-xs text-gray-400 whitespace-pre-wrap">{JSON.stringify(clientEngagement, null, 2)}</pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No engagement history available.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

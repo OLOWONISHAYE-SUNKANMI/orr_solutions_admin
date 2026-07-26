@@ -69,8 +69,8 @@ export default function ClientProfilesPage() {
   const fetchClientDetails = async (id: number) => {
     try {
       setDetailsLoading(true);
-      const clientData = await clientAPI.getClient(id) as Client;
-      setSelectedClient(clientData);
+      const clientRes = await clientAPI.getClient(id) as any;
+      setSelectedClient(clientRes?.data || clientRes);
       setShowDetailsModal(true);
     } catch (err) {
       console.error("Failed to fetch client details:", err);
