@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { settingsAPI, meetingAPI } from "@/app/services";
 import Pagination from "@/app/components/common/Pagination";
 import { useLanguageStore } from "@/store/languageStore";
+import ConsultantAssignmentsModal from "@/app/components/consultations/ConsultantAssignmentsModal";
 
 interface Consultant {
   id: number;
@@ -22,6 +23,10 @@ export default function AssignedConsultantsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(7);
+  const [allMeetings, setAllMeetings] = useState<any[]>([]);
+  
+  const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchConsultants = async () => {
@@ -29,11 +34,12 @@ export default function AssignedConsultantsPage() {
         setLoading(true);
         const [usersResponse, meetingsResponse] = await Promise.all([
           settingsAPI.listUsers(),
-          meetingAPI.getStats()
+          meetingAPI.listMeetings({})
         ]);
 
         const users = (usersResponse as any)?.data || usersResponse || [];
-        const meetingStats = (meetingsResponse as any)?.data || meetingsResponse;
+        const meetingsData = Array.isArray(meetingsResponse) ? meetingsResponse : ((meetingsResponse as any)?.results || (meetingsResponse as any)?.data || []);
+        setAllMeetings(meetingsData);
 
         // Filter for admin users who can be consultants
         const adminUsers = Array.isArray(users) ? users.filter((user: any) =>
@@ -41,7 +47,15 @@ export default function AssignedConsultantsPage() {
           user.role_name?.toLowerCase().includes('consultant') ||
           user.department?.toLowerCase().includes('consulting') ||
           user.is_active === true
-        ) : [];
+        ).map((user: any) => {
+          const fullName = `${user.first_name} ${user.last_name}`.trim();
+          const userMeetings = meetingsData.filter((m: any) => m.host_name === fullName);
+          return {
+            ...user,
+            assigned_meetings: userMeetings.length,
+            completed_meetings: userMeetings.filter((m: any) => m.status === 'completed').length
+          };
+        }) : [];
 
         setAllConsultants(adminUsers);
       } catch (err) {
@@ -131,7 +145,13 @@ export default function AssignedConsultantsPage() {
                           </div>
                         </div>
 
-                        <button className="w-full mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-300 text-sm font-medium transition-colors">
+                        <button 
+                          onClick={() => {
+                            setSelectedConsultant(consultant);
+                            setIsModalOpen(true);
+                          }}
+                          className="w-full mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-300 text-sm font-medium transition-colors"
+                        >
                           {t('consultations.view_assignments')}
                         </button>
                       </div>
@@ -152,6 +172,13 @@ export default function AssignedConsultantsPage() {
                     }}
                   />
                 )}
+
+                <ConsultantAssignmentsModal
+                  isOpen={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  consultantName={selectedConsultant ? `${selectedConsultant.first_name} ${selectedConsultant.last_name}` : ''}
+                  meetings={selectedConsultant ? allMeetings.filter((m: any) => m.host_name === `${selectedConsultant.first_name} ${selectedConsultant.last_name}`.trim()) : []}
+                />
               </>
             );
           })()}
