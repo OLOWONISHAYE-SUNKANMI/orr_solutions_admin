@@ -320,7 +320,7 @@ export const analyticsAPI = {
 
   getWorkspaceUsage: () => {
     console.log('[API] Fetching workspace usage analytics');
-    return apiCall("/admin-portal/v1/workspace-usage/").catch(error => {
+    return apiCall("/admin-portal/v1/workspace-usage/analytics/").catch(error => {
       console.error('[API ERROR] Failed to fetch workspace usage analytics:', error);
       throw error;
     });
@@ -328,7 +328,7 @@ export const analyticsAPI = {
 
   getFeatureAdoption: () => {
     console.log('[API] Fetching feature adoption analytics');
-    return apiCall("/admin-portal/v1/workspace-usage/features/").catch(error => {
+    return apiCall("/admin-portal/v1/workspace-usage/feature-adoption/").catch(error => {
       console.error('[API ERROR] Failed to fetch feature adoption analytics:', error);
       throw error;
     });
