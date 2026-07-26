@@ -13,6 +13,13 @@ export default function RequestedMeetingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  // Modal state for rescheduling
+  const [rescheduleModal, setRescheduleModal] = useState<{ isOpen: boolean; meetingId: number | null }>({
+    isOpen: false,
+    meetingId: null
+  });
+  const [newDateTime, setNewDateTime] = useState("");
 
   useEffect(() => {
     fetchCurrentUser();
@@ -208,12 +215,8 @@ export default function RequestedMeetingsPage() {
                       </button>
                       <button
                         onClick={() => {
-                          const newDateTime = prompt("Enter new date and time (YYYY-MM-DD HH:MM):");
-                          if (newDateTime) {
-                            handleMeetingAction(meeting.id, 'reschedule', { 
-                              confirmed_datetime: new Date(newDateTime).toISOString() 
-                            });
-                          }
+                          setRescheduleModal({ isOpen: true, meetingId: meeting.id });
+                          setNewDateTime(""); // Reset the input
                         }}
                         disabled={actionLoading === meeting.id}
                         className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 rounded-lg text-white text-sm font-medium transition-all duration-200"
@@ -240,6 +243,50 @@ export default function RequestedMeetingsPage() {
           )}
         </div>
       </div>
+
+      {/* Reschedule Modal */}
+      {rescheduleModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1a1f2e] border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4">Reschedule Meeting</h3>
+            <p className="text-gray-400 mb-4 text-sm">Please select a new date and time for this meeting.</p>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">New Date & Time</label>
+              <input 
+                type="datetime-local" 
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                value={newDateTime}
+                onChange={(e) => setNewDateTime(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setRescheduleModal({ isOpen: false, meetingId: null })}
+                className="px-4 py-2 rounded-lg text-gray-300 hover:bg-white/5 transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (newDateTime && rescheduleModal.meetingId) {
+                    handleMeetingAction(rescheduleModal.meetingId, 'reschedule', { 
+                      confirmed_datetime: new Date(newDateTime).toISOString() 
+                    });
+                    setRescheduleModal({ isOpen: false, meetingId: null });
+                  }
+                }}
+                disabled={!newDateTime}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed rounded-lg text-white font-medium text-sm transition-colors"
+              >
+                Confirm Reschedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
