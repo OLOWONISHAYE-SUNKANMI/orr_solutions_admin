@@ -181,7 +181,9 @@ export default function RootPage() {
                 <span className="ml-2">{t('auth.remember_me')}</span>
               </label>
 
-            
+              <Link href="/forgot-password" className="text-sm text-[#61FD51] hover:underline">
+                Forgot password?
+              </Link>
             </div>
             <button
               type="submit"

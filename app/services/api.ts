@@ -355,7 +355,7 @@ export const authAPI = {
     console.log(`[API] Attempting login for email: ${email}`);
     return apiCall("/api/auth/login/", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, portal: 'admin' }),
     }).then(response => {
       console.log('[API SUCCESS] Login successful');
       return response;
@@ -369,6 +369,28 @@ export const authAPI = {
     console.log('[API] Fetching current user');
     return apiCall("/admin-portal/v1/auth/me/").catch(error => {
       console.error('[API ERROR] Failed to fetch current user:', error);
+      throw error;
+    });
+  },
+
+  forgotPassword: (email: string) => {
+    console.log(`[API] Requesting password reset for email: ${email}`);
+    return apiCall("/api/auth/forget-password/", {
+      method: "POST",
+      body: JSON.stringify({ email, portal: "admin" }),
+    }).catch(error => {
+      console.error('[API ERROR] Forgot password failed:', error);
+      throw error;
+    });
+  },
+
+  resetPassword: (uid: string, token: string, new_password: string) => {
+    console.log(`[API] Resetting password for uid: ${uid}`);
+    return apiCall(`/api/auth/verify-reset-password/${uid}/${token}/`, {
+      method: "POST",
+      body: JSON.stringify({ uid, token, new_password }),
+    }).catch(error => {
+      console.error('[API ERROR] Reset password failed:', error);
       throw error;
     });
   },
