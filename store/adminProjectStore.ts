@@ -305,7 +305,7 @@ This project requires ${p.consultantsNeeded} consultant(s). The work is highly s
     )
   })),
 
-  completeProject: async (id) => {
+  completeProject: async (id: string) => {
     // Simulated API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
     set((state) => ({
