@@ -71,6 +71,30 @@ export default function DocumentStudioPage() {
       return () => document.removeEventListener('editor-action', handleGlobalEvent);
    }, [activeDocument]);
 
+   // Auto-save content changes
+   const lastSavedStateRef = React.useRef<{ id: string; content: string } | null>(null);
+   React.useEffect(() => {
+      if (!activeDocument) {
+         lastSavedStateRef.current = null;
+         return;
+      }
+      
+      const content = activeDocument.content || activeDocument.description || '';
+      
+      if (lastSavedStateRef.current === null || lastSavedStateRef.current.id !== activeDocument.id) {
+         lastSavedStateRef.current = { id: activeDocument.id, content };
+         return;
+      }
+
+      if (content !== lastSavedStateRef.current.content) {
+         const timeoutId = setTimeout(() => {
+            handleSave(activeDocument.id, activeDocument.title || 'Untitled', content);
+            lastSavedStateRef.current = { id: activeDocument.id, content };
+         }, 2000);
+         return () => clearTimeout(timeoutId);
+      }
+   }, [activeDocument?.content, activeDocument?.id]);
+
    // Auto-select newly created document after drafts update
    React.useEffect(() => {
       if (pendingSelectRef.current && drafts.length > 0) {
@@ -162,13 +186,13 @@ export default function DocumentStudioPage() {
       };
 
       if (activeDocument.type === 'doc' || activeDocument.type === 'docx' || activeDocument.type === 'google_doc') {
-         return <DocsEditor content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
+         return <DocsEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       if (activeDocument.type === 'sheet' || activeDocument.type === 'xlsx' || activeDocument.type === 'google_sheet') {
-         return <SheetsEditor content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
+         return <SheetsEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       if (activeDocument.type === 'slide' || activeDocument.type === 'pptx' || activeDocument.type === 'google_slide') {
-         return <SlidesEditor content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
+         return <SlidesEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       return null;
    };

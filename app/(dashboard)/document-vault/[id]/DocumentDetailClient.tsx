@@ -44,6 +44,23 @@ export default function DocumentDetailClient({ params }: { params: { id: string 
    const [activeTab, setActiveTab] = useState<'details' | 'versions' | 'audit' | 'ai'>('details');
    const [feedbackInput, setFeedbackInput] = useState('');
    const [isUploadingVersion, setIsUploadingVersion] = useState(false);
+   const [aiSummary, setAiSummary] = useState<string | null>(null);
+   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+   const handleGenerateSummary = async () => {
+      if (!doc) return;
+      setIsGeneratingSummary(true);
+      try {
+         const { vaultApi } = await import('@/lib/vault-api');
+         const summary = await vaultApi.summarizeDocument(doc.title || '', doc.title, doc.id.toString());
+         setAiSummary(summary);
+      } catch (err) {
+         console.error("Failed to generate summary:", err);
+         setAiSummary("Failed to generate summary. Please try again later.");
+      } finally {
+         setIsGeneratingSummary(false);
+      }
+   };
 
    if (!doc && isLoading) {
       return (
@@ -295,7 +312,7 @@ export default function DocumentDetailClient({ params }: { params: { id: string 
                         {activeTab === 'ai' && (
                            <div className="space-y-8 py-10 flex flex-col items-center text-center">
                               <div className="w-24 h-24 rounded-[40px] bg-primary/10 flex items-center justify-center text-primary relative">
-                                 <div className="absolute inset-0 bg-primary/10 rounded-[40px] animate-ping opacity-20" />
+                                 {isGeneratingSummary && <div className="absolute inset-0 bg-primary/10 rounded-[40px] animate-ping opacity-20" />}
                                  <Zap size={48} />
                               </div>
                               <div className="max-w-md space-y-4">
@@ -304,8 +321,20 @@ export default function DocumentDetailClient({ params }: { params: { id: string 
                                     Analyze this document context to generate summaries, identify risks, or extract key action items for the client.
                                  </p>
                               </div>
+                              
+                              {aiSummary ? (
+                                 <div className="w-full text-left bg-white/5 border border-white/10 rounded-2xl p-6 mt-4 whitespace-pre-wrap text-sm text-white">
+                                    {aiSummary}
+                                 </div>
+                              ) : null}
+
                               <div className="flex gap-4">
-                                 <button className="px-8 py-4 bg-primary text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lemon transition-all shadow-lg shadow-primary/20">
+                                 <button 
+                                    onClick={handleGenerateSummary}
+                                    disabled={isGeneratingSummary}
+                                    className="px-8 py-4 bg-primary text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-lemon transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center gap-2"
+                                 >
+                                    {isGeneratingSummary && <Loader2 size={14} className="animate-spin" />}
                                     Generate Summary
                                  </button>
                                  <button className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">

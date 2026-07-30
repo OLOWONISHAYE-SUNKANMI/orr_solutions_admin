@@ -7,11 +7,12 @@ import { useLanguageStore } from '@/store/languageStore';
 import FinancialStatsOverview from '@/app/components/common/billing/FinancialStatsOverview';
 import InvoiceManager from '@/app/components/common/billing/InvoiceManager';
 import WalletManager from '@/app/components/common/billing/WalletManager';
+import ConsultantInvoiceManager from '@/app/components/common/billing/ConsultantInvoiceManager';
 import ActionModals from '@/app/components/common/billing/ActionModals';
 
 export default function FinancialManagementPage() {
   const { t } = useLanguageStore();
-  const [activeSection, setActiveSection] = useState<'invoices' | 'wallets'>('invoices');
+  const [activeSection, setActiveSection] = useState<'invoices' | 'wallets' | 'consultants'>('invoices');
 
   return (
     <div className="min-h-screen pb-24 text-white relative">
@@ -88,6 +89,19 @@ export default function FinancialManagementPage() {
                     <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                   )}
                 </button>
+                <button 
+                  onClick={() => setActiveSection('consultants')}
+                  className={`relative pb-4 text-sm font-black uppercase tracking-widest transition-all ${
+                    activeSection === 'consultants' ? 'text-primary' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <List size={18} /> Consultant Disbursements
+                  </span>
+                  {activeSection === 'consultants' && (
+                    <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                  )}
+                </button>
              </div>
              
              <div className="flex items-center gap-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">
@@ -102,7 +116,9 @@ export default function FinancialManagementPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
           >
-            {activeSection === 'invoices' ? <InvoiceManager /> : <WalletManager />}
+            {activeSection === 'invoices' && <InvoiceManager />}
+            {activeSection === 'wallets' && <WalletManager />}
+            {activeSection === 'consultants' && <ConsultantInvoiceManager />}
           </motion.div>
         </section>
 

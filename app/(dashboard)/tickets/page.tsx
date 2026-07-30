@@ -2,7 +2,7 @@
 
 import { ticketAPI } from "@/app/services";
 import type { TicketListItem, TicketPriority, TicketSource, TicketStatus } from "@/app/services/types";
-import { MessageSquare, Search } from "lucide-react";
+import { MessageSquare, Search, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNotificationContext } from "@/lib/contexts/NotificationContext";
 import CreateTicketModal from "@/components/CreateTicketModal";
@@ -531,6 +531,33 @@ export default function TicketsPage() {
                           className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-primary/50"
                           onKeyPress={(e) => e.key === 'Enter' && handleAddMessage()}
                         />
+                        <button
+                          onClick={async () => {
+                            if (!selectedTicket) return;
+                            setActionLoading(true);
+                            try {
+                              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/smart-reply/`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                                },
+                                body: JSON.stringify({ ticket_id: selectedTicket.id })
+                              });
+                              const data = await response.json();
+                              setNewMessage(data?.reply || data?.data?.reply || "");
+                            } catch (err) {
+                              console.error("Failed to generate smart reply", err);
+                            } finally {
+                              setActionLoading(false);
+                            }
+                          }}
+                          disabled={actionLoading}
+                          className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-3 py-2 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                          title="Generate Smart Reply"
+                        >
+                          <Sparkles size={18} />
+                        </button>
                         <button
                           onClick={handleAddMessage}
                           disabled={!newMessage.trim() || actionLoading}
