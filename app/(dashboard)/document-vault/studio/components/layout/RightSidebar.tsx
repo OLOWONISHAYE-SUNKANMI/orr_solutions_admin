@@ -1,17 +1,135 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Zap, ArrowRight, X, Clock, Settings, Users, FileText } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Zap, ArrowRight, X, Clock, Settings, Users, FileText, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface RightSidebarProps {
    documentTitle: string;
+   documentId?: string | number;
 }
 
 type TabType = 'ai' | 'comments' | 'history' | 'properties';
 
-export default function RightSidebar({ documentTitle }: RightSidebarProps) {
+export default function RightSidebar({ documentTitle, documentId }: RightSidebarProps) {
    const [activeTab, setActiveTab] = useState<TabType>('ai');
+   const [chatHistory, setChatHistory] = useState<{role: 'user'|'ai', content: string}[]>([]);
+   const [chatInput, setChatInput] = useState('');
+   const [isAiLoading, setIsAiLoading] = useState(false);
+   const chatEndRef = useRef<HTMLDivElement>(null);
+
+   useEffect(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+   }, [chatHistory, isAiLoading]);
+
+   useEffect(() => {
+      const fetchHistory = async () => {
+         if (!documentId) return;
+         setChatHistory([]); // Clear previous document's history
+         setIsAiLoading(true); // Optional: show loading while fetching
+         try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/chat/?session_id=doc_${documentId}_admin`, {
+               headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+               },
+               cache: 'no-store'
+            });
+            if (response.ok) {
+               const data = await response.json();
+               const historyMessages = data?.data?.messages || data?.messages;
+               if (historyMessages && Array.isArray(historyMessages)) {
+                  setChatHistory(historyMessages.map((m: any) => ({
+                     role: m.role === 'assistant' ? 'ai' : 'user',
+                     content: m.content
+                  })));
+               }
+            }
+         } catch (err) {
+            console.error("Failed to fetch chat history:", err);
+         } finally {
+            setIsAiLoading(false);
+         }
+      };
+      
+      fetchHistory();
+   }, [documentId]);
+
+   const handleGenerateOutline = async () => {
+      if (!documentId) return;
+      setIsAiLoading(true);
+      setChatHistory(prev => [...prev, { role: 'user', content: 'Generate an outline for this document.' }]);
+      
+      try {
+         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/document-summary/`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            },
+            body: JSON.stringify({ 
+               document_id: documentId, 
+               title: documentTitle,
+               session_id: `doc_${documentId}_admin`
+            })
+         });
+         
+         const data = await response.json();
+         const summary = data?.summary || data?.data?.summary || 'Failed to generate outline.';
+         const keyPoints = data?.key_points || data?.data?.key_points || [];
+         
+         let aiResponse = summary;
+         if (keyPoints.length > 0) {
+            aiResponse += '\n\n**Key Points:**\n- ' + keyPoints.join('\n- ');
+         }
+         
+         setChatHistory(prev => [...prev, { role: 'ai', content: aiResponse }]);
+      } catch (err) {
+         setChatHistory(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error generating the outline.' }]);
+      } finally {
+         setIsAiLoading(false);
+      }
+   };
+
+   const handleSendMessage = async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      if (!chatInput.trim() || isAiLoading) return;
+      
+      const message = chatInput.trim();
+      setChatInput('');
+      setChatHistory(prev => [...prev, { role: 'user', content: message }]);
+      setIsAiLoading(true);
+      
+      try {
+         const formattedHistory = chatHistory.map(msg => ({
+            role: msg.role === 'ai' ? 'model' : 'user',
+            content: msg.content
+         }));
+         
+         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/chat/`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            },
+            body: JSON.stringify({ 
+               message: message,
+               session_id: `doc_${documentId}_admin`,
+               document_id: documentId,
+               conversation_history: formattedHistory,
+               context: `The user is currently viewing a document titled "${documentTitle}".`
+            })
+         });
+         
+         const data = await response.json();
+         const reply = data?.reply || data?.data?.reply || 'Sorry, I could not process that request.';
+         
+         setChatHistory(prev => [...prev, { role: 'ai', content: reply }]);
+      } catch (err) {
+         setChatHistory(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error responding to your question.' }]);
+      } finally {
+         setIsAiLoading(false);
+      }
+   };
 
    return (
       <aside className="hidden lg:flex w-80 border-l border-white/10 bg-card flex-col z-10 shrink-0">
@@ -56,7 +174,7 @@ export default function RightSidebar({ documentTitle }: RightSidebarProps) {
                   transition={{ duration: 0.15 }}
                   className="flex-1 flex flex-col min-h-0"
                >
-                  <div className="p-4 border-b border-white/10 flex items-center gap-3 shrink-0">
+                  <div className="p-4 border-b border-white/10 flex items-center gap-3 shrink-0 bg-white/[0.01]">
                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#cdff00]">
                         <Zap size={16} />
                      </div>
@@ -66,28 +184,62 @@ export default function RightSidebar({ documentTitle }: RightSidebarProps) {
                      </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                     <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-                        <p className="text-sm text-slate-300 leading-relaxed">
-                           I can help you structure the data in {documentTitle || 'this asset'}. Would you like an outline?
-                        </p>
-                        <button className="w-full py-2 bg-transparent border border-white/10 text-slate-300 rounded text-sm font-medium hover:bg-white/5 transition-all">
-                           Generate Outline
-                        </button>
-                     </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                     {chatHistory.length === 0 ? (
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                           <p className="text-sm text-slate-300 leading-relaxed">
+                              I can help you structure the data in {documentTitle || 'this asset'}. Would you like an outline?
+                           </p>
+                           <button 
+                              onClick={handleGenerateOutline}
+                              disabled={isAiLoading}
+                              className="w-full py-2 bg-transparent border border-white/10 text-slate-300 rounded text-sm font-medium hover:bg-white/5 transition-all disabled:opacity-50"
+                           >
+                              Generate Outline
+                           </button>
+                        </div>
+                     ) : (
+                        chatHistory.map((msg, index) => (
+                           <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[85%] rounded-lg p-3 text-sm ${
+                                 msg.role === 'user' 
+                                 ? 'bg-primary/20 text-white border border-primary/30' 
+                                 : 'bg-white/5 text-slate-200 border border-white/10'
+                              }`}>
+                                 <div className="whitespace-pre-wrap">{msg.content}</div>
+                              </div>
+                           </div>
+                        ))
+                     )}
+                     
+                     {isAiLoading && (
+                        <div className="flex justify-start">
+                           <div className="bg-white/5 rounded-lg p-3 border border-white/10 text-slate-400">
+                              <Loader2 size={16} className="animate-spin" />
+                           </div>
+                        </div>
+                     )}
+                     <div ref={chatEndRef} />
                   </div>
 
-                  <div className="p-4 border-t border-white/10 shrink-0">
-                     <div className="relative">
+                  <div className="p-4 border-t border-white/10 shrink-0 bg-white/[0.01]">
+                     <form onSubmit={handleSendMessage} className="relative">
                         <input
                            type="text"
+                           value={chatInput}
+                           onChange={(e) => setChatInput(e.target.value)}
+                           disabled={isAiLoading}
                            placeholder="Ask Gemini..."
-                           className="w-full bg-[#1a1f26] border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
+                           className="w-full bg-[#1a1f26] border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
                         />
-                        <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-primary text-slate-900 rounded-full hover:bg-lemon transition-colors">
+                        <button 
+                           type="submit"
+                           disabled={!chatInput.trim() || isAiLoading}
+                           className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-primary text-slate-900 rounded-full hover:bg-lemon transition-colors disabled:opacity-50"
+                        >
                            <ArrowRight size={14} />
                         </button>
-                     </div>
+                     </form>
                   </div>
                </motion.div>
             )}

@@ -27,6 +27,7 @@ import {
 import { useLanguageStore } from '@/store/languageStore';
 import { ROLE_PERMISSIONS, Permission, RoleName } from '@/lib/rbac/permissions';
 import { useRole, useIsSuperAdmin } from '@/lib/rbac/hooks';
+import TwoFactorSetup from '@/app/components/admin/TwoFactorSetup';
 
 type SettingsTab = 'general' | 'localization' | 'permissions' | 'security' | 'system';
 
@@ -242,6 +243,9 @@ export default function SettingsPage() {
                 <div className="absolute left-1 top-1 w-3 h-3 bg-slate-500 rounded-full" />
               </button>
             </div>
+          </div>
+          <div className="mt-8 pt-4 border-t border-white/10">
+            <TwoFactorSetup />
           </div>
         </div>
 

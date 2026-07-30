@@ -63,16 +63,34 @@ function page() {
   const [totalWalletBalance, setTotalWalletBalance] = useState<number>(0);
   const [upcomingConsultations, setUpcomingConsultations] = useState<number>(0);
   const [aiInsights, setAiInsights] = useState<{ summary: string; recommendations: string[] } | null>(null);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(true);
   const { wallets, transactions, fetchData: fetchWalletData } = useWalletStore();
 
   useEffect(() => {
+    const fetchAiInsights = async () => {
+      try {
+        setAiInsightsLoading(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/dashboard-insights/`, {
+          headers: { "Authorization": `Bearer ${localStorage.getItem('accessToken')}` }
+        });
+        if (response.ok) {
+          const json = await response.json();
+          setAiInsights(json.data || json);
+        }
+      } catch (err) {
+        console.error("Failed to fetch AI insights:", err);
+      } finally {
+        setAiInsightsLoading(false);
+      }
+    };
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch all dashboard data in parallel
-        const [metricsData, notificationsData, ticketsData, meetingsData, contentData, billingStatsData, clientStatsData, aiDataRes] =
+        // Fetch all non-AI dashboard data in parallel
+        const [metricsData, notificationsData, ticketsData, meetingsData, contentData, billingStatsData, clientStatsData] =
           await Promise.all([
             dashboardAPI.getOverview().catch(() => null),
             notificationAPI
@@ -85,22 +103,9 @@ function page() {
             contentAPI.listContent({ limit: 5 }).catch(() => ({ data: [] })),
             billingAPI.getAllPaymentStats().catch(() => null),
             clientAPI.getStats().catch(() => null),
-            fetch("https://orr-backend-105825824472.asia-southeast2.run.app/api/v1/ai/dashboard-insights/", {
-              headers: { "Authorization": `Bearer ${localStorage.getItem('access_token')}` }
-            }).then(r => r.ok ? r.json() : null).catch(() => null)
           ]);
 
         // Extract data from API responses
-        console.log('Dashboard API Responses:', {
-          metricsData,
-          notificationsData,
-          ticketsData,
-          meetingsData,
-          contentData,
-          billingStatsData,
-          clientStatsData
-        });
-
         const extractData = (response: any) => {
           if (!response) return null;
           return response.data || response;
@@ -146,12 +151,6 @@ function page() {
         } else {
           setTotalRevenue(0);
         }
-        
-        if (aiDataRes && aiDataRes.data) {
-          setAiInsights(aiDataRes.data);
-        } else if (aiDataRes) {
-          setAiInsights(aiDataRes);
-        }
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         setError(t('common.error') + ": " + t('dashboard.failed_load_dashboard'));
@@ -161,6 +160,7 @@ function page() {
     };
 
     fetchDashboardData();
+    fetchAiInsights();
     fetchWalletData();
   }, [t, fetchWalletData]);
 
@@ -319,7 +319,7 @@ function page() {
           </div>
           
           {/* AI Insights Card */}
-          {aiInsights && (
+          {(aiInsights || aiInsightsLoading) && (
             <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-900/10 rounded-xl p-6 border border-emerald-500/20 shadow-lg mb-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-emerald-500/20 p-2 rounded-lg">
@@ -327,16 +327,26 @@ function page() {
                 </div>
                 <h3 className="text-lg font-bold text-emerald-50">Gemini AI Dashboard Insights</h3>
               </div>
-              <p className="text-emerald-100/80 text-sm leading-relaxed mb-4">{aiInsights.summary}</p>
-              {aiInsights.recommendations && aiInsights.recommendations.length > 0 && (
-                <ul className="space-y-2 mt-4">
-                  {aiInsights.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-emerald-100/70">
-                      <span className="text-emerald-500 mt-0.5">•</span>
-                      <span>{rec}</span>
-                    </li>
-                  ))}
-                </ul>
+              
+              {aiInsightsLoading ? (
+                <div className="flex items-center gap-3 text-emerald-100/70 py-2">
+                  <Loader className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Analyzing current dashboard metrics...</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-emerald-100/80 text-sm leading-relaxed mb-4">{aiInsights?.summary}</p>
+                  {aiInsights?.recommendations && aiInsights.recommendations.length > 0 && (
+                    <ul className="space-y-2 mt-4">
+                      {aiInsights.recommendations.map((rec, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-emerald-100/70">
+                          <span className="text-emerald-500 mt-0.5">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </div>
           )}

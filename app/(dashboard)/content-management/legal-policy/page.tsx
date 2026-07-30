@@ -60,32 +60,10 @@ export default function LegacyPolicy() {
           page: {
             id: 1,
             hero_title: "Legacy & Policy",
-            hero_description: "Lorem ipsm jgdu mplexity. From regulatory and sustainability frameworks to biotechnology and compliance consulting, our experts guide clients through evolving legal, scientific, and operational standards. Our approach combines deep technical insight with strategic foresight — ensuring every initiative is compliant, sustainable, and built for growth.",
-            is_active: true
+            hero_description: "Error loading content. Please try again later.",
+            is_active: false
           },
-          items: [
-            {
-              id: 1,
-              number: "01",
-              description: "Lorem ipsm jgdu mplexity. From regulatory and sustainability frameworks to biotechnology and compliance consulting, our experts guide clients through evolving legal, scientific, and operational standards. Our approach combines deep technical insight with strategic foresight — ensuring every initiative is compliant, sustainable, and built for growth.",
-              order: 1,
-              is_active: true
-            },
-            {
-              id: 2,
-              number: "02",
-              description: "Lorem ipsm jgdu mplexity. From regulatory and sustainability frameworks to biotechnology and compliance consulting, our experts guide clients through evolving legal, scientific, and operational standards. Our approach combines deep technical insight with strategic foresight — ensuring every initiative is compliant, sustainable, and built for growth.",
-              order: 2,
-              is_active: true
-            },
-            {
-              id: 3,
-              number: "03",
-              description: "Lorem ipsm jgdu mplexity. From regulatory and sustainability frameworks to biotechnology and compliance consulting, our experts guide clients through evolving legal, scientific, and operational standards. Our approach combines deep technical insight with strategic foresight — ensuring every initiative is compliant, sustainable, and built for growth.",
-              order: 3,
-              is_active: true
-            }
-          ]
+          items: []
         });
       } finally {
         setLoading(false);

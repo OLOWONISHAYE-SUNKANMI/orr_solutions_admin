@@ -69,6 +69,7 @@ export default function SlidesEditor({ content, onChange, title, onTitleChange }
    const canvasRef = useRef<HTMLCanvasElement>(null);
    const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
    const containerRef = useRef<HTMLDivElement>(null);
+   const isCanvasLoadingRef = useRef(false);
 
    // Sensors for drag-and-drop
    const sensors = useSensors(
@@ -122,7 +123,7 @@ export default function SlidesEditor({ content, onChange, title, onTitleChange }
       });
 
       const handleSave = () => {
-         if (!fabricCanvasRef.current || !activeSlideId) return;
+         if (!fabricCanvasRef.current || !activeSlideId || isCanvasLoadingRef.current) return;
          const json = fabricCanvasRef.current.toJSON();
          
          setSlides(prev => {
@@ -150,8 +151,13 @@ export default function SlidesEditor({ content, onChange, title, onTitleChange }
       
       const currentSlide = slides.find(s => s.id === activeSlideId);
       if (currentSlide && currentSlide.canvasData) {
-         fabricCanvasRef.current.loadFromJSON(currentSlide.canvasData, () => {
+         isCanvasLoadingRef.current = true;
+         fabricCanvasRef.current.loadFromJSON(currentSlide.canvasData).then(() => {
             fabricCanvasRef.current?.renderAll();
+            isCanvasLoadingRef.current = false;
+         }).catch((err) => {
+            console.error("Failed to load canvas data", err);
+            isCanvasLoadingRef.current = false;
          });
       } else {
          fabricCanvasRef.current.clear();

@@ -235,7 +235,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const paymentsItems = filterGroupItems([
     { label: t('sidebar.payments_billings'), href: "/payment-management/subscriptions" },
     { label: t('sidebar.wallet_logs'), href: "/payment-management/wallet" },
-    { label: t('sidebar.financial_management'), href: "/payment-management/hub" },
+    { label: t('sidebar.financial_management'), href: "/financial-management" },
     { label: t('sidebar.pro_rata_approval'), href: "/payment-management/pro-rata" },
     { label: t('sidebar.invoicing'), href: "/payment-management/invoicing" },
     { label: t('sidebar.payment_disputes'), href: "/payment-management/disputes" }
