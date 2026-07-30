@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Edit, Eye, Calendar, FileText, ToggleLeft, ToggleRight, Loader, Save, AlertCircle } from "lucide-react";
+import { X, Edit, Eye, Calendar, FileText, ToggleLeft, ToggleRight, Loader, Save, AlertCircle, Sparkles } from "lucide-react";
 import { clientService } from "@/app/services/clientService";
 import type { Client } from "@/app/services/types";
 import { clientAPI } from "@/app/services";
@@ -37,6 +37,32 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
   const [showDocuments, setShowDocuments] = useState(false);
   const [showEngagementModal, setShowEngagementModal] = useState(false);
   const [clientEngagement, setClientEngagement] = useState<any>(null);
+  const [showInsightsModal, setShowInsightsModal] = useState(false);
+  const [clientInsights, setClientInsights] = useState<string | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+
+  const handleGenerateInsights = async () => {
+    if (!client) return;
+    setShowInsightsModal(true);
+    setLoadingInsights(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/client-insights/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify({ client_id: client.id })
+      });
+      const data = await response.json();
+      setClientInsights(data?.insights || data?.data?.insights || "No insights could be generated.");
+    } catch (err) {
+      console.error("Failed to generate client insights:", err);
+      setClientInsights("Failed to generate client insights. Please try again.");
+    } finally {
+      setLoadingInsights(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && client) {
@@ -382,6 +408,13 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                     <Eye size={16} />
                     View Engagement History
                   </button>
+                  <button 
+                    onClick={handleGenerateInsights}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm transition-all duration-200"
+                  >
+                    <Sparkles size={16} />
+                    Generate AI Insights
+                  </button>
                 </>
               )}
             </div>
@@ -429,6 +462,41 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   No engagement history available.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Insights Modal */}
+      {showInsightsModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#111111] border border-emerald-500/20 rounded-2xl w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-emerald-500/20 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-emerald-400 flex items-center gap-2">
+                  <Sparkles size={20} /> AI Client Insights
+                </h3>
+                <p className="text-sm text-gray-400">Analysis for {client?.full_name}</p>
+              </div>
+              <button onClick={() => setShowInsightsModal(false)} className="text-gray-400 hover:text-white transition">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {loadingInsights ? (
+                <div className="flex flex-col items-center justify-center py-12 text-emerald-400 gap-4">
+                  <Loader className="animate-spin" size={32} />
+                  <p className="text-sm">Analyzing client profile and engagement history...</p>
+                </div>
+              ) : clientInsights ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-6">
+                  <div className="text-sm text-emerald-50 whitespace-pre-wrap">{clientInsights}</div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Could not generate insights.
                 </div>
               )}
             </div>

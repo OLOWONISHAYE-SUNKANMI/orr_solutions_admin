@@ -149,7 +149,7 @@ export default function WorkspaceShell({
             </div>
 
             {!isFullScreen && activeDocument && (
-               <RightSidebar documentTitle={activeDocument.title} />
+               <RightSidebar documentTitle={activeDocument.title} documentId={activeDocument.id} />
             )}
          </main>
       </div>

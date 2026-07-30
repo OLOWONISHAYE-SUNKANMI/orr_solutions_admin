@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS, it } from "date-fns/locale";
-import { Loader, CheckCircle, Clock, User as UserIcon, ChevronLeft, ChevronRight, Menu, Search, HelpCircle, Settings, Plus, Calendar as CalendarIcon, MapPin, ExternalLink } from "lucide-react";
+import { Loader, CheckCircle, Clock, User as UserIcon, ChevronLeft, ChevronRight, Menu, Search, HelpCircle, Settings, Plus, Calendar as CalendarIcon, MapPin, ExternalLink, Sparkles } from "lucide-react";
 import { useLanguageStore } from "@/store/languageStore";
 import { meetingAPI, authAPI } from "@/app/services";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -29,6 +29,30 @@ function page() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [aiPrepNotes, setAiPrepNotes] = useState<string | null>(null);
+  const [isPrepping, setIsPrepping] = useState(false);
+
+  const handlePrepNotes = async () => {
+    if (!selectedEvent) return;
+    setIsPrepping(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/ai/meeting-prep/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify({ meeting_id: selectedEvent.id })
+      });
+      const data = await response.json();
+      setAiPrepNotes(data?.prep_notes || data?.data?.prep_notes || "Could not generate preparation notes.");
+    } catch (err) {
+      console.error("Failed to generate prep notes:", err);
+      setAiPrepNotes("Failed to generate preparation notes. Please try again.");
+    } finally {
+      setIsPrepping(false);
+    }
+  };
 
   const locales = {
     "en": enUS,
@@ -233,6 +257,7 @@ function page() {
                   onClick={() => {
                     setDate(event.start);
                     setSelectedEvent(event);
+                    setAiPrepNotes(null);
                   }}
                   className={`p-2 rounded-md cursor-pointer text-sm flex flex-col gap-1 ${selectedEvent?.id === event.id ? "bg-primary/20 text-primary" : "hover:bg-white/5"
                     }`}
@@ -268,7 +293,10 @@ function page() {
               }}
               date={date}
               onNavigate={(newDate: Date) => setDate(newDate)}
-              onSelectEvent={setSelectedEvent}
+              onSelectEvent={(event: Event) => {
+                setSelectedEvent(event);
+                setAiPrepNotes(null);
+              }}
               selectable
               eventPropGetter={(event: Event) => ({
                 style: {
@@ -336,7 +364,25 @@ function page() {
                       </div>
                     )}
 
+                    {aiPrepNotes && (
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-4">
+                        <h4 className="text-sm font-semibold text-emerald-400 mb-2 flex items-center gap-2">
+                          <Sparkles size={16} /> AI Preparation Notes
+                        </h4>
+                        <div className="text-xs text-slate-300 whitespace-pre-wrap">{aiPrepNotes}</div>
+                      </div>
+                    )}
+
                     <div className="pt-4 mt-2 flex flex-wrap gap-2 justify-end">
+                      <button
+                        onClick={handlePrepNotes}
+                        disabled={isPrepping}
+                        className="text-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isPrepping ? <Loader className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                        Prepare AI Notes
+                      </button>
+
                       {selectedEvent.status === "requested" && (
                         <>
                           <button

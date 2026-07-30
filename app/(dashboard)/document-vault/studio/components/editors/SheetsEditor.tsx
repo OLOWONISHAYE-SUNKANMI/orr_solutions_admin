@@ -20,6 +20,7 @@ const Workbook = dynamic(() => import('@fortune-sheet/react').then(mod => mod.Wo
 
 export default function SheetsEditor({ content, onChange, title, onTitleChange }: SheetsEditorProps) {
     const [showInsights, setShowInsights] = useState(false);
+    const workbookRef = React.useRef<any>(null);
     
     const [data] = useState(() => {
         try {
@@ -56,7 +57,27 @@ export default function SheetsEditor({ content, onChange, title, onTitleChange }
     }, [onChange]);
 
     const handleChange = useCallback((d: any[]) => {
-        onChangeRef.current(JSON.stringify(d));
+        const toSave = d.map(sheet => {
+            if (sheet.data) {
+                const newCelldata: any[] = [];
+                for (let r = 0; r < sheet.data.length; r++) {
+                    const row = sheet.data[r];
+                    if (!row) continue;
+                    for (let c = 0; c < row.length; c++) {
+                        const cell = row[c];
+                        if (cell !== null && cell !== undefined) {
+                            newCelldata.push({ r, c, v: cell });
+                        }
+                    }
+                }
+                return {
+                    ...sheet,
+                    celldata: newCelldata
+                };
+            }
+            return sheet;
+        });
+        onChangeRef.current(JSON.stringify(toSave));
     }, []);
 
     return (
@@ -81,6 +102,7 @@ export default function SheetsEditor({ content, onChange, title, onTitleChange }
             <div className="flex-1 relative w-full overflow-hidden flex">
                 <div className="flex-1 relative">
                     <Workbook 
+                        ref={workbookRef}
                         data={data} 
                         onChange={handleChange} 
                         lang="en"
