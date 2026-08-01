@@ -4,16 +4,16 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdminProjectStore } from "@/store/adminProjectStore";
-import { ArrowLeft, CheckCircle2, AlertCircle, Clock, Shield, Briefcase, FileText, Bot, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle, Clock, Shield, Briefcase, FileText, Bot, Lock, Loader2 } from "lucide-react";
 
 export default function ProjectReviewPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
-  const { 
-    projects, 
+  const {
+    projects,
     isGeneratingSummary,
-    approveProjectForDrafting, 
+    approveProjectForDrafting,
     requestClarification,
     generateConsultantSummary,
     approveConsultantSummary,
@@ -25,26 +25,26 @@ export default function ProjectReviewPage() {
     updateSelectionNotes,
     activateProjectAccess
   } = useAdminProjectStore();
-  
+
   const project = projects.find(p => p.id === projectId);
 
   const [isClarifyModalOpen, setIsClarifyModalOpen] = useState(false);
   const [clarificationNotes, setClarificationNotes] = useState("");
-  
+
   const [isPmInputModalOpen, setIsPmInputModalOpen] = useState(false);
-  const [pmInputNotes, setPmInputNotes] = useState("");
+  const [pmInputNotes, setPmInputNotes] = useState('');
   const [selectedAccessLevel, setSelectedAccessLevel] = useState<'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access'>('Assignment Brief Only');
-  
+
   const [isExternalModalOpen, setIsExternalModalOpen] = useState(false);
   const [externalEmail, setExternalEmail] = useState("");
-  
+
   const [editedConsultantSummary, setEditedConsultantSummary] = useState("");
 
   useEffect(() => {
-    if (project?.consultantSummary) {
-      setEditedConsultantSummary(project.consultantSummary);
+    if (project?.consultantFacingSummaryDraft) {
+      setEditedConsultantSummary(project.consultantFacingSummaryDraft);
     }
-  }, [project?.consultantSummary]);
+  }, [project?.consultantFacingSummaryDraft]);
 
   if (!project) {
     return (
@@ -59,75 +59,42 @@ export default function ProjectReviewPage() {
     approveProjectForDrafting(project.id);
   };
 
-  const handleRequestClarification = async (e: React.FormEvent) => {
+  const handleRequestClarification = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clarificationNotes.trim()) return;
-    try {
-      await requestClarification(project.id, clarificationNotes);
-      setIsClarifyModalOpen(false);
-      router.push("/project-requests");
-    } catch (error: any) {
-      alert(error.message || "Failed to request clarification.");
-    }
+    requestClarification(project.id, clarificationNotes);
+    setIsClarifyModalOpen(false);
+    router.push("/project-requests");
   };
 
-  const handleGenerateSummary = async () => {
-    try {
-      await generateConsultantSummary(project.id);
-    } catch (error: any) {
-      alert(error.message || "Failed to generate summary.");
-    }
+  const handleGenerateSummary = () => {
+    generateConsultantSummary(project.id);
   };
 
-  const handleApproveFinalSummary = async () => {
-    try {
-      await approveConsultantSummary(project.id, editedConsultantSummary);
-      router.push("/project-requests");
-    } catch (error: any) {
-      alert(error.message || "Failed to approve summary.");
-    }
+  const handleApproveFinalSummary = () => {
+    approveConsultantSummary(project.id, editedConsultantSummary);
+    router.push("/project-requests");
   };
 
-  const handleRequestPmInput = async (e: React.FormEvent) => {
+  const handleRequestPmInput = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pmInputNotes.trim()) return;
-    try {
-      await requestPmInputForSourcing(project.id, pmInputNotes);
-      setIsPmInputModalOpen(false);
-      router.push("/project-requests");
-    } catch (error: any) {
-      alert(error.message || "Failed to request PM input.");
-    }
+    requestPmInputForSourcing(project.id, pmInputNotes);
+    setIsPmInputModalOpen(false);
+    router.push("/project-requests");
   };
 
-  const handleSourceInternally = async () => {
-    try {
-      await sourceProjectInternally(project.id);
-      router.push("/project-requests");
-    } catch (error: any) {
-      alert(error.message || "Failed to source internally.");
-    }
+  const handleSourceInternally = () => {
+    sourceProjectInternally(project.id);
+    router.push("/project-requests");
   };
 
-  const handleSourceExternally = async (e: React.FormEvent) => {
+  const handleSourceExternally = (e: React.FormEvent) => {
     e.preventDefault();
     if (!externalEmail.trim()) return;
-    try {
-      await sourceProjectExternally(project.id, externalEmail);
-      setIsExternalModalOpen(false);
-      router.push("/project-requests");
-    } catch (error: any) {
-      alert(error.message || "Failed to source externally.");
-    }
-  };
-
-  const handleSelectConsultant = async (consultantId: string) => {
-    try {
-      await selectConsultant(project.id, consultantId);
-      alert("Consultant selected and invitation sent!");
-    } catch (error: any) {
-      alert(error.message || "Failed to select consultant.");
-    }
+    sourceProjectExternally(project.id, externalEmail);
+    setIsExternalModalOpen(false);
+    router.push("/project-requests");
   };
 
   return (
@@ -144,13 +111,12 @@ export default function ProjectReviewPage() {
               <span className="text-[10px] px-3 py-1 bg-slate-800 border border-white/10 rounded-full font-mono font-black text-slate-300 uppercase tracking-widest">
                 {project.id}
               </span>
-              <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-wider border ${
-                project.status === 'Pending Admin Review' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+              <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-wider border ${project.status === 'Pending Admin Review' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
                 project.status === 'Needs PM Clarification' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
-                project.status === 'PM Input Required' ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' :
-                project.status === 'Drafting Consultant Summary' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
-                'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-              }`}>
+                  project.status === 'PM Input Required' ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' :
+                    project.status === 'Drafting Consultant Summary' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' :
+                      'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                }`}>
                 {project.status}
               </span>
             </div>
@@ -166,7 +132,7 @@ export default function ProjectReviewPage() {
 
       {/* Review Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Main Details */}
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 space-y-6 backdrop-blur-sm">
@@ -177,7 +143,7 @@ export default function ProjectReviewPage() {
             <div className="space-y-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Defined Scope</span>
               <p className="text-slate-300 leading-relaxed font-medium bg-black/20 p-5 rounded-2xl border border-white/5">
-                {project.internalSummary || project.scope || "No internal summary provided."}
+                {project.scope}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
@@ -193,7 +159,7 @@ export default function ProjectReviewPage() {
           </div>
 
           {/* Consultant Summary Drafting Section */}
-          {(project.status === 'Pending Admin Review' || project.status === 'Needs PM Clarification' || project.status === 'Drafting Consultant Summary' || project.status === 'PM Input Required' || project.status === 'Approved for Sourcing') && (
+          {(project.status === 'Drafting Consultant Summary' || project.status === 'PM Input Required' || project.status === 'Approved for Sourcing') && (
             <div className="bg-blue-950/20 border border-blue-500/20 rounded-3xl p-8 space-y-6 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4">
               <div className="flex justify-between items-center border-b border-blue-500/20 pb-4">
                 <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
@@ -201,7 +167,7 @@ export default function ProjectReviewPage() {
                   Consultant-Facing Summary
                 </h2>
                 {!project.consultantFacingSummaryDraft && !isGeneratingSummary && (
-                  <button 
+                  <button
                     onClick={handleGenerateSummary}
                     className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-3 py-1.5 rounded-lg font-bold border border-blue-500/30 transition-colors"
                   >
@@ -220,7 +186,7 @@ export default function ProjectReviewPage() {
                   <p className="text-xs text-slate-400">
                     Review and edit the consultant-facing summary. Ensure no restricted client information remains.
                   </p>
-                  <textarea 
+                  <textarea
                     value={editedConsultantSummary}
                     onChange={(e) => setEditedConsultantSummary(e.target.value)}
                     disabled={project.status === 'Approved for Sourcing'}
@@ -265,6 +231,32 @@ export default function ProjectReviewPage() {
               </div>
             </div>
           </div>
+
+          <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm space-y-6">
+            <h3 className="font-bold text-slate-300 uppercase tracking-widest text-[10px] flex items-center gap-2">
+              <FileText size={14} className="text-blue-400" /> Audit Trail
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <span className="text-xs text-slate-500 block">Created By</span>
+                <span className="font-bold text-white">{project.createdBy || 'System'}</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 block">Summary Version Sent</span>
+                <span className="font-bold text-blue-400">{project.summaryVersionSent || 'N/A'}</span>
+              </div>
+              {project.sentTo && project.sentTo.length > 0 && (
+                <div>
+                  <span className="text-xs text-slate-500 block mb-1">Sent To</span>
+                  <div className="flex flex-wrap gap-2">
+                    {project.sentTo.map(id => (
+                      <span key={id} className="text-[10px] bg-white/5 border border-white/10 px-2 py-1 rounded font-mono text-slate-300">{id}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -287,7 +279,7 @@ export default function ProjectReviewPage() {
               <p className="text-sm text-slate-400">Waiting for consultants to express interest...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {project.interestedConsultants.map(c => {
                 const isSelected = project.selectedConsultantId === c.id;
                 return (
@@ -312,10 +304,10 @@ export default function ProjectReviewPage() {
                             onChange={(e) => updateShortlistStatus(project.id, c.id, e.target.value as any)}
                             disabled={!!project.selectedConsultantId}
                             className={`w-full max-w-xs bg-slate-900 border rounded-xl p-2.5 text-sm focus:outline-none transition-colors appearance-none ${c.shortlistStatus === 'Shortlisted' ? 'border-emerald-500/30 text-emerald-400' :
-                                c.shortlistStatus === 'Not Shortlisted' ? 'border-rose-500/30 text-rose-400' :
-                                  c.shortlistStatus === 'Reserve' ? 'border-amber-500/30 text-amber-400' :
-                                    c.shortlistStatus === 'Needs Follow-up' ? 'border-blue-500/30 text-blue-400' :
-                                      'border-white/10 text-white focus:border-purple-500/50'
+                              c.shortlistStatus === 'Not Shortlisted' ? 'border-rose-500/30 text-rose-400' :
+                                c.shortlistStatus === 'Reserve' ? 'border-amber-500/30 text-amber-400' :
+                                  c.shortlistStatus === 'Needs Follow-up' ? 'border-blue-500/30 text-blue-400' :
+                                    'border-white/10 text-white focus:border-purple-500/50'
                               }`}
                           >
                             <option value="Pending">Pending Evaluation</option>
@@ -367,7 +359,7 @@ export default function ProjectReviewPage() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => handleSelectConsultant(c.id)}
+                            onClick={() => selectConsultant(project.id, c.id)}
                             disabled={!!project.selectedConsultantId}
                             className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-black transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -390,7 +382,7 @@ export default function ProjectReviewPage() {
         <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm space-y-6 mt-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <Shield size={20} />
+              <Lock size={20} />
             </div>
             <div>
               <h2 className="text-lg font-black text-white">Access Control</h2>
@@ -417,7 +409,7 @@ export default function ProjectReviewPage() {
             <div className="flex-1 flex justify-end">
               {project.isAccessActivated ? (
                 <div className="px-6 py-3.5 bg-emerald-500/20 text-emerald-300 rounded-xl text-sm font-black border border-emerald-500/30 flex items-center gap-2">
-                  <Shield size={16} className="text-emerald-400" />
+                  <Lock size={16} className="text-emerald-400" />
                   Access Activated: {project.accessLevel}
                 </div>
               ) : (
@@ -443,14 +435,14 @@ export default function ProjectReviewPage() {
               <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Select an action</p>
             </div>
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => setIsClarifyModalOpen(true)}
                 className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors border border-white/5"
               >
                 Request Clarification
               </button>
-              <button 
-                onClick={handleApproveFinalSummary}
+              <button
+                onClick={handleApproveForDrafting}
                 className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2"
               >
                 <CheckCircle2 size={16} />
@@ -461,7 +453,32 @@ export default function ProjectReviewPage() {
         </div>
       )}
 
-      {/* Floating Action Bar - Drafting Consultant Summary Removed */}
+      {/* Floating Action Bar - Drafting Consultant Summary */}
+      {project.status === 'Drafting Consultant Summary' && project.consultantFacingSummaryDraft && (
+        <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40">
+          <div className="bg-blue-950/90 backdrop-blur-xl border border-blue-500/20 shadow-2xl p-4 rounded-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 max-w-3xl w-full">
+            <div className="flex-1 px-4">
+              <p className="text-sm font-bold text-blue-100">Consultant Summary Review</p>
+              <p className="text-[10px] text-blue-400 uppercase tracking-wider font-mono">Is operational detail sufficient?</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsPmInputModalOpen(true)}
+                className="px-6 py-3 bg-blue-900 hover:bg-blue-800 text-blue-100 rounded-xl text-xs font-bold transition-colors border border-blue-500/30"
+              >
+                Request PM Input
+              </button>
+              <button
+                onClick={handleApproveFinalSummary}
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2"
+              >
+                <CheckCircle2 size={16} />
+                Approve & Finalize Summary
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Action Bar - Approved for Sourcing */}
       {project.status === 'Approved for Sourcing' && (
@@ -472,13 +489,13 @@ export default function ProjectReviewPage() {
               <p className="text-[10px] text-purple-400 uppercase tracking-wider font-mono">Select sourcing strategy</p>
             </div>
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => setIsExternalModalOpen(true)}
                 className="px-6 py-3 bg-purple-900 hover:bg-purple-800 text-purple-100 rounded-xl text-xs font-bold transition-colors border border-purple-500/30"
               >
                 Source Externally
               </button>
-              <button 
+              <button
                 onClick={handleSourceInternally}
                 className="px-6 py-3 bg-purple-500 hover:bg-purple-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-purple-500/20 flex items-center gap-2"
               >
@@ -495,7 +512,7 @@ export default function ProjectReviewPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
-            
+
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400">
                 <AlertCircle size={24} />
@@ -509,7 +526,7 @@ export default function ProjectReviewPage() {
             <form onSubmit={handleRequestClarification} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Clarification Notes</label>
-                <textarea 
+                <textarea
                   required
                   rows={5}
                   value={clarificationNotes}
@@ -520,14 +537,14 @@ export default function ProjectReviewPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsClarifyModalOpen(false)}
                   className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-bold transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="flex-1 px-4 py-3 bg-orange-500 hover:bg-orange-400 text-slate-900 rounded-xl text-sm font-black transition-colors shadow-lg shadow-orange-500/20"
                 >
@@ -544,7 +561,7 @@ export default function ProjectReviewPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
-            
+
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
                 <AlertCircle size={24} />
@@ -558,7 +575,7 @@ export default function ProjectReviewPage() {
             <form onSubmit={handleRequestPmInput} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Input Needed</label>
-                <textarea 
+                <textarea
                   required
                   rows={5}
                   value={pmInputNotes}
@@ -569,14 +586,14 @@ export default function ProjectReviewPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsPmInputModalOpen(false)}
                   className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-bold transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-400 text-slate-900 rounded-xl text-sm font-black transition-colors shadow-lg shadow-blue-500/20"
                 >
@@ -592,7 +609,7 @@ export default function ProjectReviewPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-purple-500" />
-            
+
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
                 <Shield size={24} />
@@ -606,7 +623,7 @@ export default function ProjectReviewPage() {
             <form onSubmit={handleSourceExternally} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Consultant Email</label>
-                <input 
+                <input
                   type="email"
                   required
                   value={externalEmail}
@@ -620,14 +637,14 @@ export default function ProjectReviewPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsExternalModalOpen(false)}
                   className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-bold transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="flex-1 px-4 py-3 bg-purple-500 hover:bg-purple-400 text-slate-900 rounded-xl text-sm font-black transition-colors shadow-lg shadow-purple-500/20"
                 >
