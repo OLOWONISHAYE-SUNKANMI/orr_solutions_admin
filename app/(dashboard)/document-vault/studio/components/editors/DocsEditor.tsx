@@ -431,6 +431,22 @@ const MenuBar = ({ editor }: { editor: any }) => {
 
 export default function DocsEditor({ content, onChange, title, onTitleChange }: DocsEditorProps) {
    const [pages, setPages] = useState([1]);
+   const [isParsingWord, setIsParsingWord] = useState(false);
+   const [parsedContent, setParsedContent] = useState<string | null>(null);
+   const previewRef = useRef<HTMLDivElement>(null);
+   const isDocxFile = content?.startsWith('data:') && (content.includes('wordprocessingml') || title?.toLowerCase().endsWith('.docx') || title?.toLowerCase().endsWith('.doc'));
+
+   const formatDocContent = (raw?: string) => {
+      if (parsedContent) return parsedContent;
+      if (!raw) return '<p>Start typing...</p>';
+      if (raw.startsWith('data:') && !raw.includes('wordprocessingml') && !title?.toLowerCase().endsWith('.docx') && !title?.toLowerCase().endsWith('.doc')) {
+         return `<div style="padding: 24px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; text-align: center; font-family: sans-serif;"><h3 style="font-size: 18px; font-weight: bold; color: #0f172a; margin-bottom: 8px;">Uploaded Document Asset</h3><p style="color: #475569; font-size: 13px;">This is a binary document file attached to your vault. Click Preview or Download to view the original asset.</p></div>`;
+      }
+      if (raw.startsWith('data:')) {
+          return '<p>Loading document...</p>'; // Will be replaced by mammoth
+      }
+      return raw;
+   };
 
    const editor = useEditor({
       extensions: [
@@ -457,7 +473,7 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
          LineHeight,
          FontFamily
       ],
-      content: content || '<p>Start typing...</p>',
+      content: formatDocContent(content),
       onUpdate: ({ editor }) => {
          onChange(editor.getHTML());
       },
@@ -467,6 +483,48 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
          },
       },
    });
+
+   useEffect(() => {
+       const container = previewRef.current;
+       if (isDocxFile && container) {
+           setIsParsingWord(true);
+           try {
+               const bstr = atob(content.split(',')[1]);
+               let n = bstr.length;
+               const u8arr = new Uint8Array(n);
+               while(n--){
+                   u8arr[n] = bstr.charCodeAt(n);
+               }
+               
+               // @ts-ignore
+               import('docx-preview').then((docx) => {
+                   docx.renderAsync(u8arr.buffer, container, undefined, {
+                      className: 'docx-preview',
+                      inWrapper: true,
+                      ignoreWidth: false,
+                      ignoreHeight: false,
+                   }).then(() => {
+                       setIsParsingWord(false);
+                   }).catch((err: any) => {
+                       console.error("Failed to render Word document", err);
+                       setIsParsingWord(false);
+                   });
+               }).catch((err) => {
+                  console.error("Failed to load docx-preview", err);
+                  setIsParsingWord(false);
+               });
+           } catch (err) {
+               console.error(err);
+               setIsParsingWord(false);
+           }
+       }
+   }, [isDocxFile, content, previewRef.current]);
+
+   useEffect(() => {
+      if (!isDocxFile && editor && content && content !== editor.getHTML() && !content.startsWith('data:') && !parsedContent) {
+         editor.commands.setContent(formatDocContent(content));
+      }
+   }, [content, editor, parsedContent, isDocxFile]);
 
    useEffect(() => {
       if (!editor) return;
@@ -516,10 +574,22 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
 
    return (
       <div className="flex-1 bg-[#f8f9fa] flex flex-col overflow-hidden relative">
-         <MenuBar editor={editor} />
+         {!isDocxFile && <MenuBar editor={editor} />}
          
          <div className="flex-1 overflow-y-auto py-8 px-4 flex flex-col items-center pb-20">
-            {pages.map((pageNumber) => (
+            {isDocxFile ? (
+               <div className="w-full flex justify-center">
+                  {isParsingWord && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#f8f9fa] z-10 text-gray-500">
+                          <Loader2 className="animate-spin mb-4 text-primary" size={40} />
+                          <h3 className="text-lg font-medium text-gray-800">Loading Word Document...</h3>
+                          <p className="text-sm mt-2">Rendering layout and styles.</p>
+                      </div>
+                  )}
+                  <div ref={previewRef} className="bg-transparent w-full" style={{ minHeight: '800px' }} />
+               </div>
+            ) : (
+               pages.map((pageNumber) => (
                <div
                   key={pageNumber}
                   className="w-full max-w-[816px] bg-white border border-gray-300 shadow-sm min-h-[1056px] p-[1in] relative flex-shrink-0 mb-6"
@@ -540,7 +610,13 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
                   )}
 
                   <div className="relative text-gray-900">
-                     {pageNumber === 1 ? (
+                     {isParsingWord ? (
+                         <div className="flex flex-col items-center justify-center h-[800px] w-full text-gray-500">
+                             <Loader2 className="animate-spin mb-4 text-primary" size={40} />
+                             <h3 className="text-lg font-medium text-gray-800">Parsing Word Document...</h3>
+                             <p className="text-sm mt-2">Extracting text and formatting. This may take a moment.</p>
+                         </div>
+                     ) : pageNumber === 1 ? (
                         <EditorContent editor={editor} />
                      ) : (
                         <div className="w-full bg-transparent border-none focus:outline-none min-h-[800px] leading-relaxed text-gray-400 select-none">
@@ -553,10 +629,11 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
                      Page {pageNumber} of {pages.length}
                   </div>
                </div>
-            ))}
+            )))}
          </div>
 
          {/* Word Count Floating Panel */}
+         {!isDocxFile && (
          <div className="absolute bottom-4 left-4 bg-white border border-gray-300 shadow-md rounded-lg p-2 text-xs text-gray-600 flex items-center gap-3 z-30 select-none">
             <div className="flex items-center gap-1">
                <span className="font-bold text-gray-900">{editor?.storage.characterCount.words()}</span> words
@@ -566,6 +643,7 @@ export default function DocsEditor({ content, onChange, title, onTitleChange }: 
                <span className="font-bold text-gray-900">{editor?.storage.characterCount.characters()}</span> characters
             </div>
          </div>
+         )}
 
          {/* Custom styles for Tiptap components */}
          <style>{`

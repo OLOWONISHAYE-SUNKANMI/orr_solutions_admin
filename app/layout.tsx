@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "./components/ThemeProvider";
 import Script from 'next/script';
+import TrailingSlashRedirect from '../components/TrailingSlashRedirect';
 
 export const metadata: Metadata = {
   title: "ORR Solution",
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <TrailingSlashRedirect />
         <ThemeProvider>
           {children}
         </ThemeProvider>
