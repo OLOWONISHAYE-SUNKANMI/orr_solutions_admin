@@ -27,7 +27,6 @@ import {
 import { useLanguageStore } from '@/store/languageStore';
 import { ROLE_PERMISSIONS, Permission, RoleName } from '@/lib/rbac/permissions';
 import { useRole, useIsSuperAdmin } from '@/lib/rbac/hooks';
-import TwoFactorSetup from '@/app/components/admin/TwoFactorSetup';
 
 type SettingsTab = 'general' | 'localization' | 'permissions' | 'security' | 'system';
 
@@ -232,20 +231,11 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-bold">Require 2FA for all Staff</span>
-              <button className="w-10 h-5 bg-primary/20 rounded-full relative">
-                <div className="absolute right-1 top-1 w-3 h-3 bg-primary rounded-full" />
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400 font-bold">Password Expiry (90 Days)</span>
               <button className="w-10 h-5 bg-white/10 rounded-full relative">
                 <div className="absolute left-1 top-1 w-3 h-3 bg-slate-500 rounded-full" />
               </button>
             </div>
-          </div>
-          <div className="mt-8 pt-4 border-t border-white/10">
-            <TwoFactorSetup />
           </div>
         </div>
 
