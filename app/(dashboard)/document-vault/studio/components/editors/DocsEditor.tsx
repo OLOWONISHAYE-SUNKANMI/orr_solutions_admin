@@ -25,7 +25,7 @@ import { CharacterCount } from '@tiptap/extension-character-count';
 import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { FontFamily } from '@tiptap/extension-font-family';
-import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Superscript as SuperscriptIcon, Subscript as SubscriptIcon, Highlighter, Link as LinkIcon, RemoveFormatting, AlignLeft, AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Table as TableIcon, List, ListOrdered, CheckSquare, ChevronDown, Plus, Minus, Type, X } from 'lucide-react';
+import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Superscript as SuperscriptIcon, Subscript as SubscriptIcon, Highlighter, Link as LinkIcon, RemoveFormatting, AlignLeft, AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Table as TableIcon, List, ListOrdered, CheckSquare, ChevronDown, Plus, Minus, Type, X, Loader2 } from 'lucide-react';
 
 const LineHeight = Extension.create({
    name: 'lineHeight',

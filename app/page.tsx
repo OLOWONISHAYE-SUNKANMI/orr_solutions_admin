@@ -24,10 +24,6 @@ export default function RootPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isRevoked, setIsRevoked] = useState(false);
-  const [requiresMfa, setRequiresMfa] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
-  const [tempToken, setTempToken] = useState("");
-  const [tempUser, setTempUser] = useState<any>(null);
   const router = useRouter();
   const { login } = useAuthStore();
   const { signInWithGoogle, isLoading: isGoogleLoading, renderGoogleButton } = useGoogleAuth();
@@ -54,14 +50,8 @@ export default function RootPage() {
       const user = data.user || response.user;
 
       if (token && user) {
-        if (data.mfa_required) {
-          setTempToken(token);
-          setTempUser(user);
-          setRequiresMfa(true);
-        } else {
-          login(token, user);
-          router.push("/dashboard/");
-        }
+        login(token, user);
+        router.push("/dashboard/");
       } else {
         setError(response.message || t('auth.error_invalid_format'));
       }
@@ -73,36 +63,6 @@ export default function RootPage() {
     }
   };
 
-  const handleMfaSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mfaCode) return;
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/api/auth/mfa/verify/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tempToken}`
-        },
-        body: JSON.stringify({ code: mfaCode })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Invalid MFA code');
-      
-      // Update with final token
-      const finalToken = data.access || tempToken;
-      if (tempUser) {
-        login(finalToken, tempUser);
-        router.push("/dashboard/");
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
 
   return (
@@ -152,49 +112,13 @@ export default function RootPage() {
          
 
           <h2 className="text-2xl font-extrabold mb-2 md:text-start text-center text-[#FFFFFF]">
-            {requiresMfa ? "Two-Factor Verification" : t('auth.welcome_back').split(' ').slice(0, -1).join(' ')} <span className="text-[#61FD51]">{requiresMfa ? "" : t('auth.welcome_back').split(' ').slice(-1)[0]}</span>
+            {t('auth.welcome_back').split(' ').slice(0, -1).join(' ')} <span className="text-[#61FD51]">{t('auth.welcome_back').split(' ').slice(-1)[0]}</span>
           </h2>
           <p className="text-sm font-medium mb-10 text-[#FFFFFF]  md:text-start text-center">
-            {requiresMfa ? "Enter the 6-digit code from your authenticator app." : t('auth.sign_in_desc')}
+            {t('auth.sign_in_desc')}
           </p>
 
-          {requiresMfa ? (
-            <form className="space-y-7" onSubmit={handleMfaSubmit}>
-              {error && (
-                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs font-semibold flex gap-2.5 items-start">
-                  <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />
-                  <div className="space-y-0.5">
-                    <p className="font-bold text-sm">Verification Failed</p>
-                    <p className="opacity-90">{error}</p>
-                  </div>
-                </div>
-              )}
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-slate-300 ml-1">Authentication Code</label>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value)}
-                  className="w-full text-center tracking-widest text-xl px-5 py-3 rounded-2xl bg-[#09150E] border border-white/10 text-white focus:outline-none focus:border-[#61FD51]/50 focus:bg-[#61FD51]/5 transition-all duration-300"
-                  placeholder="000000"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading || mfaCode.length < 6}
-                className="w-full py-3.5 rounded-full bg-[#61FD51] text-[#0A2614] font-bold text-sm hover:bg-[#4ade38] transition-all duration-300 hover:shadow-[0_0_20px_rgba(97,253,81,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center h-[52px]"
-              >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-[#0A2614]/30 border-t-[#0A2614] rounded-full animate-spin" />
-                ) : (
-                  "Verify Code"
-                )}
-              </button>
-            </form>
-          ) : (
-            <form className="space-y-7" onSubmit={handleSubmit}>
+          <form className="space-y-7" onSubmit={handleSubmit}>
             {isRevoked && (
               <div className="p-5 rounded-3xl border border-red-500/20 bg-red-500/10 text-red-200 animate-in fade-in slide-in-from-top-4 duration-500 space-y-2">
                 <div className="flex items-center gap-2">
@@ -269,7 +193,6 @@ export default function RootPage() {
             </button>
 
           </form>
-          )}
         
           <div className="mt-8">
             <div className="relative flex items-center justify-center py-2">
