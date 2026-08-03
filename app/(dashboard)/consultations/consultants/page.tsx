@@ -1,8 +1,9 @@
 "use client";
 
-import { Users, UserCheck, Loader, Calendar, Mail, Phone } from "lucide-react";
+import { Users, UserCheck, Loader, Calendar, Mail, Phone, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { settingsAPI, meetingAPI } from "@/app/services";
+import { useIsSuperAdmin } from "@/lib/rbac/hooks";
 import Pagination from "@/app/components/common/Pagination";
 import { useLanguageStore } from "@/store/languageStore";
 import ConsultantAssignmentsModal from "@/app/components/consultations/ConsultantAssignmentsModal";
@@ -18,6 +19,7 @@ interface Consultant {
 
 export default function AssignedConsultantsPage() {
   const { t } = useLanguageStore();
+  const isSuperAdmin = useIsSuperAdmin();
   const [allConsultants, setAllConsultants] = useState<Consultant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,21 @@ export default function AssignedConsultantsPage() {
   
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleDeleteConsultant = async (consultant: Consultant) => {
+    if (confirm(`Are you absolutely sure you want to delete specialist/consultant ${consultant.first_name} ${consultant.last_name}? This will permanently remove their profile and login account.`)) {
+      try {
+        setLoading(true);
+        setError(null);
+        await settingsAPI.deletePlatformUser(consultant.id);
+        setAllConsultants(prev => prev.filter(c => c.id !== consultant.id));
+      } catch (err: any) {
+        setError(err.message || "Failed to delete consultant user");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchConsultants = async () => {
@@ -145,15 +162,26 @@ export default function AssignedConsultantsPage() {
                           </div>
                         </div>
 
-                        <button 
-                          onClick={() => {
-                            setSelectedConsultant(consultant);
-                            setIsModalOpen(true);
-                          }}
-                          className="w-full mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-300 text-sm font-medium transition-colors"
-                        >
-                          {t('consultations.view_assignments')}
-                        </button>
+                        <div className="flex gap-2 mt-4">
+                          <button 
+                            onClick={() => {
+                              setSelectedConsultant(consultant);
+                              setIsModalOpen(true);
+                            }}
+                            className="flex-1 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-300 text-sm font-medium transition-colors"
+                          >
+                            {t('consultations.view_assignments')}
+                          </button>
+                          {isSuperAdmin && (
+                            <button
+                              onClick={() => handleDeleteConsultant(consultant)}
+                              className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 text-sm font-medium transition-colors"
+                              title="Delete Consultant"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

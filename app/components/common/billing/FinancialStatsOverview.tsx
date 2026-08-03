@@ -7,6 +7,7 @@ import { useInvoiceStore } from '@/store/invoiceStore';
 import { useWalletStore } from '@/store/walletStore';
 
 import { useLanguageStore } from '@/store/languageStore';
+import { useIsSuperAdmin } from '@/lib/rbac/hooks';
 
 export default function FinancialStatsOverview() {
   const { statistics } = useInvoiceStore();
@@ -24,6 +25,8 @@ export default function FinancialStatsOverview() {
     .reduce((sum, tx) => sum + tx.amount, 0);
 
   console.log('[FinancialStats] Calculated Aggregate Revenue:', aggregateRevenue);
+
+  const isSuperAdmin = useIsSuperAdmin();
 
   const stats = [
     {
@@ -52,7 +55,7 @@ export default function FinancialStatsOverview() {
     },
     {
       label: t('hub.stats.total_wallet'),
-      value: formatCurrency(aggregateWalletBalance),
+      value: isSuperAdmin ? formatCurrency(aggregateWalletBalance) : "[RESTRICTED]",
       icon: <Wallet className="text-purple-400" size={24} />,
       trend: '+5.2%',
       trendUp: true,

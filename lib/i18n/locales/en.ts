@@ -1304,7 +1304,33 @@ export const en = {
       actions: "Actions",
       evidence: "Evidence",
       final_deadline: "Final Deadline",
-      no_disputes: "No disputes found matching this criteria"
+      no_disputes: "No disputes found matching this criteria",
+      resolve_won: "Won",
+      resolve_lost: "Lost",
+      escalate: "Escalate",
+      contact: "Contact"
+    },
+    create: {
+      title: "File New Dispute",
+      select_client: "Select Client",
+      select_invoice: "Select Invoice",
+      amount: "Dispute Amount (USD)",
+      reason: "Dispute Reason",
+      type: "Dispute Type",
+      type_chargeback: "Chargeback",
+      type_inquiry: "Inquiry",
+      type_refund: "Refund Request",
+      evidence_days: "Evidence Due (Days)",
+      submit: "File Dispute",
+      success: "Dispute created successfully",
+      error: "Failed to create dispute"
+    },
+    actions: {
+      title: "Dispute Actions",
+      notes_placeholder: "Add notes about this action...",
+      confirm_resolve_won: "Mark as Won — funds recovered",
+      confirm_resolve_lost: "Mark as Lost — refund issued",
+      confirm_escalate: "Escalate to legal team"
     },
     webhooks: {
       title: "External Dispute Webhooks",

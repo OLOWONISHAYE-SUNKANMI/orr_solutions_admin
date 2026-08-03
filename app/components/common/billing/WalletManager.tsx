@@ -23,10 +23,12 @@ import {
 import { useWalletStore, TransactionType, SystemEvent } from '@/store/walletStore';
 
 import { useLanguageStore } from '@/store/languageStore';
+import { useIsSuperAdmin } from '@/lib/rbac/hooks';
 
 export default function WalletManager() {
   const { t, formatCurrency } = useLanguageStore();
-  const { wallets, transactions, systemEvents, processRefund, exportTransactions } = useWalletStore();
+  const isSuperAdmin = useIsSuperAdmin();
+  const { wallets, transactions, systemEvents, processRefund, exportTransactions, openBalanceModal } = useWalletStore();
   const [activeTab, setActiveTab] = useState<'balances' | 'history' | 'events'>('balances');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -177,17 +179,21 @@ export default function WalletManager() {
                     <div className="space-y-1">
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('dashboard.wallet_balance')}</p>
                       <p className="text-3xl font-black text-emerald-400">
-                        {formatCurrency(wallet.balance)}
+                        {isSuperAdmin ? formatCurrency(wallet.balance) : "[RESTRICTED]"}
                       </p>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <button className="flex-1 bg-primary text-slate-900 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl hover:bg-lemon transition-colors shadow-lg shadow-primary/10">
-                         {t('wallet.table.adjust_balance')}
-                      </button>
-                      <button className="px-4 bg-white/5 text-white rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
-                        <History size={16} />
-                      </button>
-                    </div>
+                    {isSuperAdmin && (
+                      <div className="flex gap-2 pt-2">
+                        <button
+                           onClick={() => openBalanceModal(wallet.userId)}
+                           className="flex-1 bg-primary text-slate-900 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl hover:bg-lemon transition-colors shadow-lg shadow-primary/10"
+                        >                           {t('wallet.table.adjust_balance')}
+                        </button>
+                        <button className="px-4 bg-white/5 text-white rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
+                          <History size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )) : (

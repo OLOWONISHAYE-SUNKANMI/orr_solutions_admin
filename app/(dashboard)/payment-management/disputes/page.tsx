@@ -1,53 +1,315 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { AlertCircle, FileText, ExternalLink, ShieldAlert, History, Search } from 'lucide-react';
-
-interface Dispute {
-  id: string;
-  transactionId: string;
-  userName: string;
-  amount: number;
-  reason: string;
-  status: 'needs_response' | 'under_review' | 'won' | 'lost';
-  dueDate: string;
-  timestamp: string;
-}
-
-const MOCK_DISPUTES: Dispute[] = [
-  {
-    id: 'dp1',
-    transactionId: 'tx_928374',
-    userName: 'Acme Corp',
-    amount: 1500.00,
-    reason: 'Product not as described',
-    status: 'needs_response',
-    dueDate: '2026-05-02',
-    timestamp: '2026-04-20T09:00:00Z'
-  },
-  {
-    id: 'dp2',
-    transactionId: 'tx_123456',
-    userName: 'Private User',
-    amount: 75.00,
-    reason: 'Fraudulent - transaction unrecognized',
-    status: 'under_review',
-    dueDate: '2026-04-28',
-    timestamp: '2026-04-15T14:20:00Z'
-  }
-];
-
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  AlertCircle, FileText, ExternalLink, ShieldAlert, History,
+  Search, Plus, X, AlertTriangle, CheckCircle, Gavel, Phone
+} from 'lucide-react';
 import { useLanguageStore } from '@/store/languageStore';
 import { useDisputeStore } from '@/store/disputeStore';
+import { useClientStore } from '@/store/clientStore';
+import { useInvoiceStore } from '@/store/invoiceStore';
 
+/* ─── Reusable Modal Shell ──────────────────────────────────────────── */
+function Modal({ isOpen, onClose, title, children }: {
+  isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-2xl bg-card border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+          >
+            <div className="flex justify-between items-center p-6 border-b border-white/5">
+              <h3 className="text-xl font-black text-white uppercase tracking-tight">{title}</h3>
+              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ─── Create Dispute Modal ──────────────────────────────────────────── */
+function CreateDisputeModal() {
+  const { t } = useLanguageStore();
+  const { createModalOpen, setCreateModalOpen, createDispute } = useDisputeStore();
+  const { clients, fetchClients } = useClientStore();
+  const { invoices, fetchInvoices } = useInvoiceStore();
+
+  const [form, setForm] = useState({
+    client_id: '',
+    invoice_id: '',
+    dispute_amount: '',
+    dispute_reason: '',
+    dispute_type: 'inquiry',
+    evidence_due_days: '14',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  React.useEffect(() => {
+    if (createModalOpen) {
+      fetchClients();
+      fetchInvoices();
+      setForm({ client_id: '', invoice_id: '', dispute_amount: '', dispute_reason: '', dispute_type: 'inquiry', evidence_due_days: '14' });
+      setError('');
+      setSuccess(false);
+    }
+  }, [createModalOpen, fetchClients, fetchInvoices]);
+
+  // Show all invoices — the backend validates the client-invoice relationship
+  const clientInvoices = invoices;
+
+  const handleSubmit = async () => {
+    if (!form.client_id || !form.invoice_id || !form.dispute_amount || !form.dispute_reason) {
+      setError('All fields are required.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    const result = await createDispute({
+      client_id: Number(form.client_id),
+      invoice_id: Number(form.invoice_id),
+      dispute_amount: Number(form.dispute_amount),
+      dispute_reason: form.dispute_reason,
+      dispute_type: form.dispute_type,
+    });
+    setSubmitting(false);
+    if (result.success) {
+      setSuccess(true);
+      setTimeout(() => setCreateModalOpen(false), 1200);
+    } else {
+      setError(result.error || t('disputes.create.error'));
+    }
+  };
+
+  const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 focus:outline-none transition-colors";
+  const labelCls = "text-[10px] font-black text-slate-500 uppercase tracking-widest";
+
+  return (
+    <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title={t('disputes.create.title')}>
+      {success ? (
+        <div className="py-12 text-center space-y-4">
+          <CheckCircle className="mx-auto text-emerald-400" size={48} />
+          <p className="text-lg font-black text-white uppercase">{t('disputes.create.success')}</p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {error && (
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 flex items-center gap-2">
+              <AlertTriangle className="text-rose-500 shrink-0" size={16} />
+              <p className="text-xs text-rose-300 font-bold">{error}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className={labelCls}>{t('disputes.create.select_client')}</label>
+              <select value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value, invoice_id: '' })} className={inputCls}>
+                <option value="">{t('disputes.create.select_client')}...</option>
+                {clients.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name} — {c.company}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className={labelCls}>{t('disputes.create.select_invoice')}</label>
+              <select value={form.invoice_id} onChange={e => setForm({ ...form, invoice_id: e.target.value })} className={inputCls}>
+                <option value="">{t('disputes.create.select_invoice')}...</option>
+                {clientInvoices.map((inv: any) => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.invoiceNumber || inv.id} — ${inv.totalAmount || inv.amount || 0}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className={labelCls}>{t('disputes.create.type')}</label>
+              <select value={form.dispute_type} onChange={e => setForm({ ...form, dispute_type: e.target.value })} className={inputCls}>
+                <option value="chargeback">{t('disputes.create.type_chargeback')}</option>
+                <option value="inquiry">{t('disputes.create.type_inquiry')}</option>
+                <option value="refund_request">{t('disputes.create.type_refund')}</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className={labelCls}>{t('disputes.create.amount')}</label>
+              <input
+                type="number" step="0.01" min="0"
+                value={form.dispute_amount}
+                onChange={e => setForm({ ...form, dispute_amount: e.target.value })}
+                className={inputCls} placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className={labelCls}>{t('disputes.create.evidence_days')}</label>
+              <input
+                type="number" min="1"
+                value={form.evidence_due_days}
+                onChange={e => setForm({ ...form, evidence_due_days: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className={labelCls}>{t('disputes.create.reason')}</label>
+            <textarea
+              value={form.dispute_reason}
+              onChange={e => setForm({ ...form, dispute_reason: e.target.value })}
+              className={`${inputCls} min-h-[100px]`}
+              placeholder={t('disputes.create.reason')}
+            />
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="w-full bg-rose-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-rose-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {submitting ? (
+              <span className="animate-pulse">Processing...</span>
+            ) : (
+              <>
+                <Gavel size={18} />
+                {t('disputes.create.submit')}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/* ─── Dispute Action Modal ──────────────────────────────────────────── */
+function DisputeActionModal({ dispute, isOpen, onClose }: {
+  dispute: any | null; isOpen: boolean; onClose: () => void;
+}) {
+  const { t } = useLanguageStore();
+  const { performAction } = useDisputeStore();
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  if (!dispute) return null;
+
+  const handleAction = async (action: string) => {
+    setLoading(true);
+    await performAction(dispute.id, action, notes);
+    setLoading(false);
+    setNotes('');
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`${t('disputes.actions.title')} — ${dispute.id}`}>
+      <div className="space-y-5">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2">
+          <div className="flex justify-between">
+            <span className="text-sm font-bold text-white">{dispute.userName}</span>
+            <span className="text-lg font-black text-rose-400">${dispute.amount?.toLocaleString()}</span>
+          </div>
+          <p className="text-xs text-slate-400">{dispute.reason}</p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Notes</label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 focus:outline-none min-h-[80px]"
+            placeholder={t('disputes.actions.notes_placeholder')}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={() => handleAction('resolve_won')}
+            disabled={loading}
+            className="py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <CheckCircle size={14} />
+            {t('disputes.actions.confirm_resolve_won')}
+          </button>
+          <button
+            onClick={() => handleAction('resolve_lost')}
+            disabled={loading}
+            className="py-3 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <AlertCircle size={14} />
+            {t('disputes.actions.confirm_resolve_lost')}
+          </button>
+          <button
+            onClick={() => handleAction('escalate')}
+            disabled={loading}
+            className="py-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <ShieldAlert size={14} />
+            {t('disputes.actions.confirm_escalate')}
+          </button>
+          <button
+            onClick={() => handleAction('contact_customer')}
+            disabled={loading}
+            className="py-3 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <Phone size={14} />
+            {t('disputes.table.contact')}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ─── Main Page ─────────────────────────────────────────────────────── */
 export default function PaymentDisputesPage() {
   const { t } = useLanguageStore();
-  const { disputes, statistics, isLoading, fetchDisputes } = useDisputeStore();
+  const {
+    disputes, statistics, isLoading, fetchDisputes,
+    searchQuery, setSearchQuery, statusFilter, setStatusFilter,
+    filteredDisputes, setCreateModalOpen
+  } = useDisputeStore();
+
+  const [actionDispute, setActionDispute] = useState<any | null>(null);
 
   React.useEffect(() => {
     fetchDisputes();
   }, [fetchDisputes]);
+
+  const displayed = filteredDisputes();
+
+  const filterTabs: { id: 'all' | 'needs_response' | 'under_review' | 'resolved'; label: string }[] = [
+    { id: 'all', label: t('disputes.all') },
+    { id: 'needs_response', label: t('disputes.needs_response') },
+    { id: 'under_review', label: t('disputes.under_review') },
+    { id: 'resolved', label: t('disputes.resolved') },
+  ];
+
+  const statusColor = (s: string) => {
+    if (s === 'open' || s === 'needs_response') return { dot: 'bg-rose-500', text: 'text-rose-500' };
+    if (s === 'under_review') return { dot: 'bg-amber-500', text: 'text-amber-500' };
+    if (s === 'resolved' || s === 'won') return { dot: 'bg-emerald-500', text: 'text-emerald-500' };
+    if (s === 'closed' || s === 'lost') return { dot: 'bg-slate-500', text: 'text-slate-400' };
+    return { dot: 'bg-blue-500', text: 'text-blue-500' };
+  };
 
   return (
     <div className="min-h-screen pb-24 text-white relative">
@@ -56,6 +318,7 @@ export default function PaymentDisputesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-12">
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-rose-500 font-black text-[10px] uppercase tracking-[0.3em]">
@@ -71,42 +334,55 @@ export default function PaymentDisputesPage() {
           </div>
         </div>
 
-        {/* Dispute Stats Bar */}
+        {/* Stats Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
            {[
-             { label: t('disputes.all'), value: statistics.totalDisputes, color: 'white' },
-             { label: t('disputes.needs_response'), value: statistics.activeCount, color: 'rose' },
-             { label: t('disputes.resolved'), value: statistics.resolvedCount, color: 'emerald' },
-             { label: 'Win Rate', value: `${statistics.winRate}%`, color: 'emerald' }
+             { label: t('disputes.all'), value: statistics.totalDisputes, color: 'text-white' },
+             { label: t('disputes.needs_response'), value: statistics.activeCount, color: 'text-rose-500' },
+             { label: t('disputes.resolved'), value: statistics.resolvedCount, color: 'text-emerald-500' },
+             { label: 'Win Rate', value: `${statistics.winRate}%`, color: 'text-emerald-500' }
            ].map((stat, i) => (
              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
-                <p className={`text-2xl font-black text-${stat.color === 'white' ? 'white' : stat.color + '-500'}`}>
+                <p className={`text-2xl font-black ${stat.color}`}>
                   {isLoading ? '...' : stat.value}
                 </p>
              </div>
            ))}
         </div>
 
+        {/* Table Card */}
         <div className="bg-card/30 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+          {/* Toolbar: filters + search */}
           <div className="p-8 border-b border-white/5 flex flex-col md:flex-row justify-between gap-4">
-             <div className="flex gap-2 text-white">
-                {[t('disputes.all'), t('disputes.needs_response'), t('disputes.under_review'), t('disputes.resolved')].map(tab => (
-                   <button key={tab} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all">
-                    {tab}
+             <div className="flex gap-2 text-white flex-wrap">
+                {filterTabs.map(tab => (
+                   <button
+                     key={tab.id}
+                     onClick={() => setStatusFilter(tab.id)}
+                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                       statusFilter === tab.id
+                         ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                         : 'bg-white/5 hover:bg-white/10 text-slate-400'
+                     }`}
+                   >
+                    {tab.label}
                   </button>
                 ))}
              </div>
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder={t('disputes.reference_placeholder')}
-                  className="bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs text-white outline-none focus:border-rose-500/50"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs text-white outline-none focus:border-rose-500/50 transition-colors"
                 />
              </div>
           </div>
 
+          {/* Table */}
           <div className="overflow-x-auto">
              <table className="w-full text-left">
                 <thead>
@@ -120,7 +396,9 @@ export default function PaymentDisputesPage() {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                   {disputes.length > 0 ? disputes.map((dp) => (
+                   {displayed.length > 0 ? displayed.map((dp) => {
+                     const colors = statusColor(dp.status);
+                     return (
                      <tr key={dp.id} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="py-6 px-8">
                            <div>
@@ -133,34 +411,38 @@ export default function PaymentDisputesPage() {
                            <p className="text-xs text-slate-400 max-w-xs">{dp.reason}</p>
                         </td>
                         <td className="py-6 px-8 text-right text-lg font-black text-white">
-                           ${dp.amount.toLocaleString()}
+                           ${dp.amount?.toLocaleString()}
                         </td>
                         <td className="py-6 px-8">
                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full animate-pulse ${dp.status.includes('needs') ? 'bg-rose-500' : 'bg-blue-500'}`} />
-                              <span className={`text-[10px] font-black uppercase tracking-widest ${dp.status.includes('needs') ? 'text-rose-500' : 'text-blue-500'}`}>
+                              <div className={`w-2 h-2 rounded-full animate-pulse ${colors.dot}`} />
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${colors.text}`}>
                                  {dp.status.replace('_', ' ')}
                               </span>
                            </div>
                         </td>
                         <td className="py-6 px-8 text-right">
-                           <div className="flex flex-col items-end">
-                              <p className="text-sm font-bold text-white text-nowrap">{new Date(dp.dueDate).toLocaleDateString()}</p>
-                              <p className="text-[9px] font-black uppercase text-rose-500/60">{t('disputes.table.final_deadline')}</p>
-                           </div>
+                           {dp.dueDate ? (
+                             <div className="flex flex-col items-end">
+                                <p className="text-sm font-bold text-white text-nowrap">{new Date(dp.dueDate).toLocaleDateString()}</p>
+                                <p className="text-[9px] font-black uppercase text-rose-500/60">{t('disputes.table.final_deadline')}</p>
+                             </div>
+                           ) : (
+                             <span className="text-xs text-slate-600">—</span>
+                           )}
                         </td>
                         <td className="py-6 px-8 text-right">
                            <div className="flex justify-end gap-2">
-                              <button className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center gap-2">
+                              <button
+                                onClick={() => setActionDispute(dp)}
+                                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center gap-2"
+                              >
                                  <FileText size={14} /> {t('disputes.table.evidence')}
-                              </button>
-                              <button className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all">
-                                 <ExternalLink size={16} />
                               </button>
                            </div>
                         </td>
                      </tr>
-                   )) : (
+                   )}) : (
                      <tr>
                         <td colSpan={6} className="py-20 text-center text-slate-500 uppercase tracking-widest font-black text-xs">
                           {isLoading ? t('sidebar.loading') || 'Syncing Disputes...' : t('disputes.table.no_disputes') || 'No Disputes Found'}
@@ -172,6 +454,7 @@ export default function PaymentDisputesPage() {
           </div>
         </div>
 
+        {/* Webhook Banner */}
         <div className="bg-rose-500/5 border border-rose-500/10 rounded-3xl p-6 flex flex-col md:flex-row items-center gap-6">
            <div className="p-4 bg-rose-500/10 rounded-2xl text-rose-500">
               <ShieldAlert size={32} />
@@ -185,6 +468,25 @@ export default function PaymentDisputesPage() {
            </button>
         </div>
       </div>
+
+      {/* FAB — Create Dispute */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setCreateModalOpen(true)}
+        className="fixed bottom-8 right-8 z-40 flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-2xl font-black uppercase tracking-widest shadow-[0_0_30px_rgba(239,68,68,0.3)] hover:shadow-rose-500/50 transition-all"
+      >
+        <Plus size={20} />
+        {t('disputes.create.title')}
+      </motion.button>
+
+      {/* Modals */}
+      <CreateDisputeModal />
+      <DisputeActionModal
+        dispute={actionDispute}
+        isOpen={!!actionDispute}
+        onClose={() => setActionDispute(null)}
+      />
     </div>
   );
 }

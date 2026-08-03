@@ -2,6 +2,7 @@
 
 import { Users, ToggleLeft, ToggleRight, Loader } from "lucide-react";
 import type { ClientListItem } from "@/app/services/types";
+import { useIsSuperAdmin } from "@/lib/rbac/hooks";
 
 interface ClientListProps {
   clients: ClientListItem[];
@@ -26,6 +27,7 @@ const pillarColors: Record<string, string> = {
 };
 
 export default function ClientList({ clients, selectedClientId, loading, onClientSelect }: ClientListProps) {
+  const isSuperAdmin = useIsSuperAdmin();
   const formatDate = (dateString: string) => {
     if (!dateString) return "Never";
     const date = new Date(dateString);
@@ -65,7 +67,7 @@ export default function ClientList({ clients, selectedClientId, loading, onClien
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{client.full_name}</p>
-              <p className="text-xs text-gray-400 truncate">{client.email}</p>
+              <p className="text-xs text-gray-400 truncate">{isSuperAdmin ? client.email : "[RESTRICTED]"}</p>
               <p className="text-xs text-gray-400 truncate">{client.company}</p>
               {client.role && (
                 <p className="text-xs text-black truncate">{client.role}</p>

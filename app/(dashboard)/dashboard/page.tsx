@@ -199,7 +199,7 @@ function page() {
                 <h3 className="text-sm font-semibold text-gray-300">{t('dashboard.wallet_revenue')}</h3>
                 <Wallet size={18} className="text-green-400 group-hover:scale-110 transition-transform" />
               </div>
-              <p className="text-3xl font-bold text-white">{formatCurrency(totalRevenue)}</p>
+              <p className="text-3xl font-bold text-white">{isSuperAdmin ? formatCurrency(totalRevenue) : "[RESTRICTED]"}</p>
               <p className="text-xs text-gray-400 mt-2">{t('dashboard.wallet_payments')}</p>
             </div>
 
@@ -209,7 +209,7 @@ function page() {
                 <h3 className="text-sm font-semibold text-gray-300">{t('dashboard.wallet_balance')}</h3>
                 <Wallet size={18} className="text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
-              <p className="text-3xl font-bold text-white">{formatCurrency(totalWalletBalance)}</p>
+              <p className="text-3xl font-bold text-white">{isSuperAdmin ? formatCurrency(totalWalletBalance) : "[RESTRICTED]"}</p>
               <p className="text-xs text-gray-400 mt-2">{t('dashboard.available_credits')}</p>
             </div>
 
