@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Edit, Eye, Calendar, FileText, ToggleLeft, ToggleRight, Loader, Save, AlertCircle, Sparkles } from "lucide-react";
+import { X, Edit, Eye, Calendar, FileText, ToggleLeft, ToggleRight, Loader, Save, AlertCircle, Sparkles, Trash2 } from "lucide-react";
 import { clientService } from "@/app/services/clientService";
 import type { Client } from "@/app/services/types";
 import { clientAPI } from "@/app/services";
 import ClientDocumentsModal from "./ClientDocumentsModal";
+import { useIsSuperAdmin } from "@/lib/rbac/hooks";
 
 interface ClientDetailsModalProps {
   client: Client | null;
@@ -30,11 +31,29 @@ const pillarColors: Record<string, string> = {
 };
 
 export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }: ClientDetailsModalProps) {
+  const isSuperAdmin = useIsSuperAdmin();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Client>>({});
   const [showDocuments, setShowDocuments] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const handleDeleteClient = async () => {
+    if (!client) return;
+    if (confirm(`Are you absolutely sure you want to delete client ${client.full_name}? This will permanently remove their profile and login account.`)) {
+      try {
+        setLoading(true);
+        setError(null);
+        await clientService.deleteClient(client.id);
+        setShowSuccessModal(true);
+      } catch (err: any) {
+        setError(err.message || "Failed to delete client");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
   const [showEngagementModal, setShowEngagementModal] = useState(false);
   const [clientEngagement, setClientEngagement] = useState<any>(null);
   const [showInsightsModal, setShowInsightsModal] = useState(false);
@@ -166,7 +185,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <div>
             <h2 className="text-2xl font-bold text-white">{client.full_name}</h2>
-            <p className="text-gray-400 text-sm">{client.email}</p>
+            <p className="text-gray-400 text-sm">{isSuperAdmin ? client.email : "[RESTRICTED]"}</p>
           </div>
           <button
             onClick={onClose}
@@ -232,7 +251,7 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
               <div className="space-y-4">
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Email</label>
-                  <p className="text-sm font-medium text-white">{client.email}</p>
+                  <p className="text-sm font-medium text-white">{isSuperAdmin ? client.email : "[RESTRICTED]"}</p>
                 </div>
 
                 <div>
@@ -360,7 +379,10 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
               ) : (
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3 min-h-[100px]">
                   <p className="text-sm text-white whitespace-pre-wrap">
-                    {client.internal_notes && client.internal_notes.trim() ? client.internal_notes : "No internal notes available."}
+                    {isSuperAdmin 
+                      ? (client.internal_notes && client.internal_notes.trim() ? client.internal_notes : "No internal notes available.")
+                      : "[RESTRICTED]"
+                    }
                   </p>
                 </div>
               )}
@@ -415,6 +437,16 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                     <Sparkles size={16} />
                     Generate AI Insights
                   </button>
+                  {isSuperAdmin && (
+                    <button 
+                      onClick={handleDeleteClient}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 text-sm transition-all duration-200 ml-auto disabled:opacity-50"
+                    >
+                      {loading ? <Loader className="animate-spin" size={16} /> : <Trash2 size={16} />}
+                      Delete Client
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -500,6 +532,30 @@ export default function ClientDetailsModal({ client, isOpen, onClose, onUpdate }
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-gradient-to-b from-white/15 to-white/5 border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
+              <Trash2 className="w-8 h-8 text-emerald-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Client Deleted</h3>
+            <p className="text-gray-300 text-sm mb-6">
+              The client profile and associated login user account have been deleted successfully.
+            </p>
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                onUpdate();
+                onClose();
+              }}
+              className="w-full py-2.5 bg-primary hover:bg-primary/80 rounded-xl text-white text-sm font-semibold transition-all duration-200"
+            >
+              Okay
+            </button>
           </div>
         </div>
       )}

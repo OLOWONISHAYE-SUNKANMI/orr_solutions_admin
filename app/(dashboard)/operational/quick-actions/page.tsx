@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Zap, UserPlus, Calendar, Mail, FilePlus } from "lucide-react";
 import AddClientModal from "@/app/components/quick-actions/AddClientModal";
+import AddPlatformUserModal from "@/app/components/quick-actions/AddPlatformUserModal";
 import ScheduleMeetingModal from "@/app/components/quick-actions/ScheduleMeetingModal";
 import SendMessageModal from "@/app/components/quick-actions/SendMessageModal";
 import UploadDocumentModal from "@/app/(dashboard)/document-vault/UploadDocumentModal";
@@ -19,6 +20,13 @@ export default function QuickActionsPage() {
       label: t('operational.add_client'),
       description: t('operational.add_client_desc'),
       color: "bg-blue-500"
+    },
+    {
+      id: "add-platform-user",
+      icon: UserPlus,
+      label: "Create Account (Client/PM/Consultant)",
+      description: "Create portal user profiles with auto-generated credentials sent to email",
+      color: "bg-cyan-500"
     },
     {
       id: "schedule-meeting",
@@ -86,6 +94,10 @@ export default function QuickActionsPage() {
       {/* Modals */}
       <AddClientModal
         isOpen={activeModal === "add-client"}
+        onClose={closeModal}
+      />
+      <AddPlatformUserModal
+        isOpen={activeModal === "add-platform-user"}
         onClose={closeModal}
       />
       <ScheduleMeetingModal

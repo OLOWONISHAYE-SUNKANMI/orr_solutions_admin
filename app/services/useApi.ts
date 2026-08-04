@@ -466,6 +466,10 @@ export const useUploadImage = () => {
   return useMutation((formData: FormData) => cmsAPI.uploadImage(formData));
 };
 
+export const useCreatePlatformUser = () => {
+  return useMutation((data: any) => settingsAPI.createPlatformUser(data));
+};
+
 // Export all hooks as a single object for easy importing
 export const apiHooks = {
   // Dashboard
@@ -556,6 +560,7 @@ export const apiHooks = {
   useCreateNotification,
   useUploadDocument,
   useUploadImage,
+  useCreatePlatformUser,
 };
 
 export default apiHooks;

@@ -52,6 +52,8 @@ interface WalletState {
   transactions: WalletTransaction[];
   systemEvents: SystemEvent[];
   isLoading: boolean;
+  balanceModalOpen: boolean;
+  selectedUserId: string | number | null;
   
   // Actions
   fetchData: () => Promise<void>;
@@ -59,6 +61,8 @@ interface WalletState {
   processRefund: (transactionId: string) => Promise<void>;
   triggerAutomation: (userId: string | number, type: SystemEvent['type'], description: string, referenceId?: string) => void;
   exportTransactions: () => string; // Returns CSV content
+  openBalanceModal: (userId?: string | number) => void;
+  closeBalanceModal: () => void;
 }
 
 // Mock Data Removed
@@ -79,6 +83,8 @@ export const useWalletStore = create<WalletState>()(
         }
       ],
       isLoading: false,
+      balanceModalOpen: false,
+      selectedUserId: null,
 
       fetchData: async () => {
         set({ isLoading: true });
@@ -226,6 +232,14 @@ export const useWalletStore = create<WalletState>()(
           referenceId
         };
         set({ systemEvents: [newEvent, ...systemEvents] });
+      },
+
+      openBalanceModal: (userId) => {
+        set({ balanceModalOpen: true, selectedUserId: userId ?? null });
+      },
+
+      closeBalanceModal: () => {
+        set({ balanceModalOpen: false, selectedUserId: null });
       },
 
       exportTransactions: () => {

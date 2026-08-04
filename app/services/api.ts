@@ -583,6 +583,16 @@ export const clientAPI = {
       throw error;
     });
   },
+
+  deleteClient: (id: number) => {
+    console.log(`[API] Deleting client ${id}`);
+    return apiCall(`/admin-portal/v1/clients/${id}/delete/`, {
+      method: "DELETE",
+    }).catch(error => {
+      console.error('[API ERROR] Failed to delete client:', error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -1150,6 +1160,27 @@ export const settingsAPI = {
       body: JSON.stringify(data),
     }).catch(error => {
       console.error('[API ERROR] Failed to create user:', error);
+      throw error;
+    });
+  },
+
+  createPlatformUser: (data: Record<string, any>) => {
+    console.log('[API] Creating platform user:', data);
+    return apiCall("/admin-portal/v1/settings/platform-users/create/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create platform user:', error);
+      throw error;
+    });
+  },
+
+  deletePlatformUser: (id: number) => {
+    console.log(`[API] Deleting platform user ${id}`);
+    return apiCall(`/admin-portal/v1/settings/platform-users/${id}/delete/`, {
+      method: "DELETE",
+    }).catch(error => {
+      console.error('[API ERROR] Failed to delete platform user:', error);
       throw error;
     });
   },

@@ -50,10 +50,9 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => (
 export default function ActionModals() {
   const { t } = useLanguageStore();
   const { createInvoice } = useInvoiceStore();
-  const { adjustBalance, wallets } = useWalletStore();
+  const { adjustBalance, wallets, balanceModalOpen, selectedUserId, openBalanceModal, closeBalanceModal } = useWalletStore();
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
-  const [balanceModalOpen, setBalanceModalOpen] = useState(false);
 
   // Invoice Form State
   const [invoiceForm, setInvoiceForm] = useState({
@@ -72,6 +71,16 @@ export default function ActionModals() {
     type: 'credit' as 'credit' | 'debit',
     description: ''
   });
+
+  // Pre-fill the user when the modal is opened from a wallet card
+  React.useEffect(() => {
+    if (balanceModalOpen && selectedUserId != null) {
+      setBalanceForm(prev => ({ ...prev, userId: String(selectedUserId) }));
+    }
+    if (!balanceModalOpen) {
+      setBalanceForm({ userId: '', amount: 0, type: 'credit', description: '' });
+    }
+  }, [balanceModalOpen, selectedUserId]);
 
   const handleAddInvoiceItem = () => {
     setInvoiceForm({
@@ -119,7 +128,7 @@ export default function ActionModals() {
       balanceForm.type,
       balanceForm.description
     );
-    setBalanceModalOpen(false);
+    closeBalanceModal();
   };
 
   return (
@@ -137,7 +146,7 @@ export default function ActionModals() {
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => setBalanceModalOpen(true)}
+        onClick={() => openBalanceModal()}
         className="flex items-center gap-2 px-6 py-3 bg-white/5 backdrop-blur-md text-white border border-white/10 rounded-2xl font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
       >
         <Wallet size={20} className="text-primary" />
@@ -244,7 +253,7 @@ export default function ActionModals() {
       </Modal>
 
       {/* Wallet Modal */}
-      <Modal isOpen={balanceModalOpen} onClose={() => setBalanceModalOpen(false)} title={t('wallet.modals.adjust_balance')}>
+      <Modal isOpen={balanceModalOpen} onClose={closeBalanceModal} title={t('wallet.modals.adjust_balance')}>
         <div className="space-y-6">
            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center gap-3">
              <AlertTriangle className="text-amber-500" size={24} />

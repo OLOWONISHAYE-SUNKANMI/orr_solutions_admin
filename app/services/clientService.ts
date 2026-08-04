@@ -245,6 +245,20 @@ export class ClientService {
       throw new Error(error.message || 'Failed to delete document');
     }
   }
+
+  /**
+   * Delete client profile and user account
+   */
+  async deleteClient(clientId: number): Promise<void> {
+    try {
+      console.log('ClientService: Deleting client ID:', clientId);
+      await clientAPI.deleteClient(clientId);
+      console.log('ClientService: Client deleted successfully');
+    } catch (error: any) {
+      console.error('ClientService: Error deleting client:', error);
+      throw new Error(error.message || 'Failed to delete client');
+    }
+  }
 }
 
 // Export singleton instance

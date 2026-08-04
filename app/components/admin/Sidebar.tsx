@@ -303,7 +303,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div>
           {/* Header: Logo & Toggle */}
-          <div className={`flex items-center mb-12 transition-all ${isMinimized ? 'justify-center' : 'justify-between'}`}>
+          <div className={`flex items-center mb-12 transition-all ${isMinimized ? 'justify-center flex-col gap-4' : 'justify-between'}`}>
             <div className="flex items-center gap-2 overflow-hidden">
               <img
                 src="/images/logo.svg"
@@ -312,12 +312,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             </div>
 
-            <button
-              onClick={() => setIsMinimized(!isMinimized)}
-              className="hidden md:flex w-9 h-9 bg-white/5 hover:bg-white/10 rounded-xl items-center justify-center transition-colors border border-white/10"
-            >
-              {isMinimized ? <ChevronLast size={20} /> : <SquareArrowLeft size={20} />}
-            </button>
+            <div className={`flex items-center gap-2 ${isMinimized ? 'flex-col' : ''}`}>
+              <Link
+                href="/tickets"
+                className="relative flex w-9 h-9 bg-white/5 hover:bg-white/10 rounded-xl items-center justify-center transition-colors border border-white/10 text-white"
+                title="View Technical Feedback"
+              >
+                <Bell size={18} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+              </Link>
+              
+              <button
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="hidden md:flex w-9 h-9 bg-white/5 hover:bg-white/10 rounded-xl items-center justify-center transition-colors border border-white/10"
+              >
+                {isMinimized ? <ChevronLast size={20} /> : <SquareArrowLeft size={20} />}
+              </button>
+            </div>
           </div>
 
           <nav className="space-y-10">
