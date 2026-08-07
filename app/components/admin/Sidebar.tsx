@@ -109,7 +109,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!user) return;
     const isCurrentlySuper = user.role_name === 'super_admin';
     const newRole: RoleName = isCurrentlySuper ? 'admin' : 'super_admin';
-    
+
     // Build granular permissions matching ROLE_PERMISSIONS matrix
     const newPermissions = {
       can_manage_users: newRole === 'super_admin',
@@ -229,7 +229,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { label: t('sidebar.my_tickets'), href: "/tickets/my-tickets" },
     { label: t('sidebar.client_messages'), href: "/messages" },
     { label: t('sidebar.internal_comms'), href: "/tickets/internal-comms" },
-    { label: t('sidebar.escalations'), href: "/tickets/escalations" }
+    { label: t('sidebar.escalations'), href: "/tickets/escalations" },
+    { label: "Technical Feedback", href: "/tickets/technical-feedback" }
   ]);
 
   const paymentsItems = filterGroupItems([
@@ -296,19 +297,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       {/* Sidebar */}
-      <aside className={`h-screen bg-card text-white flex flex-col justify-between p-4 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out border-r border-white/5 ${
-        isMinimized ? 'w-20' : 'w-64'
-      } ${isOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0 fixed md:relative z-50 print:hidden shadow-xl`}>
-        
+      <aside className={`h-screen bg-card text-white flex flex-col justify-between p-4 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out border-r border-white/5 ${isMinimized ? 'w-20' : 'w-90'
+        } ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0 fixed md:relative z-50 print:hidden shadow-xl`}>
+
         <div>
           {/* Header: Logo & Toggle */}
           <div className={`flex items-center mb-12 transition-all ${isMinimized ? 'justify-center flex-col gap-4' : 'justify-between'}`}>
             <div className="flex items-center gap-2 overflow-hidden">
-              <img 
-                src="/images/logo.svg" 
-                alt="Logo" 
-                className={`${isMinimized ? 'w-12 h-12' : 'h-16 w-auto'} transition-all brightness-0 invert`} 
+              <img
+                src="/images/logo.svg"
+                alt="Logo"
+                className={`${isMinimized ? 'w-12 h-12' : 'h-16 w-auto'} transition-all brightness-0 invert`}
               />
             </div>
 
@@ -538,15 +538,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="leading-tight overflow-hidden animate-in fade-in duration-500 flex flex-col gap-1">
                   <div className="font-bold truncate max-w-[120px] text-[13px]">{user?.username || t('sidebar.admin')}</div>
                   <div className="text-[10px] opacity-60 truncate max-w-[120px] font-medium">{user?.email}</div>
-                  
+
                   {/* Premium Development Role Switcher */}
-                  <button 
+                  <button
                     onClick={toggleRole}
-                    className={`inline-flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase border w-max select-none transition-all cursor-pointer ${
-                      user?.role_name === 'super_admin' 
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/25 active:scale-95' 
-                        : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/25 active:scale-95'
-                    }`}
+                    className={`inline-flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase border w-max select-none transition-all cursor-pointer ${user?.role_name === 'super_admin'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/25 active:scale-95'
+                      : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/25 active:scale-95'
+                      }`}
                     title="Click to Switch Role (Dev Mode)"
                   >
                     <Shield size={8} className="animate-pulse" />
@@ -614,9 +613,8 @@ function SidebarGroup({
             {icon}
           </div>
           {!isMinimized && (
-            <span className={`text-[15px] font-bold tracking-tight animate-in fade-in slide-in-from-left-2 duration-300 ${
-              isActive ? "text-white" : "text-white/60"
-            }`}>
+            <span className={`text-[15px] font-bold tracking-tight animate-in fade-in slide-in-from-left-2 duration-300 ${isActive ? "text-white" : "text-white/60"
+              }`}>
               {label}
             </span>
           )}

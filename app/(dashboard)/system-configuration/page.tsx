@@ -25,7 +25,6 @@ export default function SystemConfigurationPage() {
   const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_configure_system;
 
   // Security Toggles State
-  const [mfaEnforced, setMfaEnforced] = useState(true);
   const [strictInterceptor, setStrictInterceptor] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState("1h");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -51,7 +50,6 @@ export default function SystemConfigurationPage() {
     setIsLoading(true);
     try {
       const config = await api.systemConfig.getSystemConfig() as any;
-      setMfaEnforced(config.mfa_enforced);
       setStrictInterceptor(config.strict_interceptors);
       setMaintenanceMode(config.maintenance_mode);
       setVerboseLogging(config.verbose_logging);
@@ -168,7 +166,6 @@ export default function SystemConfigurationPage() {
   const handleSavePolicy = async () => {
     try {
       await api.systemConfig.updateSystemConfig({
-        mfa_enforced: mfaEnforced,
         strict_interceptors: strictInterceptor,
         session_timeout: sessionTimeout,
         maintenance_mode: maintenanceMode,
@@ -219,26 +216,6 @@ export default function SystemConfigurationPage() {
           </h3>
 
           <div className="space-y-6">
-            
-            {/* Setting: MFA */}
-            <div className="flex justify-between items-center bg-slate-950/20 p-4 border border-white/5 rounded-2xl hover:border-white/10 transition">
-              <div className="space-y-0.5 max-w-sm">
-                <span className="font-extrabold text-xs block text-white">Enforce MFA Session Validation</span>
-                <span className="text-[10px] text-slate-500 leading-relaxed block">
-                  Require standard administrators to double-authenticate via security keys during operations.
-                </span>
-              </div>
-              <button 
-                onClick={() => toggleSwitch(mfaEnforced, setMfaEnforced)}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  mfaEnforced ? 'bg-primary' : 'bg-slate-800'
-                }`}
-              >
-                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out ${
-                  mfaEnforced ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </button>
-            </div>
 
             {/* Setting: Strict Interceptor */}
             <div className="flex justify-between items-center bg-slate-950/20 p-4 border border-white/5 rounded-2xl hover:border-white/10 transition">
