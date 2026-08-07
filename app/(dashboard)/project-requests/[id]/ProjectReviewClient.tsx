@@ -169,7 +169,7 @@ export default function ProjectReviewPage() {
             <div className="space-y-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Defined Scope</span>
               <p className="text-slate-300 leading-relaxed font-medium bg-black/20 p-5 rounded-2xl border border-white/5">
-                {project.scope}
+                {project.scope || project.internalSummary || "No scope or summary details provided for this project."}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
