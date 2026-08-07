@@ -40,6 +40,12 @@ export default function UploadDocumentModal({ isOpen, onClose }: UploadDocumentM
    const [step, setStep] = useState<'file' | 'metadata'>('file');
    const [selectedFile, setSelectedFile] = useState<File | null>(null);
    const [uploadProgress, setUploadProgress] = useState(0);
+   const [clientSearch, setClientSearch] = useState('');
+
+   const filteredClients = clients.filter(c =>
+      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+      c.company.toLowerCase().includes(clientSearch.toLowerCase())
+   );
 
    const [formData, setFormData] = useState({
       title: '',
@@ -212,6 +218,13 @@ export default function UploadDocumentModal({ isOpen, onClose }: UploadDocumentM
                               </div>
                               <div className="space-y-3">
                                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Client Association</label>
+                                 <input
+                                    type="text"
+                                    placeholder="Search client..."
+                                    value={clientSearch}
+                                    onChange={(e) => setClientSearch(e.target.value)}
+                                    className="w-full bg-[#1a1f26] border border-white/10 rounded-2xl py-2 px-5 mb-2 text-xs focus:outline-none focus:border-primary/50 text-white"
+                                 />
                                  <select
                                     required
                                     value={formData.client}
@@ -219,7 +232,7 @@ export default function UploadDocumentModal({ isOpen, onClose }: UploadDocumentM
                                     className="w-full bg-[#1a1f26] border border-white/10 rounded-2xl py-4 px-5 text-sm font-bold focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white"
                                  >
                                     <option value="" className="bg-slate-900">Select Client</option>
-                                    {clients.map(client => (
+                                    {filteredClients.map(client => (
                                        <option key={client.id} value={client.id} className="bg-slate-900">{client.name} ({client.company})</option>
                                     ))}
                                  </select>

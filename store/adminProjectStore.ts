@@ -26,6 +26,7 @@ export interface AdminProjectBrief {
   scope: string;
   internalSummary?: string;
   consultantSummary?: string;
+  consultantFacingSummaryDraft?: string;
   confidentiality: string;
   consultantsNeeded: number;
   clarificationNotes?: string;
@@ -37,6 +38,7 @@ export interface AdminProjectBrief {
 
 interface AdminProjectState {
   projects: AdminProjectBrief[];
+  isLoading: boolean;
   isGeneratingSummary: boolean;
   fetchProjects: () => Promise<void>;
   approveProjectForDrafting: (id: string) => void;
@@ -54,9 +56,11 @@ interface AdminProjectState {
 
 export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
   projects: [],
+  isLoading: true,
   isGeneratingSummary: false,
   
   fetchProjects: async () => {
+    set({ isLoading: true });
     try {
       const auth = (await import('@/lib/auth')).AuthService.getInstance();
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
@@ -75,6 +79,9 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         }
       }
       
+      console.log("[Admin Projects] Raw Result:", result);
+      console.log("[Admin Projects] Extracted List:", projectList);
+      
       const statusMap: Record<string, AdminProjectStatus> = {
         'pending_admin_review': 'Pending Admin Review',
         'needs_pm_clarification': 'Needs PM Clarification',
@@ -85,7 +92,15 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         'consultant_assignment_pending': 'Consultant Assignment Pending',
         'active': 'Active',
         'draft': 'Pending Admin Review',
+        'awaiting_client_confirmation': 'Pending Admin Review',
+        'awaiting_payment': 'Pending Admin Review',
+        'ready_for_matching': 'Approved for Sourcing',
+        'internal_review': 'Active',
+        'delivered': 'Active',
         'completed': 'Completed',
+        'closed': 'Completed',
+        'on_hold': 'Needs PM Clarification',
+        'cancelled': 'Completed',
       };
 
       const mappedProjects: AdminProjectBrief[] = projectList.map((p: any) => {
@@ -115,8 +130,9 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
           status: mappedStatus,
           createdAt: p.created_at || new Date().toISOString(),
           scope: p.proposed_scope || '',
-          internalSummary: p.pm_approved_summary || '',
+          internalSummary: p.pm_approved_summary || p.ai_generated_summary || p.proposed_scope || '',
           consultantSummary: p.consultant_facing_summary || '',
+          consultantFacingSummaryDraft: p.consultant_facing_summary || '',
           confidentiality: p.confidentiality_level || 'Standard',
           consultantsNeeded: p.num_consultants_required || 1,
         };
@@ -124,6 +140,8 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       set({ projects: mappedProjects });
     } catch (error) {
       console.error('Failed to fetch projects', error);
+    } finally {
+      set({ isLoading: false });
     }
   },
   
@@ -184,7 +202,11 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         isGeneratingSummary: false,
         projects: state.projects.map(p => {
           if (p.id === id) {
-            return { ...p, consultantSummary: summary };
+            return { 
+              ...p, 
+              consultantSummary: summary,
+              consultantFacingSummaryDraft: summary
+            };
           }
           return p;
         })

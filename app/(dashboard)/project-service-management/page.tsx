@@ -8,7 +8,9 @@ import {
     Share,
     Users,
     Plus,
-    CheckCircle
+    CheckCircle,
+    Download,
+    Loader2
 } from "lucide-react";
 import { useLanguageStore } from "@/store/languageStore";
 import { useAdminProjectStore } from "@/store/adminProjectStore";
@@ -16,7 +18,7 @@ import { formatDistanceToNow } from "date-fns";
 
 function ProjectManagementPage() {
   const { t, language } = useLanguageStore();
-  const { projects, fetchProjects, completeProject } = useAdminProjectStore();
+  const { projects, isLoading, fetchProjects, completeProject } = useAdminProjectStore();
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -28,9 +30,9 @@ function ProjectManagementPage() {
     p.clientName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const todoProjects = filteredProjects.filter(p => p.status === 'Pending Admin Review' || p.status === 'Needs PM Clarification' || p.status === 'Drafting Consultant Summary' || p.status === 'PM Input Required' || p.status === 'Approved for Sourcing');
   const inProgressProjects = filteredProjects.filter(p => p.status === 'Sourcing Internally' || p.status === 'Sourcing Externally' || p.status === 'Consultant Assignment Pending' || p.status === 'Active');
-  const completedProjects = filteredProjects.filter(p => p.status === 'Completed' || p.status.toLowerCase() === 'completed');
+  const completedProjects = filteredProjects.filter(p => p.status === 'Completed' || p.status.toLowerCase() === 'completed' || p.status === 'Closed' || p.status === 'Cancelled');
+  const todoProjects = filteredProjects.filter(p => !inProgressProjects.includes(p) && !completedProjects.includes(p));
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
     e.dataTransfer.setData("projectId", projectId);
@@ -48,6 +50,20 @@ function ProjectManagementPage() {
     e.preventDefault();
   };
 
+  const handleDownloadSummary = (e: React.MouseEvent, p: any) => {
+    e.stopPropagation();
+    const summaryText = p.pmApprovedSummary || p.consultantFacingSummaryDraft || p.consultantFacingSummary || "No summary available for this project.";
+    const blob = new Blob([summaryText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Project_Summary_${p.projectTitle.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const ProjectCard = ({ p }: { p: any }) => (
     <div 
       draggable
@@ -61,6 +77,13 @@ function ProjectManagementPage() {
                 <Users size={12} className="text-gray-600"/> {p.clientName}
               </div>
           </div>
+          <button
+            onClick={(e) => handleDownloadSummary(e, p)}
+            className="p-1.5 bg-white/5 hover:bg-primary/20 text-gray-400 hover:text-primary border border-white/5 hover:border-primary/30 rounded-lg transition-colors group/btn shrink-0"
+            title="Download Summary"
+          >
+            <Download size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
+          </button>
       </div>
       <div className="text-xs text-slate-400 mt-2">
         <span className="bg-white/10 px-2 py-1 rounded text-[10px] uppercase font-bold">{p.status}</span>
@@ -118,59 +141,66 @@ function ProjectManagementPage() {
               </div>
             </div>
 
-            <div className="flex gap-6 overflow-x-auto pb-6 no-scrollbar">
-              {/* To Do Column */}
-              <div className="rounded-2xl bg-white/5 h-fit min-w-[300px] md:min-w-[350px] flex-1 border border-white/10 overflow-hidden shadow-xl">
-                <div className="p-4 bg-white/10 border-b border-white/10 flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-[0.2em] text-white">To Do / Pending</span>
-                  <span className="bg-primary/20 text-primary text-[10px] font-black px-2 py-0.5 rounded-full border border-primary/20">{todoProjects.length}</span>
-                </div>
-                <div className="p-4 flex flex-col gap-4">
-                  {todoProjects.map(p => <ProjectCard key={p.id} p={p} />)}
-                  {todoProjects.length === 0 && (
-                    <div className="p-8 text-center border-2 border-dashed border-white/5 rounded-xl">
-                      <p className="text-xs text-gray-500 uppercase tracking-widest font-black">No pending projects</p>
-                    </div>
-                  )}
-                </div>
+            {isLoading ? (
+              <div className="py-24 flex flex-col items-center justify-center gap-3 border border-white/5 rounded-2xl bg-white/5">
+                <Loader2 size={36} className="text-primary animate-spin" />
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Loading project management board...</p>
               </div>
+            ) : (
+              <div className="flex gap-6 overflow-x-auto pb-6 no-scrollbar">
+                {/* To Do Column */}
+                <div className="rounded-2xl bg-white/5 h-fit min-w-[300px] md:min-w-[350px] flex-1 border border-white/10 overflow-hidden shadow-xl">
+                  <div className="p-4 bg-white/10 border-b border-white/10 flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white">To Do / Pending</span>
+                    <span className="bg-primary/20 text-primary text-[10px] font-black px-2 py-0.5 rounded-full border border-primary/20">{todoProjects.length}</span>
+                  </div>
+                  <div className="p-4 flex flex-col gap-4">
+                    {todoProjects.map(p => <ProjectCard key={p.id} p={p} />)}
+                    {todoProjects.length === 0 && (
+                      <div className="p-8 text-center border-2 border-dashed border-white/5 rounded-xl">
+                        <p className="text-xs text-gray-500 uppercase tracking-widest font-black">No pending projects</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              {/* In Progress Column */}
-              <div className="rounded-2xl bg-white/5 h-fit min-w-[300px] md:min-w-[350px] flex-1 border border-white/10 overflow-hidden shadow-xl">
-                <div className="p-4 bg-white/10 border-b border-white/10 flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Active / Sourcing</span>
-                  <span className="bg-blue-500/20 text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-500/20">{inProgressProjects.length}</span>
+                {/* In Progress Column */}
+                <div className="rounded-2xl bg-white/5 h-fit min-w-[300px] md:min-w-[350px] flex-1 border border-white/10 overflow-hidden shadow-xl">
+                  <div className="p-4 bg-white/10 border-b border-white/10 flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Active / Sourcing</span>
+                    <span className="bg-blue-500/20 text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-500/20">{inProgressProjects.length}</span>
+                  </div>
+                  <div className="p-4 flex flex-col gap-4">
+                    {inProgressProjects.map(p => <ProjectCard key={p.id} p={p} />)}
+                    {inProgressProjects.length === 0 && (
+                      <div className="p-8 text-center border-2 border-dashed border-white/5 rounded-xl">
+                        <p className="text-xs text-gray-500 uppercase tracking-widest font-black">No active projects</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="p-4 flex flex-col gap-4">
-                  {inProgressProjects.map(p => <ProjectCard key={p.id} p={p} />)}
-                  {inProgressProjects.length === 0 && (
-                    <div className="p-8 text-center border-2 border-dashed border-white/5 rounded-xl">
-                      <p className="text-xs text-gray-500 uppercase tracking-widest font-black">No active projects</p>
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Completed Column */}
-              <div 
-                onDrop={handleDropToComplete}
-                onDragOver={handleDragOver}
-                className="rounded-2xl bg-white/5 h-fit min-w-[300px] md:min-w-[350px] flex-1 border border-white/10 overflow-hidden shadow-xl transition-colors hover:bg-green-500/5"
-              >
-                 <div className="p-4 bg-white/10 border-b border-white/10 flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-[0.2em] text-white">COMPLETED</span>
-                  <span className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-green-500/20">{completedProjects.length}</span>
-                </div>
-                <div className="p-4 flex flex-col gap-4 min-h-[200px]">
-                  {completedProjects.map(p => <ProjectCard key={p.id} p={p} />)}
-                  {completedProjects.length === 0 && (
-                    <div className="p-12 text-center h-full flex items-center justify-center">
-                       <p className="text-[10px] text-gray-600 uppercase tracking-widest font-black italic">Drop projects here to complete</p>
-                    </div>
-                  )}
+                {/* Completed Column */}
+                <div 
+                  onDrop={handleDropToComplete}
+                  onDragOver={handleDragOver}
+                  className="rounded-2xl bg-white/5 h-fit min-w-[300px] md:min-w-[350px] flex-1 border border-white/10 overflow-hidden shadow-xl transition-colors hover:bg-green-500/5"
+                >
+                   <div className="p-4 bg-white/10 border-b border-white/10 flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white">COMPLETED</span>
+                    <span className="bg-green-500/20 text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-green-500/20">{completedProjects.length}</span>
+                  </div>
+                  <div className="p-4 flex flex-col gap-4 min-h-[200px]">
+                    {completedProjects.map(p => <ProjectCard key={p.id} p={p} />)}
+                    {completedProjects.length === 0 && (
+                      <div className="p-12 text-center h-full flex items-center justify-center">
+                         <p className="text-[10px] text-gray-600 uppercase tracking-widest font-black italic">Drop projects here to complete</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
