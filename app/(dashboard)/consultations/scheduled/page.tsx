@@ -48,6 +48,16 @@ export default function ScheduledConsultationsPage() {
     fetchScheduledMeetings();
   }, [t]);
 
+  const handleJoinMeeting = async (e: React.MouseEvent, meetingId: number, meetingLink: string) => {
+    e.preventDefault();
+    try {
+      await meetingAPI.notifyHostJoined(meetingId);
+    } catch (err) {
+      console.error("Failed to notify that host joined:", err);
+    }
+    window.open(meetingLink, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="min-h-screen text-white relative overflow-hidden star">
       <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
@@ -140,9 +150,8 @@ export default function ScheduledConsultationsPage() {
                                 ) : (
                                   <a 
                                     href={meeting.meeting_link} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 text-sm"
+                                    onClick={(e) => handleJoinMeeting(e, meeting.id, meeting.meeting_link || "")}
+                                    className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 text-sm cursor-pointer"
                                   >
                                     Join Meeting
                                     <ExternalLink size={14} />

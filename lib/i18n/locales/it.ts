@@ -220,17 +220,7 @@ export const it = {
     joined: "Iscritto",
     workspace_placeholder: "L'interfaccia di gestione del workspace sarà implementata qui. Ciò includerà strutture dati, file di progetto e strumenti collaborativi.",
   },
-  schedule_meetings: {
-    today: "Oggi",
-    join_meeting: "Partecipa alla Riunione",
-    reschedule: "Riprogramma",
-    types: {
-      first_meeting: "Primo Incontro Conoscitivo",
-      consultation: "Sessione di Consulenza",
-      follow_up: "Sessione di Follow-up",
-      strategy_review: "Revisione Strategica"
-    }
-  },
+
   meetings: {
     title: "Riunioni Clienti",
     subtitle: "Panoramica di tutte le riunioni clienti",

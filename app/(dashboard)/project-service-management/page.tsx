@@ -31,7 +31,7 @@ function ProjectManagementPage() {
   );
 
   const inProgressProjects = filteredProjects.filter(p => p.status === 'Sourcing Internally' || p.status === 'Sourcing Externally' || p.status === 'Consultant Assignment Pending' || p.status === 'Active');
-  const completedProjects = filteredProjects.filter(p => p.status === 'Completed' || p.status.toLowerCase() === 'completed' || p.status === 'Closed' || p.status === 'Cancelled');
+  const completedProjects = filteredProjects.filter(p => p.status === 'Completed');
   const todoProjects = filteredProjects.filter(p => !inProgressProjects.includes(p) && !completedProjects.includes(p));
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {

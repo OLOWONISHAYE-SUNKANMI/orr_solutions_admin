@@ -4,17 +4,20 @@ import React, { useState } from 'react';
 import { Zap, ArrowRight, X, Clock, Settings, Users, FileText, Loader2, Bot, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { vaultApi } from '@/lib/vault-api';
+import { useVaultStore } from '@/store/vaultStore';
 
 interface RightSidebarProps {
    documentTitle: string;
    documentContent?: string;
    documentType?: string;
+   documentId?: string;
 }
 
 type TabType = 'ai' | 'comments' | 'history' | 'properties';
 
-export default function RightSidebar({ documentTitle, documentContent, documentType }: RightSidebarProps) {
+export default function RightSidebar({ documentTitle, documentContent, documentType, documentId }: RightSidebarProps) {
    const [activeTab, setActiveTab] = useState<TabType>('ai');
+   const { updateDocumentMetadata } = useVaultStore();
    
    // AI State
    const [aiInput, setAiInput] = useState('');
@@ -27,6 +30,8 @@ export default function RightSidebar({ documentTitle, documentContent, documentT
       e?.preventDefault();
       const text = customPrompt || aiInput.trim();
       if (!text || isAiLoading) return;
+
+      const shouldEdit = window.confirm("Would you like to write/insert this directly into the document? (Cancel = Just chat)");
 
       if (!customPrompt) setAiInput('');
       setAiMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: text }]);
@@ -41,6 +46,10 @@ export default function RightSidebar({ documentTitle, documentContent, documentT
             setAiMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: 'AI Quota Exceeded. Please check your Google Cloud Billing limits for the Gemini API.' }]);
          } else {
             setAiMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: reply }]);
+            if (shouldEdit && documentId) {
+               await updateDocumentMetadata(documentId, { description: reply });
+               setAiMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: '✨ Document content successfully updated with the generated content!' }]);
+            }
          }
       } catch (err) {
          console.error(err);

@@ -67,6 +67,16 @@ export default function ConfirmedMeetingsPage() {
     }
   };
 
+  const handleJoinMeeting = async (e: React.MouseEvent, meetingId: number, meetingLink: string) => {
+    e.preventDefault();
+    try {
+      await meetingAPI.notifyHostJoined(meetingId);
+    } catch (err) {
+      console.error("Failed to notify that host joined:", err);
+    }
+    window.open(meetingLink, '_blank', 'noopener,noreferrer');
+  };
+
    const formatDateTime = (dateString: string) => {
     if (!dateString) return t('schedule_meetings.no_specified');
     try {
@@ -221,9 +231,8 @@ export default function ConfirmedMeetingsPage() {
                                   ) : (
                                     <a 
                                       href={meeting.meeting_link} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                                      onClick={(e) => handleJoinMeeting(e, meeting.id, meeting.meeting_link || "")}
+                                      className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1 cursor-pointer"
                                     >
                                       {t('schedule_meetings.join_meeting')}
                                       <ExternalLink size={14} />

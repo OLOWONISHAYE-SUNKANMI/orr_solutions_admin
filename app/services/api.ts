@@ -902,6 +902,16 @@ export const meetingAPI = {
       throw error;
     });
   },
+
+  notifyHostJoined: (id: number) => {
+    console.log(`[API] Notifying that host joined meeting ${id}`);
+    return apiCall(`/admin-portal/v1/meetings/${id}/host-joined/`, {
+      method: "POST"
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to notify host joined for meeting ${id}:`, error);
+      throw error;
+    });
+  },
 };
 
 // ============================================================================
@@ -1741,6 +1751,16 @@ export const consultantApprovalAPI = {
   },
 };
 
+export const consultantAPI = {
+  getDirectory: () => {
+    console.log('[API] Fetching consultant directory');
+    return apiCall<any>("/admin-portal/v1/consultant-directory/").catch(error => {
+      console.error('[API ERROR] Failed to fetch consultant directory:', error);
+      throw error;
+    });
+  },
+};
+
 // ============================================================================
 // EXPORT ALL APIS
 // ============================================================================
@@ -1764,4 +1784,5 @@ export default {
   systemConfig: systemConfigAPI,
   roleManagement: roleManagementAPI,
   consultantApproval: consultantApprovalAPI,
+  consultant: consultantAPI,
 };
