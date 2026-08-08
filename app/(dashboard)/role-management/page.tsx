@@ -83,6 +83,8 @@ export default function RoleManagementPage() {
         admin: [],
         project_manager: [],
         consultant: [],
+        operator: [],
+        content_editor: [],
       };
 
       const permissionKeys: Permission[] = [

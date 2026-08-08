@@ -13,6 +13,7 @@ export default function ProjectReviewPage() {
   const {
     projects,
     isGeneratingSummary,
+    fetchProjectAssignments,
     approveProjectForDrafting,
     requestClarification,
     generateConsultantSummary,
@@ -23,6 +24,7 @@ export default function ProjectReviewPage() {
     selectConsultant,
     updateShortlistStatus,
     updateSelectionNotes,
+    sendConsultantInvitation,
     activateProjectAccess
   } = useAdminProjectStore();
 
@@ -39,6 +41,12 @@ export default function ProjectReviewPage() {
   const [externalEmail, setExternalEmail] = useState("");
 
   const [editedConsultantSummary, setEditedConsultantSummary] = useState("");
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [isActivating, setIsActivating] = useState(false);
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [invitationMessage, setInvitationMessage] = useState('');
 
   const handleDownloadSummary = (text: string, filename: string) => {
     if (!text) return;
@@ -59,6 +67,14 @@ export default function ProjectReviewPage() {
       setEditedConsultantSummary(summaryVal);
     }
   }, [project?.consultantSummary, project?.consultantFacingSummaryDraft]);
+
+  // On mount: fetch existing assignments from backend to populate consultant list
+  useEffect(() => {
+    if (projectId) {
+      fetchProjectAssignments(projectId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   if (!project) {
     return (
@@ -85,9 +101,17 @@ export default function ProjectReviewPage() {
     generateConsultantSummary(project.id);
   };
 
-  const handleApproveFinalSummary = () => {
-    approveConsultantSummary(project.id, editedConsultantSummary);
-    router.push("/project-requests");
+  const handleApproveFinalSummary = async () => {
+    setIsApproving(true);
+    setApproveError(null);
+    try {
+      await approveConsultantSummary(project.id, editedConsultantSummary);
+      router.push("/project-requests");
+    } catch (err: any) {
+      setApproveError(err?.message || 'Failed to approve summary. Please try again.');
+    } finally {
+      setIsApproving(false);
+    }
   };
 
   const handleRequestPmInput = (e: React.FormEvent) => {
@@ -98,9 +122,37 @@ export default function ProjectReviewPage() {
     router.push("/project-requests");
   };
 
+  const [isInternalLoading, setIsInternalLoading] = useState(false);
+
   const handleSourceInternally = () => {
+    setIsInternalLoading(true);
     sourceProjectInternally(project.id);
-    router.push("/project-requests");
+    // Wait for internal matching simulation (2 seconds) then stop loading
+    setTimeout(() => {
+      setIsInternalLoading(false);
+    }, 2500);
+    // Stay on the same page to display matching consultants
+  };
+
+  const handleActivateAccess = async () => {
+    setIsActivating(true);
+    try {
+      await activateProjectAccess(project.id, selectedAccessLevel);
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  const handleSendInvitation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSendingInvitation(true);
+    try {
+      await sendConsultantInvitation(project.id, invitationMessage);
+      setIsInviteModalOpen(false);
+      setInvitationMessage('');
+    } finally {
+      setIsSendingInvitation(false);
+    }
   };
 
   const handleSourceExternally = (e: React.FormEvent) => {
@@ -300,38 +352,76 @@ export default function ProjectReviewPage() {
         </div>
       </div>
 
-      {/* Interested Consultants Section */}
-      {(project.status === 'Sourcing Internally' || project.status === 'Sourcing Externally' || project.status === 'Consultant Assignment Pending') && (
+      {/* Interested Consultants Section — show when sourcing OR when a consultant is already assigned */}
+      {(project.status === 'Sourcing Internally' || project.status === 'Sourcing Externally' || project.status === 'Consultant Assignment Pending' || project.status === 'Active' || (project.selectedConsultantId && project.interestedConsultants && project.interestedConsultants.length > 0)) && (
         <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
-              <Shield size={20} />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                <Shield size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-white">Interested Consultants</h2>
+                <p className="text-xs text-slate-400">Review profiles and select the preferred consultant for this project.</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-black text-white">Interested Consultants</h2>
-              <p className="text-xs text-slate-400">Review profiles and select the preferred consultant for this project.</p>
+            {/* Consultants Needed badge */}
+            <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-xl">
+              <Briefcase size={14} className="text-purple-400" />
+              <span className="text-xs font-black text-purple-300 uppercase tracking-wider">Needed:</span>
+              <span className="text-lg font-black text-white">{project.consultantsNeeded}</span>
             </div>
           </div>
 
-          {!project.interestedConsultants || project.interestedConsultants.length === 0 ? (
+        {/* Loading state */}
+        {isInternalLoading ? (
+          <div className="p-8 text-center">
+            <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
+            Running Matching Algorithm…
+          </div>
+        ) : (!project.interestedConsultants || project.interestedConsultants.length === 0) ? (
+          // Only show "no consultants" UI when not already assigned
+          !project.selectedConsultantId ? (
             <div className="p-8 text-center bg-black/20 border border-white/5 rounded-2xl">
-              <Loader2 size={24} className="text-purple-400 mx-auto mb-2 animate-spin" />
-              <p className="text-sm text-slate-400">Waiting for consultants to express interest...</p>
+              <p className="text-slate-400 mb-4">No consultants matched yet.</p>
+              <button
+                onClick={handleSourceInternally}
+                disabled={isInternalLoading}
+                className="px-6 py-3 bg-purple-500 hover:bg-purple-400 text-slate-950 rounded-xl text-sm font-bold transition-colors"
+              >
+                Run Matching Algorithm
+              </button>
             </div>
           ) : (
+            // Consultant assigned but interestedConsultants list not yet populated — show assigned card
+            <div className="grid grid-cols-1 gap-4">
+              <div className="p-6 border rounded-3xl bg-purple-900/20 border-purple-500/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-white text-lg">Consultant #{project.selectedConsultantId}</h3>
+                    <p className="text-sm text-slate-400">Assigned consultant — access activation pending</p>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-300 rounded-xl border border-purple-500/30">
+                    <CheckCircle2 size={16} />
+                    <span className="text-sm font-black">Selected</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        ) : (
             <div className="grid grid-cols-1 gap-4">
               {project.interestedConsultants.map(c => {
                 const isSelected = project.selectedConsultantId === c.id;
                 return (
                   <div key={c.id} className={`p-6 border rounded-3xl transition-all ${isSelected ? 'bg-purple-900/20 border-purple-500/50' : 'bg-black/20 border-white/5'}`}>
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-
                       {/* Left Column: Basic Info */}
                       <div className="flex-1 space-y-4">
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-bold text-white text-lg">{c.name}</h3>
-                            <p className="text-sm text-slate-400">{c.expertise}</p>
+                            <p className="text-sm text-slate-300">{c.expertise}</p>
                           </div>
                           <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg border border-emerald-400/20">{c.cost}</span>
                         </div>
@@ -341,14 +431,14 @@ export default function ProjectReviewPage() {
                           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Shortlist Status</label>
                           <select
                             value={c.shortlistStatus || 'Pending'}
-                            onChange={(e) => updateShortlistStatus(project.id, c.id, e.target.value as any)}
+                            onChange={e => updateShortlistStatus(project.id, c.id, e.target.value as any)}
                             disabled={!!project.selectedConsultantId}
                             className={`w-full max-w-xs bg-slate-900 border rounded-xl p-2.5 text-sm focus:outline-none transition-colors appearance-none ${c.shortlistStatus === 'Shortlisted' ? 'border-emerald-500/30 text-emerald-400' :
                               c.shortlistStatus === 'Not Shortlisted' ? 'border-rose-500/30 text-rose-400' :
                                 c.shortlistStatus === 'Reserve' ? 'border-amber-500/30 text-amber-400' :
                                   c.shortlistStatus === 'Needs Follow-up' ? 'border-blue-500/30 text-blue-400' :
-                                    'border-white/10 text-white focus:border-purple-500/50'
-                              }`}
+                                    'border-white/10 text-white focus:border-purple-500/50'}
+                            }`}
                           >
                             <option value="Pending">Pending Evaluation</option>
                             <option value="Shortlisted">Shortlisted</option>
@@ -366,15 +456,11 @@ export default function ProjectReviewPage() {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Response Submitted</span>
-                            <span className="text-[10px] font-mono text-slate-300">
-                              {c.responseTimestamp ? new Date(c.responseTimestamp).toLocaleString() : 'Just now'}
-                            </span>
+                            <span className="text-[10px] font-mono text-slate-300">{c.responseTimestamp ? new Date(c.responseTimestamp).toLocaleString() : 'Just now'}</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Last Updated</span>
-                            <span className="text-[10px] font-mono text-slate-300">
-                              {c.lastUpdated ? new Date(c.lastUpdated).toLocaleString() : 'Just now'}
-                            </span>
+                            <span className="text-[10px] font-mono text-slate-300">{c.lastUpdated ? new Date(c.lastUpdated).toLocaleString() : 'Just now'}</span>
                           </div>
                         </div>
                       </div>
@@ -385,7 +471,7 @@ export default function ProjectReviewPage() {
                           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Admin / PM Selection Notes (Internal)</label>
                           <textarea
                             value={c.selectionNotes || ''}
-                            onChange={(e) => updateSelectionNotes(project.id, c.id, e.target.value)}
+                            onChange={e => updateSelectionNotes(project.id, c.id, e.target.value)}
                             disabled={!!project.selectedConsultantId}
                             placeholder="Add internal notes for comparison..."
                             className="w-full h-full min-h-[100px] bg-slate-900 border border-white/10 rounded-xl p-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500/50 transition-colors resize-none shadow-inner disabled:opacity-50"
@@ -407,7 +493,6 @@ export default function ProjectReviewPage() {
                           </button>
                         )}
                       </div>
-
                     </div>
                   </div>
                 );
@@ -417,54 +502,177 @@ export default function ProjectReviewPage() {
         </div>
       )}
 
-      {/* Access Control Section */}
-      {(project.status === 'Consultant Assignment Pending' || project.status === 'Active') && project.selectedConsultantId && (
-        <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm space-y-6 mt-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <Lock size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-white">Access Control</h2>
-              <p className="text-xs text-slate-400">Set the workspace access level for the selected consultant.</p>
-            </div>
-          </div>
+      {/* Assignment & Access Control Section — shown when a consultant is selected */}
+      {(project.status === 'Consultant Assignment Pending' || project.status === 'Active') && project.selectedConsultantId && (() => {
+        const aStatus = project.assignmentStatus; // draft | invitation_sent | accepted | access_activated
+        const invitationSent = aStatus === 'invitation_sent' || aStatus === 'accepted' || aStatus === 'access_activated';
+        const consultantAccepted = aStatus === 'accepted';
+        const accessActivated = project.isAccessActivated || aStatus === 'access_activated';
 
-          <div className="bg-slate-950/50 border border-white/5 p-6 rounded-2xl flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-            <div className="space-y-3 flex-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Workspace Access Level</label>
-              <select
-                value={project.accessLevel || selectedAccessLevel}
-                onChange={(e) => setSelectedAccessLevel(e.target.value as any)}
-                disabled={project.isAccessActivated}
-                className="w-full max-w-md bg-slate-900 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none disabled:opacity-50"
-              >
-                <option value="Assignment Brief Only">Assignment Brief Only</option>
-                <option value="Selected Documents Only">Selected Documents Only</option>
-                <option value="Full Project Workspace">Full Project Workspace</option>
-                <option value="Restricted Custom Access">Restricted Custom Access</option>
-              </select>
+        return (
+          <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm space-y-6 mt-6">
+            {/* Section Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                <Lock size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-white">Consultant Assignment & Access</h2>
+                <p className="text-xs text-slate-400">Manage the invitation and access activation process.</p>
+              </div>
             </div>
 
-            <div className="flex-1 flex justify-end">
-              {project.isAccessActivated ? (
-                <div className="px-6 py-3.5 bg-emerald-500/20 text-emerald-300 rounded-xl text-sm font-black border border-emerald-500/30 flex items-center gap-2">
-                  <Lock size={16} className="text-emerald-400" />
-                  Access Activated: {project.accessLevel}
+            {/* Step progress bar */}
+            <div className="flex items-center gap-0">
+              {[
+                { label: 'Selected', done: true },
+                { label: 'Invited', done: invitationSent },
+                { label: 'Accepted', done: consultantAccepted || accessActivated },
+                { label: 'Access Active', done: accessActivated },
+              ].map((step, i, arr) => (
+                <React.Fragment key={step.label}>
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-xs font-black transition-colors ${
+                      step.done ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'bg-transparent border-white/20 text-slate-500'
+                    }`}>
+                      {step.done ? <CheckCircle2 size={14} /> : i + 1}
+                    </div>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider whitespace-nowrap ${step.done ? 'text-emerald-400' : 'text-slate-600'}`}>{step.label}</span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-1 rounded ${step.done && arr[i+1].done ? 'bg-emerald-500' : step.done ? 'bg-emerald-500/40' : 'bg-white/10'}`} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Step 1→2: Invitation not yet sent */}
+            {!invitationSent && !accessActivated && (
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black text-amber-300">Step: Send Invitation to Consultant</p>
+                  <p className="text-xs text-slate-400 mt-1">The selected consultant hasn't been notified yet. Send them a project invitation — they must accept before you can grant access.</p>
                 </div>
-              ) : (
                 <button
-                  onClick={() => activateProjectAccess(project.id, selectedAccessLevel)}
-                  className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                  onClick={() => setIsInviteModalOpen(true)}
+                  className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-sm font-black transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap flex items-center gap-2"
                 >
-                  Activate Project Access
-                  <CheckCircle2 size={18} />
+                  <Briefcase size={16} />
+                  Send Invitation
                 </button>
-              )}
+              </div>
+            )}
+
+            {/* Step 2→3: Invitation sent, awaiting consultant response */}
+            {invitationSent && !consultantAccepted && !accessActivated && (
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black text-blue-300">Invitation Sent — Awaiting Acceptance</p>
+                  <p className="text-xs text-slate-400 mt-1">The consultant has been notified. You can activate access once they accept the assignment on their portal.</p>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                  <Loader2 size={14} className="animate-spin text-blue-400" />
+                  <span className="text-sm font-bold text-blue-300">Awaiting Response</span>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3→4: Consultant accepted — show access control */}
+            {(consultantAccepted || invitationSent) && !accessActivated && (
+              <div className="bg-slate-950/50 border border-white/5 p-6 rounded-2xl space-y-4">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Grant Project Access</p>
+                <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Workspace Access Level</label>
+                    <select
+                      value={project.accessLevel || selectedAccessLevel}
+                      onChange={(e) => setSelectedAccessLevel(e.target.value as any)}
+                      disabled={isActivating}
+                      className="w-full max-w-md bg-slate-900 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors appearance-none disabled:opacity-50"
+                    >
+                      <option value="Assignment Brief Only">Assignment Brief Only</option>
+                      <option value="Selected Documents Only">Selected Documents Only</option>
+                      <option value="Full Project Workspace">Full Project Workspace</option>
+                      <option value="Restricted Custom Access">Restricted Custom Access</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleActivateAccess}
+                    disabled={isActivating}
+                    className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl text-sm font-black transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 whitespace-nowrap"
+                  >
+                    {isActivating ? (
+                      <><Loader2 size={18} className="animate-spin" />Activating…</>
+                    ) : (
+                      <><Lock size={18} />Activate Project Access</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Access activated */}
+            {accessActivated && (
+              <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-2xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black text-emerald-300 flex items-center gap-2"><CheckCircle2 size={16} /> Project Access Activated</p>
+                  <p className="text-xs text-slate-400 mt-1">Access level: <strong className="text-emerald-300">{project.accessLevel}</strong>. The consultant can now view the project workspace.</p>
+                </div>
+                <div className="px-4 py-2 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-500/30 text-sm font-black">
+                  Active
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Send Invitation Modal */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+                <Briefcase size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-white">Send Consultant Invitation</h2>
+                <p className="text-xs text-slate-400">The consultant will see this invitation in their portal.</p>
+              </div>
             </div>
+            <form onSubmit={handleSendInvitation} className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Invitation Message (Optional)</label>
+                <textarea
+                  rows={4}
+                  value={invitationMessage}
+                  onChange={(e) => setInvitationMessage(e.target.value)}
+                  placeholder="e.g. We'd like to invite you to participate in this project based on your expertise in..."
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-amber-500/50 transition-colors resize-none font-mono"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingInvitation}
+                  className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-70 text-slate-900 rounded-xl text-sm font-black transition-colors shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+                >
+                  {isSendingInvitation ? <><Loader2 size={16} className="animate-spin" />Sending…</> : 'Send Invitation'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
 
       {/* Floating Action Bar - Pending Admin Review */}
       {project.status === 'Pending Admin Review' && (
@@ -477,13 +685,13 @@ export default function ProjectReviewPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setIsClarifyModalOpen(true)}
-                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors border border-white/5"
+                className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-xs font-bold transition-colors"
               >
                 Request Clarification
               </button>
               <button
                 onClick={handleApproveForDrafting}
-                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2"
               >
                 <CheckCircle2 size={16} />
                 Approve for Sourcing
@@ -513,7 +721,7 @@ export default function ProjectReviewPage() {
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2"
               >
                 <CheckCircle2 size={16} />
-                Approve & Finalize Summary
+                Approve for Sourcing
               </button>
             </div>
           </div>
@@ -537,10 +745,20 @@ export default function ProjectReviewPage() {
               </button>
               <button
                 onClick={handleSourceInternally}
+                disabled={isInternalLoading}
                 className="px-6 py-3 bg-purple-500 hover:bg-purple-400 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-lg shadow-purple-500/20 flex items-center gap-2"
               >
-                <Bot size={16} />
-                Source Internally (Auto-Match)
+                {isInternalLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Matching consultants…
+                  </>
+                ) : (
+                  <>
+                    <Bot size={16} />
+                    Source Internally (Auto-Match)
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -45,12 +45,16 @@ export interface AdminProjectBrief {
   confidentiality: string;
   consultantsNeeded: number;
   clarificationNotes?: string;
-  consultantFacingSummaryDraft?: string;
   pmInputRequestNotes?: string;
   interestedConsultants?: InterestedConsultant[];
   selectedConsultantId?: string;
+  // Assignment tracking
+  assignmentId?: number;
+  assignmentStatus?: string; // draft | invitation_sent | accepted | access_activated
   accessLevel?: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access';
   isAccessActivated?: boolean;
+  // Backend sourcing status
+  sourcing_status?: string;
   createdBy?: string;
   sentTo?: string[];
   summaryVersionSent?: string;
@@ -61,17 +65,19 @@ interface AdminProjectState {
   isLoading: boolean;
   isGeneratingSummary: boolean;
   fetchProjects: () => Promise<void>;
+  fetchProjectAssignments: (id: string) => Promise<void>;
   approveProjectForDrafting: (id: string) => void;
   requestClarification: (id: string, notes: string) => Promise<void>;
   generateConsultantSummary: (id: string) => Promise<void>;
-  approveConsultantSummary: (id: string, editedSummary: string) => void;
+  approveConsultantSummary: (id: string, editedSummary: string) => Promise<void>;
   requestPmInputForSourcing: (id: string, notes: string) => void;
   sourceProjectInternally: (id: string) => void;
   sourceProjectExternally: (id: string, email: string) => void;
   selectConsultant: (id: string, consultantId: string) => void;
   updateShortlistStatus: (projectId: string, consultantId: string, status: ShortlistStatus) => void;
   updateSelectionNotes: (projectId: string, consultantId: string, notes: string) => void;
-  activateProjectAccess: (id: string, accessLevel: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access') => void;
+  sendConsultantInvitation: (id: string, invitationMessage?: string) => Promise<void>;
+  activateProjectAccess: (id: string, accessLevel: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access') => Promise<void>;
   completeProject: (id: string) => Promise<void>;
 }
 
@@ -166,6 +172,10 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
 
       const mappedProjects: AdminProjectBrief[] = projectList.map((p: any) => {
         let mappedStatus = statusMap[p.status] || p.status || 'Pending Admin Review';
+        // If backend indicates summary approved, override status
+        if (p.sourcing_status === 'summary_approved') {
+          mappedStatus = 'Approved for Sourcing';
+        }
         // Force exact mappings for newly added statuses just in case of case mismatches
         if (p.status === 'sourcing_internally') mappedStatus = 'Sourcing Internally';
         if (p.status === 'sourcing_externally') mappedStatus = 'Sourcing Externally';
@@ -196,6 +206,8 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
           consultantFacingSummaryDraft: p.consultant_facing_summary || '',
           confidentiality: p.confidentiality_level || 'Standard',
           consultantsNeeded: p.num_consultants_required || 1,
+          // Preserve backend sourcing status if present
+          sourcing_status: p.sourcing_status || undefined,
         };
       });
       set({ projects: mappedProjects });
@@ -211,6 +223,171 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       p.id === id ? { ...p, status: 'Drafting Consultant Summary' } : p
     )
   })),
+
+  fetchProjectAssignments: async (id) => {
+    const project = get().projects.find(p => p.id === id);
+    if (!project) return;
+    try {
+      const auth = (await import('@/lib/auth')).AuthService.getInstance();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const response = await auth.makeAuthenticatedRequest(
+        `${baseUrl}/pm/v1/projects/${project.dbId}/assignments/`
+      );
+      if (!response.ok) return;
+
+      const result = await response.json();
+      const assignments: any[] = Array.isArray(result.data) ? result.data
+        : Array.isArray(result) ? result : [];
+
+      if (assignments.length === 0) return;
+
+      // Map assignments → InterestedConsultant shape
+      const consultants = assignments.map((a: any) => ({
+        id: String(a.consultant ?? a.consultant_id ?? a.id),
+        name: a.consultant_name || a.consultant_email || `Consultant #${a.consultant ?? a.id}`,
+        expertise: a.assignment_role || a.specialization || 'Consulting',
+        cost: a.assignment_budget ? `$${a.assignment_budget}` : 'TBD',
+        responseStatus: a.status === 'access_activated' ? 'Access Activated'
+          : a.status === 'accepted' ? 'Assignment Accepted'
+          : a.status === 'invitation_sent' ? 'Invited'
+          : 'Selected' as any,
+        lastUpdated: a.updated_at || a.created_at,
+      }));
+
+      // Primary assignment drives the project-level state
+      const primary = assignments[0];
+      const selectedId = String(primary.consultant ?? primary.consultant_id ?? primary.id);
+      const assignmentId: number = primary.id;
+      const assignmentStatus: string = primary.status ?? 'draft';
+      const isAccessActivated = assignmentStatus === 'access_activated';
+
+      const accessLevelMap: Record<string, string> = {
+        assignment_brief_only: 'Assignment Brief Only',
+        selected_documents_only: 'Selected Documents Only',
+        full_project_workspace: 'Full Project Workspace',
+        restricted_custom_access: 'Restricted Custom Access',
+      };
+      const accessLevel = accessLevelMap[primary.project_access_level] as any ?? undefined;
+
+      // Derive admin-facing status from assignment status
+      const derivedStatus = isAccessActivated ? 'Active'
+        : assignmentStatus === 'accepted' ? 'Consultant Assignment Pending'
+        : assignmentStatus === 'invitation_sent' ? 'Consultant Assignment Pending'
+        : 'Consultant Assignment Pending';
+
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                interestedConsultants: consultants,
+                selectedConsultantId: selectedId,
+                assignmentId,
+                assignmentStatus,
+                isAccessActivated,
+                ...(accessLevel ? { accessLevel } : {}),
+                status: derivedStatus,
+              }
+            : p
+        ),
+      }));
+    } catch (err) {
+      console.error('[fetchProjectAssignments] Error:', err);
+    }
+  },
+
+
+  sendConsultantInvitation: async (id, invitationMessage = '') => {
+    const project = get().projects.find(p => p.id === id);
+    if (!project || !project.selectedConsultantId) {
+      console.error('[sendConsultantInvitation] No project or no selected consultant.');
+      return;
+    }
+
+    const auth = (await import('@/lib/auth')).AuthService.getInstance();
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+
+    try {
+      // Step 1: Create assignment if not yet created
+      let assignmentId = project.assignmentId ?? null;
+
+      if (!assignmentId) {
+        const assignRes = await auth.makeAuthenticatedRequest(
+          `${baseUrl}/pm/v1/projects/${project.dbId}/assign/`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              consultant: Number(project.selectedConsultantId),
+              project_access_level: 'assignment_brief_only',
+              assignment_scope: project.scope || project.internalSummary || 'Consultant assignment for this project.',
+              invitation_message: invitationMessage,
+            }),
+          }
+        );
+
+        if (assignRes.ok) {
+          const assignData = await assignRes.json();
+          assignmentId = assignData?.data?.id ?? assignData?.id ?? null;
+        } else {
+          // Try fetching existing
+          const existingRes = await auth.makeAuthenticatedRequest(
+            `${baseUrl}/pm/v1/projects/${project.dbId}/assignments/`
+          );
+          if (existingRes.ok) {
+            const ex = await existingRes.json();
+            const list: any[] = Array.isArray(ex.data) ? ex.data : Array.isArray(ex) ? ex : [];
+            const found = list.find((a: any) => String(a.consultant) === String(project.selectedConsultantId));
+            assignmentId = found?.id ?? null;
+          }
+        }
+      }
+
+      if (!assignmentId) {
+        console.error('[sendConsultantInvitation] Could not create or find assignment.');
+        return;
+      }
+
+      // Step 2: Send invitation
+      const inviteRes = await auth.makeAuthenticatedRequest(
+        `${baseUrl}/pm/v1/assignments/${assignmentId}/send-invitation/`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: invitationMessage }),
+        }
+      );
+
+      if (!inviteRes.ok) {
+        const errData = await inviteRes.json().catch(() => ({}));
+        console.error('[sendConsultantInvitation] Failed:', errData);
+        return;
+      }
+
+      // Step 3: Update local state
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                assignmentId,
+                assignmentStatus: 'invitation_sent',
+                interestedConsultants: p.interestedConsultants?.map(c =>
+                  c.id === p.selectedConsultantId
+                    ? { ...c, responseStatus: 'Invited', lastUpdated: new Date().toISOString() }
+                    : c
+                ),
+              }
+            : p
+        ),
+      }));
+
+      console.log('[sendConsultantInvitation] Invitation sent, assignmentId:', assignmentId);
+    } catch (err) {
+      console.error('[sendConsultantInvitation] Error:', err);
+    }
+  },
+
 
   requestClarification: async (id, notes) => {
     try {
@@ -286,18 +463,63 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
     }
   },
 
-  approveConsultantSummary: (id, editedSummary) => set((state) => ({
-    projects: state.projects.map(p =>
-      p.id === id ? {
-        ...p,
-        consultantFacingSummaryDraft: editedSummary,
-        status: 'Approved for Sourcing',
-        createdBy: "Admin System",
-        sentTo: ["ORR-CONS-8492", "ORR-CONS-1102"],
-        summaryVersionSent: "v1.0"
-      } : p
-    )
-  })),
+  approveConsultantSummary: async (id, editedSummary) => {
+    try {
+      const project = get().projects.find(p => p.id === id);
+      if (!project) throw new Error('Project not found in local state');
+
+      const auth = (await import('@/lib/auth')).AuthService.getInstance();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+
+      // Step 1: Save the edited summary text to the project
+      const patchResponse = await auth.makeAuthenticatedRequest(
+        `${baseUrl}/pm/v1/projects/${project.dbId}/`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ consultant_facing_summary: editedSummary }),
+        }
+      );
+      if (!patchResponse.ok) {
+        const errData = await patchResponse.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to save consultant summary');
+      }
+
+      // Step 2: Call the review endpoint with action 'approve_summary'
+      const reviewResponse = await auth.makeAuthenticatedRequest(
+        `${baseUrl}/pm/v1/projects/${project.dbId}/review/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ action: 'approve_summary' }),
+        }
+      );
+      if (!reviewResponse.ok) {
+        const errData = await reviewResponse.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to approve consultant summary');
+      }
+
+      // Step 3: Optimistically update local state, then sync from backend
+      set((state) => ({
+        projects: state.projects.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                consultantFacingSummaryDraft: editedSummary,
+                consultantSummary: editedSummary,
+                status: 'Approved for Sourcing',
+                // Ensure sourcing_status reflects the backend approval
+                sourcing_status: 'summary_approved',
+              }
+            : p
+        ),
+      }));
+
+      // Refresh from backend to get authoritative state
+      await get().fetchProjects();
+    } catch (error) {
+      console.error('[approveConsultantSummary] Failed:', error);
+      throw error;
+    }
+  },
 
   requestPmInputForSourcing: (id, notes) => set((state) => ({
     projects: state.projects.map(p =>
@@ -310,31 +532,58 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
   })),
 
   sourceProjectInternally: (id) => {
+    // Set status and clear previous consultants while matching runs
     set((state) => ({
       projects: state.projects.map(p =>
         p.id === id ? {
           ...p,
           status: 'Sourcing Internally',
-          sentTo: p.interestedConsultants?.map(c => c.id) || [],
+          interestedConsultants: undefined,
+          sentTo: [],
           summaryVersionSent: 'v1.0 (Auto-match)'
         } : p
       )
     }));
 
-    // Simulate consultants expressing interest after a delay
-    setTimeout(() => {
-      set((state) => ({
-        projects: state.projects.map(p =>
-          p.id === id ? {
-            ...p,
-            interestedConsultants: [
-              { id: 'C-001', name: 'Dr. Evelyn Sato', expertise: 'Enterprise Strategy', cost: '$200/hr' },
-              { id: 'C-002', name: 'Marcus Vance', expertise: 'EU Regulatory Compliance', cost: '$180/hr' }
-            ]
-          } : p
-        )
-      }));
-    }, 2000);
+    // Run matching algorithm on backend and fetch results
+    (async () => {
+      try {
+        const project = get().projects.find(p => p.id === id);
+        if (!project) return;
+        const auth = (await import('@/lib/auth')).AuthService.getInstance();
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+        // Trigger matching (POST)
+        await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/match-consultants/`, {
+          method: 'POST',
+        });
+        // Retrieve matches (GET)
+        const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/matches/`);
+        if (!response.ok) {
+          console.error('Failed to fetch matches for internal sourcing');
+          return;
+        }
+        const result = await response.json();
+        const matches = result.data || result;
+        const consultants = (Array.isArray(matches) ? matches : []).map((m: any) => ({
+          id: m.consultant?.toString() || m.id?.toString() || '',
+          name: m.consultant_name || m.name || 'Unnamed',
+          expertise: m.specialization || m.expertise || 'General',
+          cost: m.rate ? `$${m.rate}/hr` : '$0/hr',
+        }));
+        // Update state with real consultants
+        set((state) => ({
+          projects: state.projects.map(p =>
+            p.id === id ? {
+              ...p,
+              interestedConsultants: consultants,
+              sentTo: consultants.map(c => c.id),
+            } : p
+          )
+        }));
+      } catch (error) {
+        console.error('Error during internal sourcing', error);
+      }
+    })();
   },
 
   sourceProjectExternally: (id, email) => set((state) => ({
@@ -396,23 +645,67 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
     )
   })),
 
-  activateProjectAccess: (id, accessLevel) => set((state) => ({
-    projects: state.projects.map(p =>
-      p.id === id ? {
-        ...p,
-        accessLevel,
-        isAccessActivated: true,
-        status: 'Active',
-        interestedConsultants: p.interestedConsultants?.map(c =>
-          c.id === p.selectedConsultantId ? {
-            ...c,
-            responseStatus: 'Access Activated',
-            lastUpdated: new Date().toISOString()
-          } : c
-        )
-      } : p
-    )
-  })),
+  activateProjectAccess: async (id, accessLevel) => {
+    const project = get().projects.find(p => p.id === id);
+    if (!project) return;
+
+    // Must have an assignment already (created during send-invitation)
+    const assignmentId = project.assignmentId;
+    if (!assignmentId) {
+      console.error('[activateProjectAccess] No assignment ID found. Send invitation first.');
+      return;
+    }
+
+    const auth = (await import('@/lib/auth')).AuthService.getInstance();
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+    const accessLevelMap: Record<string, string> = {
+      'Assignment Brief Only': 'assignment_brief_only',
+      'Selected Documents Only': 'selected_documents_only',
+      'Full Project Workspace': 'full_project_workspace',
+      'Restricted Custom Access': 'restricted_custom_access',
+    };
+
+    try {
+      const activateResponse = await auth.makeAuthenticatedRequest(
+        `${baseUrl}/pm/v1/assignments/${assignmentId}/activate-access/`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_level: accessLevelMap[accessLevel] ?? 'full_project_workspace' }),
+        }
+      );
+
+      if (!activateResponse.ok) {
+        const errData = await activateResponse.json().catch(() => ({}));
+        console.error('[activateProjectAccess] Failed:', errData);
+        return;
+      }
+
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                accessLevel,
+                assignmentStatus: 'access_activated',
+                isAccessActivated: true,
+                status: 'Active',
+                interestedConsultants: p.interestedConsultants?.map(c =>
+                  c.id === p.selectedConsultantId
+                    ? { ...c, responseStatus: 'Access Activated', lastUpdated: new Date().toISOString() }
+                    : c
+                ),
+              }
+            : p
+        ),
+      }));
+
+      console.log('[activateProjectAccess] Done for assignment', assignmentId);
+    } catch (error) {
+      console.error('[activateProjectAccess] Error:', error);
+      throw error;
+    }
+  },
 
   completeProject: async (id: string) => {
     // Simulated API call delay

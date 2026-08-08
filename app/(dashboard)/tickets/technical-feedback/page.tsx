@@ -1,52 +1,13 @@
 "use client";
 
-                                    <p><strong className="text-white">Browser:</strong> {fb.browser_info}</p>
-                                    <p><strong className="text-white">OS:</strong> {fb.os_info}</p>
-                                    <p className="col-span-2 truncate"><strong className="text-white">Path:</strong> {fb.url_path}</p>
-                                </div>
-                            </div>
-                            
-                            <div className="flex flex-col gap-3 min-w-[200px]">
-                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Update Status</h4>
-                                {fb.status !== "open" && (
-                                    <button onClick={() => updateStatus(fb.id, "open")} className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
-                                        <AlertCircle size={14} /> Mark Open
-                                    </button>
-                                )}
-                                {fb.status !== "in_progress" && (
-                                    <button onClick={() => updateStatus(fb.id, "in_progress")} className="px-4 py-2 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
-                                        <Clock size={14} /> Mark In Progress
-                                    </button>
-                                )}
-                                {fb.status !== "resolved" && (
-                                    <button onClick={() => updateStatus(fb.id, "resolved")} className="px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
-                                        <CheckCircle size={14} /> Mark Resolved
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                    
-                    {feedbacks.length === 0 && (
-                        <div className="text-center p-12 bg-white/5 border border-white/10 rounded-2xl">
-                            <CheckCircle size={48} className="mx-auto text-slate-600 mb-4" />
-                            <h3 className="text-lg font-bold text-white">No technical feedback found</h3>
-                            <p className="text-sm text-slate-400 mt-2">All caught up!</p>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-=======
 import { useState, useEffect } from "react";
-import { 
-  Search, 
-  Monitor, 
-  Terminal, 
-  FileCode, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  Search,
+  Monitor,
+  Terminal,
+  FileCode,
+  CheckCircle,
+  AlertCircle,
   MessageSquare,
   Clock,
   Bug,
@@ -54,7 +15,7 @@ import {
   Zap,
   Globe,
   Smartphone,
-  Info
+  Info,
 } from "lucide-react";
 import { useLanguageStore } from "@/store/languageStore";
 
@@ -94,13 +55,13 @@ const mockFeedbacks: TechnicalFeedback[] = [
     reporter: {
       name: "Sarah Jenkins",
       role: "client",
-      email: "sarah.j@example.com"
+      email: "sarah.j@example.com",
     },
     deviceInfo: {
       browser: "Safari 16.5",
       os: "macOS 13.4",
       screen: "2560x1600",
-      url: "/dashboard/analytics"
+      url: "/dashboard/analytics",
     },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
   },
@@ -113,13 +74,13 @@ const mockFeedbacks: TechnicalFeedback[] = [
     reporter: {
       name: "Marcus Chen",
       role: "project_manager",
-      email: "marcus.c@orrsolutions.com"
+      email: "marcus.c@orrsolutions.com",
     },
     deviceInfo: {
       browser: "Chrome Mobile 114",
       os: "iOS 16.5",
       screen: "390x844",
-      url: "/project-requests/new"
+      url: "/project-requests/new",
     },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
   },
@@ -132,13 +93,13 @@ const mockFeedbacks: TechnicalFeedback[] = [
     reporter: {
       name: "Elena Rodriguez",
       role: "consultant",
-      email: "elena.r@orrsolutions.com"
+      email: "elena.r@orrsolutions.com",
     },
     deviceInfo: {
       browser: "Firefox 115",
       os: "Windows 11",
       screen: "1920x1080",
-      url: "/consultations/reports/124"
+      url: "/consultations/reports/124",
     },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
   },
@@ -151,16 +112,16 @@ const mockFeedbacks: TechnicalFeedback[] = [
     reporter: {
       name: "David Smith",
       role: "client",
-      email: "david.s@corp.net"
+      email: "david.s@corp.net",
     },
     deviceInfo: {
       browser: "Edge 114",
       os: "Windows 10",
       screen: "1920x1080",
-      url: "/document-vault/all"
+      url: "/document-vault/all",
     },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-  }
+  },
 ];
 
 const statusColors: Record<FeedbackStatus, string> = {
@@ -178,10 +139,10 @@ const statusLabels: Record<FeedbackStatus, string> = {
 };
 
 const typeIcons: Record<FeedbackType, React.ReactNode> = {
-  bug: <Bug size={14} />,
-  ui_issue: <Layout size={14} />,
-  feature_request: <Zap size={14} />,
-  performance: <Clock size={14} />
+  bug: <Bug size={14} />, 
+  ui_issue: <Layout size={14} />, 
+  feature_request: <Zap size={14} />, 
+  performance: <Clock size={14} />, 
 };
 
 const typeColors: Record<FeedbackType, string> = {
@@ -214,41 +175,35 @@ export default function TechnicalFeedbackPage() {
   const { language } = useLanguageStore();
   const [feedbacks, setFeedbacks] = useState<TechnicalFeedback[]>([]);
   const [selectedFeedback, setSelectedFeedback] = useState<TechnicalFeedback | null>(null);
-  
+
   const [filterStatus, setFilterStatus] = useState<FeedbackStatus | 'all'>('all');
   const [filterType, setFilterType] = useState<FeedbackType | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API fetch
     const fetchFeedbacks = async () => {
       setLoading(true);
       try {
-        // In a real scenario, this would be an API call with filters
-        // const response = await fetch('/admin-portal/v1/technical-feedback/...)
-        await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network latency
-        
+        await new Promise((resolve) => setTimeout(resolve, 600));
         let filtered = [...mockFeedbacks];
         if (filterStatus !== 'all') {
-          filtered = filtered.filter(f => f.status === filterStatus);
+          filtered = filtered.filter((f) => f.status === filterStatus);
         }
         if (filterType !== 'all') {
-          filtered = filtered.filter(f => f.type === filterType);
+          filtered = filtered.filter((f) => f.type === filterType);
         }
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
-          filtered = filtered.filter(f => 
-            f.subject.toLowerCase().includes(query) || 
-            f.description.toLowerCase().includes(query) ||
-            f.id.toLowerCase().includes(query) ||
-            f.reporter.name.toLowerCase().includes(query)
+          filtered = filtered.filter(
+            (f) =>
+              f.subject.toLowerCase().includes(query) ||
+              f.description.toLowerCase().includes(query) ||
+              f.id.toLowerCase().includes(query) ||
+              f.reporter.name.toLowerCase().includes(query)
           );
         }
-        
         setFeedbacks(filtered);
-        
-        // Auto-select first item if none selected and list not empty
         if (filtered.length > 0 && !selectedFeedback) {
           setSelectedFeedback(filtered[0]);
         }
@@ -258,19 +213,15 @@ export default function TechnicalFeedbackPage() {
         setLoading(false);
       }
     };
-
     fetchFeedbacks();
   }, [filterStatus, filterType, searchQuery]);
 
   const handleStatusChange = (newStatus: FeedbackStatus) => {
     if (!selectedFeedback) return;
-    
-    // In a real app, this would be an API call
     const updatedFeedback = { ...selectedFeedback, status: newStatus };
     setSelectedFeedback(updatedFeedback);
-    
-    setFeedbacks(prev => 
-      prev.map(f => f.id === updatedFeedback.id ? updatedFeedback : f)
+    setFeedbacks((prev) =>
+      prev.map((f) => (f.id === updatedFeedback.id ? updatedFeedback : f))
     );
   };
 
@@ -343,7 +294,7 @@ export default function TechnicalFeedbackPage() {
               <div className="bg-gradient-to-b from-white/10 to-white/5 rounded-2xl border border-white/10 shadow-lg h-[600px] overflow-y-auto custom-scrollbar">
                 {loading ? (
                   <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                   </div>
                 ) : feedbacks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 text-center">
@@ -358,8 +309,8 @@ export default function TechnicalFeedbackPage() {
                         key={item.id}
                         onClick={() => setSelectedFeedback(item)}
                         className={`w-full p-4 rounded-xl text-left transition-all duration-200 group relative ${
-                          selectedFeedback?.id === item.id 
-                            ? "bg-primary/10 border border-primary/30" 
+                          selectedFeedback?.id === item.id
+                            ? "bg-primary/10 border border-primary/30"
                             : "bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/10"
                         }`}
                       >
@@ -375,11 +326,9 @@ export default function TechnicalFeedbackPage() {
                             {statusLabels[item.status]}
                           </span>
                         </div>
-                        
                         <h3 className={`font-semibold text-sm mb-2 line-clamp-1 ${selectedFeedback?.id === item.id ? 'text-white' : 'text-gray-200 group-hover:text-white'}`}>
                           {item.subject}
                         </h3>
-                        
                         <div className="flex items-center justify-between mt-3 text-xs">
                           <div className="flex items-center gap-2">
                             <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center text-[10px] font-bold">
@@ -387,9 +336,7 @@ export default function TechnicalFeedbackPage() {
                             </div>
                             <span className="text-gray-400">{item.reporter.name}</span>
                           </div>
-                          <span className="text-gray-500">
-                            {new Date(item.createdAt).toLocaleDateString()}
-                          </span>
+                          <span className="text-gray-500">{new Date(item.createdAt).toLocaleDateString()}</span>
                         </div>
                       </button>
                     ))}
@@ -421,7 +368,7 @@ export default function TechnicalFeedbackPage() {
                           {selectedFeedback.subject}
                         </h2>
                       </div>
-                      
+
                       {/* Status Selector */}
                       <div className="flex flex-col items-end gap-2">
                         <select
@@ -517,8 +464,8 @@ export default function TechnicalFeedbackPage() {
           </div>
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
+
+      <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
@@ -533,7 +480,7 @@ export default function TechnicalFeedbackPage() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 255, 255, 0.2);
         }
-      `}} />
+      ` } } />
     </div>
   );
 }
