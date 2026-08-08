@@ -22,13 +22,14 @@ import {
   Cloud,
   Webhook,
   Activity,
-  Search
+  Search,
+  FileText
 } from 'lucide-react';
 import { useLanguageStore } from '@/store/languageStore';
 import { ROLE_PERMISSIONS, Permission, RoleName } from '@/lib/rbac/permissions';
 import { useRole, useIsSuperAdmin } from '@/lib/rbac/hooks';
 
-type SettingsTab = 'general' | 'localization' | 'permissions' | 'security' | 'system';
+type SettingsTab = 'general' | 'localization' | 'permissions' | 'security' | 'system' | 'templates';
 
 export default function SettingsPage() {
   const { t, language, setLanguage, currency, setCurrency } = useLanguageStore();
@@ -44,6 +45,7 @@ export default function SettingsPage() {
     { id: 'permissions', label: 'Role Permissions', icon: Shield },
     { id: 'security', label: 'Security', icon: Lock },
     { id: 'system', label: 'System', icon: HardDrive },
+    { id: 'templates', label: 'Letterhead Templates', icon: FileText },
   ];
 
   const handleSave = () => {
@@ -293,8 +295,42 @@ export default function SettingsPage() {
     </div>
   );
 
+  const renderTemplates = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-black uppercase tracking-widest text-white">Letterhead Templates</h3>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Manage standard headers and footers for exports</p>
+        </div>
+        <button className="flex items-center gap-2 px-6 py-3 bg-primary text-black rounded-xl font-bold hover:bg-primary/90 transition-all text-xs uppercase tracking-widest">
+          <Plus size={16} />
+          Create Template
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-primary/50 hover:bg-primary/5 transition-all group">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
+              <FileText size={24} />
+            </div>
+            <span className="px-2 py-1 bg-primary/20 text-primary rounded text-[10px] font-black uppercase tracking-widest border border-primary/30">Default</span>
+          </div>
+          <h4 className="text-sm font-bold text-white mb-2">Standard ORR Letterhead</h4>
+          <p className="text-xs text-slate-400 mb-6 line-clamp-2">The default letterhead used for all standard client exports and official documents.</p>
+          <div className="flex items-center gap-2">
+            <button className="flex-1 px-4 py-2 bg-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-colors">Edit</button>
+            <button className="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors">
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen pb-24 text-white relative">
+    <div className="h-full bg-[#0a0f16] flex flex-col overflow-hidden relative">
       {/* Dynamic Background */}
       <div className="fixed inset-0 bg-background -z-10">
         <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
@@ -374,6 +410,7 @@ export default function SettingsPage() {
                 {activeTab === 'permissions' && renderPermissions()}
                 {activeTab === 'security' && renderSecurity()}
                 {activeTab === 'system' && renderSystem()}
+                {activeTab === 'templates' && renderTemplates()}
               </motion.div>
             </AnimatePresence>
 

@@ -3,17 +3,17 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAdminProjectStore } from "@/store/adminProjectStore";
-import { Clock, Search, Filter, ShieldCheck, ChevronRight, AlertCircle, FileText } from "lucide-react";
+import { Clock, Search, Filter, ShieldCheck, ChevronRight, AlertCircle, FileText, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ProjectRequestsPage() {
-  const { projects, fetchProjects } = useAdminProjectStore();
+  const { projects, isLoading, fetchProjects } = useAdminProjectStore();
   
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const [filter, setFilter] = useState<"ALL" | "Pending Admin Review" | "Needs PM Clarification" | "Drafting Consultant Summary" | "PM Input Required" | "Approved for Sourcing">("Pending Admin Review");
+  const [filter, setFilter] = useState<"ALL" | "Pending Admin Review" | "Needs PM Clarification" | "Drafting Consultant Summary" | "PM Input Required" | "Approved for Sourcing">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredProjects = projects.filter(p => {
@@ -87,7 +87,12 @@ export default function ProjectRequestsPage() {
 
       {/* Projects List */}
       <div className="space-y-4">
-        {filteredProjects.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-20 bg-slate-900/10 border border-white/5 rounded-3xl flex flex-col items-center justify-center gap-3">
+            <Loader2 size={32} className="text-primary animate-spin" />
+            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Loading project requests...</p>
+          </div>
+        ) : filteredProjects.length === 0 ? (
           <div className="text-center py-16 bg-slate-900/10 border border-white/5 rounded-3xl">
             <ShieldCheck size={48} className="mx-auto text-slate-600 mb-4 stroke-1" />
             <h3 className="font-bold text-lg text-slate-300">All caught up!</h3>

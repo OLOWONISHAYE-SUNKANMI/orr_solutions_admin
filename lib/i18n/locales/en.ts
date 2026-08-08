@@ -40,7 +40,9 @@ export const en = {
       blog: "Blog",
       resource: "Resource",
       service: "Service",
-      template: "Template"
+      template: "Template",
+      article: "Article",
+      report: "Report"
     }
   },
   sidebar: {
@@ -220,6 +222,17 @@ export const en = {
     joined: "Joined",
     workspace_placeholder: "Workspace management interface will be implemented here. This will include data structures, project files, and collaborative tools.",
   },
+  schedule_meetings: {
+    today: "Today",
+    join_meeting: "Join Meeting",
+    reschedule: "Reschedule",
+    types: {
+      first_meeting: "First Discovery Meeting",
+      consultation: "Consultation Session",
+      follow_up: "Follow-up Session",
+      strategy_review: "Strategy Review"
+    }
+  },
   meetings: {
     title: "Client Meetings",
     subtitle: "Overview of all client meetings",
@@ -253,7 +266,11 @@ export const en = {
     view_notes: "View Notes",
     decline: "Decline",
     confirm: "Confirm",
-    confirmed: "Confirmed"
+    confirmed: "Confirmed",
+    requested: "Requested",
+    rescheduled: "Rescheduled",
+    completed: "Completed",
+    cancelled: "Cancelled"
   },
   tickets: {
     title: "Tickets",

@@ -385,6 +385,16 @@ export default function DocumentVaultPage() {
                                     <AlertTriangle size={12} className="text-amber-500" />
                                   </span>
                                 )}
+                                {doc.is_ai_generated && doc.is_draft && !doc.is_ai_reviewed && (
+                                  <span className="text-[8px] font-black bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/20 uppercase tracking-[0.2em] flex items-center gap-1">
+                                    Draft
+                                  </span>
+                                )}
+                                {doc.is_ai_generated && !doc.is_ai_reviewed && (
+                                  <span className="text-[8px] font-black bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 uppercase tracking-[0.2em] flex items-center gap-1">
+                                    AI Generated - Not Reviewed
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-3 mt-1">
                                 <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">v{doc.currentVersion || 1} • {(doc.versions || []).length} Total</p>

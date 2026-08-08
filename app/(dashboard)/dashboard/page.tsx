@@ -391,7 +391,12 @@ function page() {
                               </span>
                             </td>
                             <td className="py-3 px-4 text-gray-300 text-sm hidden sm:table-cell">
-                              <span className="capitalize">{t(`common.content_types.${item.content_type as keyof typeof t}` as any) || item.content_type}</span>
+                              <span className="capitalize">
+                                {(() => {
+                                  const translated = t(`common.content_types.${item.content_type}` as any);
+                                  return translated && !translated.startsWith('common.') ? translated : item.content_type;
+                                })()}
+                              </span>
                             </td>
                             <td className="py-3 px-4">
                               <div className={`w-fit px-3 py-1 rounded-lg font-medium text-xs capitalize ${item.status === "published"

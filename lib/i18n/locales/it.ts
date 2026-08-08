@@ -40,7 +40,9 @@ export const it = {
       blog: "Blog",
       resource: "Risorsa",
       service: "Servizio",
-      template: "Modello"
+      template: "Modello",
+      article: "Articolo",
+      report: "Rapporto"
     }
   },
   sidebar: {
@@ -218,6 +220,17 @@ export const it = {
     joined: "Iscritto",
     workspace_placeholder: "L'interfaccia di gestione del workspace sarà implementata qui. Ciò includerà strutture dati, file di progetto e strumenti collaborativi.",
   },
+  schedule_meetings: {
+    today: "Oggi",
+    join_meeting: "Partecipa alla Riunione",
+    reschedule: "Riprogramma",
+    types: {
+      first_meeting: "Primo Incontro Conoscitivo",
+      consultation: "Sessione di Consulenza",
+      follow_up: "Sessione di Follow-up",
+      strategy_review: "Revisione Strategica"
+    }
+  },
   meetings: {
     title: "Riunioni Clienti",
     subtitle: "Panoramica di tutte le riunioni clienti",
@@ -251,7 +264,11 @@ export const it = {
     view_notes: "Visualizza Note",
     decline: "Rifiuta",
     confirm: "Conferma",
-    confirmed: "Confermata"
+    confirmed: "Confermata",
+    requested: "Richiesto",
+    rescheduled: "Riprogrammato",
+    completed: "Completato",
+    cancelled: "Annullato"
   },
   tickets: {
     title: "Ticket",

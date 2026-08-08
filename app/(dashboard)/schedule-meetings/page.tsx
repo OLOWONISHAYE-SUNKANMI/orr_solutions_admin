@@ -45,7 +45,25 @@ function page() {
         body: JSON.stringify({ meeting_id: selectedEvent.id })
       });
       const data = await response.json();
-      setAiPrepNotes(data?.prep_notes || data?.data?.prep_notes || "Could not generate preparation notes.");
+      const resData = data?.data || data;
+
+      let formattedNotes = "";
+      if (typeof resData === 'string') {
+        formattedNotes = resData;
+      } else if (resData?.prep_notes) {
+        formattedNotes = typeof resData.prep_notes === 'string' ? resData.prep_notes : JSON.stringify(resData.prep_notes, null, 2);
+      } else if (resData?.summary || resData?.talking_points) {
+        const parts: string[] = [];
+        if (resData.summary) parts.push(`📌 Summary:\n${resData.summary}`);
+        if (resData.talking_points?.length) parts.push(`💬 Talking Points:\n${resData.talking_points.map((tp: string) => `• ${tp}`).join('\n')}`);
+        if (resData.suggested_questions?.length) parts.push(`❓ Suggested Questions:\n${resData.suggested_questions.map((q: string) => `• ${q}`).join('\n')}`);
+        if (resData.recommendations?.length) parts.push(`💡 Recommendations:\n${resData.recommendations.map((r: string) => `• ${r}`).join('\n')}`);
+        formattedNotes = parts.join('\n\n');
+      } else {
+        formattedNotes = "Could not generate preparation notes.";
+      }
+
+      setAiPrepNotes(formattedNotes);
     } catch (err) {
       console.error("Failed to generate prep notes:", err);
       setAiPrepNotes("Failed to generate preparation notes. Please try again.");
@@ -154,7 +172,22 @@ function page() {
   };
 
   const getMeetingTypeDisplay = (type: string) => {
-    return t(`schedule_meetings.types.${type}` as any) || type;
+    const key = `schedule_meetings.types.${type}`;
+    const translated = t(key as any);
+    if (translated && translated !== key) return translated;
+
+    switch (type?.toLowerCase()) {
+      case 'first_meeting':
+        return 'First Discovery Meeting';
+      case 'consultation':
+        return 'Consultation Session';
+      case 'follow_up':
+        return 'Follow-up Session';
+      case 'strategy_review':
+        return 'Strategy Review';
+      default:
+        return type ? type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Meeting';
+    }
   };
 
   const goToToday = () => {
@@ -275,6 +308,12 @@ function page() {
 
         {/* Calendar Grid Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-transparent relative">
+          {loading && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-card/40 backdrop-blur-[2px]">
+              <Loader className="w-10 h-10 animate-spin text-primary mb-4" />
+              <p className="text-[#e8eaed] font-medium animate-pulse">Loading meetings...</p>
+            </div>
+          )}
           <div className="flex-1 calendar-wrapper">
             <Calendar
               localizer={localizer}

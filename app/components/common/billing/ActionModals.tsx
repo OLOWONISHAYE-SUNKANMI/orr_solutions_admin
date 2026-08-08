@@ -49,7 +49,7 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => (
 
 export default function ActionModals() {
   const { t } = useLanguageStore();
-  const { createInvoice } = useInvoiceStore();
+  const { createInvoice, fetchInvoices } = useInvoiceStore();
   const { adjustBalance, wallets, balanceModalOpen, selectedUserId, openBalanceModal, closeBalanceModal } = useWalletStore();
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
@@ -117,8 +117,8 @@ export default function ActionModals() {
       status: 'issued'
     });
     
+    await fetchInvoices();
     setInvoiceModalOpen(false);
-    // Reset form
   };
 
   const handleAdjustBalance = async () => {

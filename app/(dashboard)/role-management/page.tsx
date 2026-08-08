@@ -72,8 +72,8 @@ export default function RoleManagementPage() {
         api.settings.listRoles(),
       ]) as [any, any];
 
-      const usersData = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || []);
-      const rolesData = Array.isArray(rolesResponse) ? rolesResponse : (rolesResponse?.data || []);
+      const usersData = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data?.results || usersResponse?.data || usersResponse?.results || []);
+      const rolesData = Array.isArray(rolesResponse) ? rolesResponse : (rolesResponse?.data?.results || rolesResponse?.data || rolesResponse?.results || []);
 
       setRolesList(rolesData);
 
@@ -81,8 +81,8 @@ export default function RoleManagementPage() {
       const newMatrix: Record<RoleName, Permission[]> = {
         super_admin: [],
         admin: [],
-        operator: [],
-        content_editor: [],
+        project_manager: [],
+        consultant: [],
       };
 
       const permissionKeys: Permission[] = [
@@ -113,8 +113,10 @@ export default function RoleManagementPage() {
       const formattedUsers: AdminUserRecord[] = usersData.map((profile: any) => {
         const status: "ACTIVE" | "SUSPENDED" = profile.is_active ? "ACTIVE" : "SUSPENDED";
         
-        const matchingRole = rolesData.find((r: any) => r.id === profile.role);
-        const roleName: RoleName = matchingRole ? (matchingRole.name as RoleName) : "operator";
+        const matchingRole = rolesData.find((r: any) => r.id === profile.role || r.name === profile.role_name || r.name === profile.role);
+        const roleName: RoleName = matchingRole 
+          ? (matchingRole.name as RoleName) 
+          : (profile.role_name as RoleName || profile.role as RoleName || "project_manager");
 
         return {
           id: String(profile.user_id || profile.id),
@@ -195,7 +197,7 @@ export default function RoleManagementPage() {
   const handleSaveMatrix = async () => {
     setIsLoading(true);
     try {
-      const targetRoles: RoleName[] = ["admin", "operator", "content_editor"];
+      const targetRoles: RoleName[] = ["admin", "project_manager", "consultant"];
       
       const permissionKeys: Permission[] = [
         'can_manage_users', 'can_view_all_clients', 'can_edit_clients', 'can_manage_tickets',
@@ -274,16 +276,16 @@ export default function RoleManagementPage() {
     setIsLoading(true);
     try {
       const matchingRole = rolesList.find(r => r.name === newRole);
-      if (!matchingRole) throw new Error("Target security role not found in directory.");
 
       await api.roleManagement.editUser(Number(admin.id), {
         profile: {
-          role_name: newRole
+          role_name: newRole,
+          role: matchingRole ? matchingRole.id : undefined
         }
       });
 
       await fetchData();
-      alert(`Security Role for administrator ${admin.name} successfully elevated to ${newRole.toUpperCase()}.`);
+      alert(`Security Role for administrator ${admin.name} successfully updated to ${newRole.toUpperCase()}.`);
     } catch (error) {
       console.error("[ROLE ELEVATION ERROR]", error);
       alert("Failed to elevate administrator's role. Verify you possess adequate SOC2 elevation clearance.");
@@ -440,8 +442,8 @@ export default function RoleManagementPage() {
                       >
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Administrator</option>
-                        <option value="operator">Operator</option>
-                        <option value="content_editor">Content Editor</option>
+                        <option value="project_manager">Project Manager</option>
+                        <option value="consultant">Consultant</option>
                       </select>
                     </td>
 
@@ -516,7 +518,7 @@ export default function RoleManagementPage() {
 
                   <div className="flex items-center gap-3.5 w-full md:w-auto justify-end">
                     {/* Role check badges */}
-                    {(["admin", "operator", "content_editor"] as RoleName[]).map(role => {
+                    {(["admin", "project_manager", "consultant"] as RoleName[]).map(role => {
                       const hasPerm = matrix[role]?.includes(perm.name);
                       return (
                         <button

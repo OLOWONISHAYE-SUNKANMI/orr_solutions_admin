@@ -290,15 +290,15 @@ export default function ScheduleMeetingModal({ isOpen, onClose }: ScheduleMeetin
               />
             </div>
 
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">Meeting Link</label>
-              <input
-                type="url"
-                value={formData.meeting_link}
-                onChange={(e) => handleInputChange("meeting_link", e.target.value)}
-                placeholder="https://zoom.us/j/... or other meeting link"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary/50 focus:bg-white/15 transition-all duration-200"
-              />
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3.5 flex items-center justify-between">
+              <div>
+                <label className="text-xs font-semibold text-primary block">Meeting Link</label>
+                <p className="text-xs text-gray-300 mt-0.5">Will be automatically generated upon scheduling (e.g. https://meet.orr.solutions/room/...)</p>
+              </div>
+              <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full font-medium flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                Auto-Generated
+              </span>
             </div>
 
             <div className="flex items-center gap-3 pt-4 border-t border-white/10">

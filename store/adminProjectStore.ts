@@ -41,6 +41,7 @@ export interface AdminProjectBrief {
   scope: string;
   internalSummary?: string;
   consultantSummary?: string;
+  consultantFacingSummaryDraft?: string;
   confidentiality: string;
   consultantsNeeded: number;
   clarificationNotes?: string;
@@ -57,6 +58,7 @@ export interface AdminProjectBrief {
 
 interface AdminProjectState {
   projects: AdminProjectBrief[];
+  isLoading: boolean;
   isGeneratingSummary: boolean;
   fetchProjects: () => Promise<void>;
   approveProjectForDrafting: (id: string) => void;
@@ -115,12 +117,93 @@ const MOCK_PROJECTS: AdminProjectBrief[] = [
 
 export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
   projects: [],
+  isLoading: true,
   isGeneratingSummary: false,
 
   fetchProjects: async () => {
-    // Simulated fetch using MOCK_PROJECTS
-    // TODO: Implement actual API fetch here
-    set({ projects: MOCK_PROJECTS });
+    set({ isLoading: true });
+    try {
+      const auth = (await import('@/lib/auth')).AuthService.getInstance();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/`);
+      const result = await response.json();
+      
+      // Handle potential API response wrapping
+      let projectList = [];
+      if (Array.isArray(result)) {
+        projectList = result;
+      } else if (result.data) {
+        if (Array.isArray(result.data)) {
+          projectList = result.data;
+        } else if (result.data.data && Array.isArray(result.data.data)) {
+          projectList = result.data.data;
+        }
+      }
+      
+      console.log("[Admin Projects] Raw Result:", result);
+      console.log("[Admin Projects] Extracted List:", projectList);
+      
+      const statusMap: Record<string, AdminProjectStatus> = {
+        'pending_admin_review': 'Pending Admin Review',
+        'needs_pm_clarification': 'Needs PM Clarification',
+        'pm_input_required': 'PM Input Required',
+        'approved_for_sourcing': 'Approved for Sourcing',
+        'sourcing_internally': 'Sourcing Internally',
+        'sourcing_externally': 'Sourcing Externally',
+        'consultant_assignment_pending': 'Consultant Assignment Pending',
+        'active': 'Active',
+        'draft': 'Pending Admin Review',
+        'awaiting_client_confirmation': 'Pending Admin Review',
+        'awaiting_payment': 'Pending Admin Review',
+        'ready_for_matching': 'Approved for Sourcing',
+        'internal_review': 'Active',
+        'delivered': 'Active',
+        'completed': 'Completed',
+        'closed': 'Completed',
+        'on_hold': 'Needs PM Clarification',
+        'cancelled': 'Completed',
+      };
+
+      const mappedProjects: AdminProjectBrief[] = projectList.map((p: any) => {
+        let mappedStatus = statusMap[p.status] || p.status || 'Pending Admin Review';
+        // Force exact mappings for newly added statuses just in case of case mismatches
+        if (p.status === 'sourcing_internally') mappedStatus = 'Sourcing Internally';
+        if (p.status === 'sourcing_externally') mappedStatus = 'Sourcing Externally';
+        
+        let pmString = 'Unassigned';
+        if (p.assigned_pm) {
+          if (typeof p.assigned_pm === 'object') {
+            pmString = p.assigned_pm.full_name || p.assigned_pm.email || p.assigned_pm.id?.toString() || 'Unassigned';
+          } else {
+            pmString = p.assigned_pm.toString();
+          }
+        }
+
+        return {
+          id: p.project_id || p.id?.toString() || 'Unknown',
+          dbId: p.id,
+          pmId: pmString,
+          clientName: p.client_name || 'Client',
+          projectTitle: p.title || 'Untitled',
+          primaryCategory: p.service_category || 'Other',
+          targetDeadline: p.target_deadline || 'TBD',
+          urgency: p.urgency || 'Normal',
+          status: mappedStatus,
+          createdAt: p.created_at || new Date().toISOString(),
+          scope: p.proposed_scope || '',
+          internalSummary: p.pm_approved_summary || p.ai_generated_summary || p.proposed_scope || '',
+          consultantSummary: p.consultant_facing_summary || '',
+          consultantFacingSummaryDraft: p.consultant_facing_summary || '',
+          confidentiality: p.confidentiality_level || 'Standard',
+          consultantsNeeded: p.num_consultants_required || 1,
+        };
+      });
+      set({ projects: mappedProjects });
+    } catch (error) {
+      console.error('Failed to fetch projects', error);
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   approveProjectForDrafting: (id) => set((state) => ({
@@ -152,29 +235,55 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
 
   generateConsultantSummary: async (id) => {
     set({ isGeneratingSummary: true });
-    // Simulate AI stripping out restricted client information
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-
-    set((state) => ({
-      isGeneratingSummary: false,
-      projects: state.projects.map(p => {
-        if (p.id === id) {
-          const draft = `## Consultant Opportunity
-**Sector:** ${p.primaryCategory}
-**Timeline:** Complete by ${p.targetDeadline}
+    try {
+      const project = get().projects.find(p => p.id === id);
+      if (!project) return;
+      const auth = (await import('@/lib/auth')).AuthService.getInstance();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/generate-summary/`, {
+        method: 'POST',
+        body: JSON.stringify({ type: 'consultant_facing' })
+      });
+      
+      let summary = '';
+      if (response.ok) {
+        const result = await response.json();
+        summary = result.data?.summary || '';
+      }
+      
+      if (!summary) {
+        // Fallback to local mockup draft
+        summary = `## Consultant Opportunity
+**Sector:** ${project.primaryCategory}
+**Timeline:** Complete by ${project.targetDeadline}
 
 **Overview:**
-We are seeking an experienced consultant to ${p.scope.replace(/Acme Corp|TechFlow/gi, 'a leading enterprise client in the sector')}.
+We are seeking an experienced consultant to ${project.scope.replace(/Acme Corp|TechFlow/gi, 'a leading enterprise client in the sector')}.
 
 **Requirements:**
-This project requires ${p.consultantsNeeded} consultant(s). The work is highly specialized and requires adherence to strict confidentiality protocols.
+This project requires ${project.consultantsNeeded} consultant(s). The work is highly specialized and requires adherence to strict confidentiality protocols.
 
 *Note: Specific client names and sensitive operational details will be disclosed upon project assignment.*`;
-          return { ...p, consultantFacingSummaryDraft: draft };
-        }
-        return p;
-      })
-    }));
+      }
+
+      set((state) => ({
+        isGeneratingSummary: false,
+        projects: state.projects.map(p => {
+          if (p.id === id) {
+            return { 
+              ...p, 
+              consultantSummary: summary,
+              consultantFacingSummaryDraft: summary
+            };
+          }
+          return p;
+        })
+      }));
+    } catch (error) {
+      console.error('Failed to generate summary', error);
+      set({ isGeneratingSummary: false });
+      throw error;
+    }
   },
 
   approveConsultantSummary: (id, editedSummary) => set((state) => ({

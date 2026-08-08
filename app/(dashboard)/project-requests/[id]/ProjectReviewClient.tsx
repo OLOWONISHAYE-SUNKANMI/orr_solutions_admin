@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdminProjectStore } from "@/store/adminProjectStore";
-import { ArrowLeft, CheckCircle2, AlertCircle, Clock, Shield, Briefcase, FileText, Bot, Lock, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle, Clock, Shield, Briefcase, FileText, Bot, Lock, Loader2, Download } from "lucide-react";
 
 export default function ProjectReviewPage() {
   const params = useParams();
@@ -40,11 +40,25 @@ export default function ProjectReviewPage() {
 
   const [editedConsultantSummary, setEditedConsultantSummary] = useState("");
 
+  const handleDownloadSummary = (text: string, filename: string) => {
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
-    if (project?.consultantFacingSummaryDraft) {
-      setEditedConsultantSummary(project.consultantFacingSummaryDraft);
+    const summaryVal = project?.consultantFacingSummaryDraft || project?.consultantSummary || "";
+    if (summaryVal) {
+      setEditedConsultantSummary(summaryVal);
     }
-  }, [project?.consultantFacingSummaryDraft]);
+  }, [project?.consultantSummary, project?.consultantFacingSummaryDraft]);
 
   if (!project) {
     return (
@@ -136,14 +150,26 @@ export default function ProjectReviewPage() {
         {/* Main Details */}
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-8 space-y-6 backdrop-blur-sm">
-            <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2 border-b border-white/5 pb-4">
-              <FileText className="text-primary" />
-              Project Scope & Overview
-            </h2>
+            <div className="flex justify-between items-center border-b border-white/5 pb-4">
+              <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+                <FileText className="text-primary" />
+                Project Scope & Overview
+              </h2>
+              {(project.internalSummary || project.scope) && (
+                <button 
+                  onClick={() => handleDownloadSummary(project.internalSummary || project.scope, `${project.id}_Internal_Scope.md`)}
+                  className="inline-flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg font-semibold border border-white/10 transition-colors"
+                  title="Download Internal Scope Document"
+                >
+                  <Download className="w-3.5 h-3.5 text-primary" />
+                  Download File
+                </button>
+              )}
+            </div>
             <div className="space-y-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Defined Scope</span>
               <p className="text-slate-300 leading-relaxed font-medium bg-black/20 p-5 rounded-2xl border border-white/5">
-                {project.scope}
+                {project.scope || project.internalSummary || "No scope or summary details provided for this project."}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
@@ -166,22 +192,35 @@ export default function ProjectReviewPage() {
                   <Bot className="text-blue-400" />
                   Consultant-Facing Summary
                 </h2>
-                {!project.consultantFacingSummaryDraft && !isGeneratingSummary && (
-                  <button
-                    onClick={handleGenerateSummary}
-                    className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-3 py-1.5 rounded-lg font-bold border border-blue-500/30 transition-colors"
-                  >
-                    Generate AI Draft
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {(editedConsultantSummary || project.consultantFacingSummaryDraft || project.consultantSummary) && (
+                    <button 
+                      onClick={() => handleDownloadSummary(editedConsultantSummary || project.consultantFacingSummaryDraft || project.consultantSummary || '', `${project.id}_Consultant_Facing_Summary.md`)}
+                      className="inline-flex items-center gap-1.5 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-white px-3 py-1.5 rounded-lg font-bold border border-blue-500/30 transition-colors"
+                      title="Download Consultant-Facing Summary File"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download File
+                    </button>
+                  )}
+                  {!(project.consultantFacingSummaryDraft || project.consultantSummary) && !isGeneratingSummary && (
+                    <button 
+                      onClick={handleGenerateSummary}
+                      className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-3 py-1.5 rounded-lg font-bold border border-blue-500/30 transition-colors"
+                    >
+                      Generate AI Draft
+                    </button>
+                  )}
+                </div>
               </div>
+
 
               {isGeneratingSummary ? (
                 <div className="p-12 flex flex-col items-center justify-center space-y-4">
                   <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                   <p className="text-sm font-mono text-blue-400 animate-pulse">AI is sanitizing client details...</p>
                 </div>
-              ) : project.consultantFacingSummaryDraft ? (
+              ) : (project.consultantFacingSummaryDraft || project.consultantSummary) ? (
                 <div className="space-y-4">
                   <p className="text-xs text-slate-400">
                     Review and edit the consultant-facing summary. Ensure no restricted client information remains.
@@ -201,6 +240,7 @@ export default function ProjectReviewPage() {
             </div>
           )}
         </div>
+
 
         {/* Sidebar Metadata */}
         <div className="space-y-6">

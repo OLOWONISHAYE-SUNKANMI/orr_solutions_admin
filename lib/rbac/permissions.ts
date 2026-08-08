@@ -21,7 +21,7 @@ export type Permission =
   | 'can_approve_sensitive_actions'
   | 'can_configure_system';
 
-export type RoleName = 'super_admin' | 'admin' | 'operator' | 'content_editor';
+export type RoleName = 'super_admin' | 'admin' | 'project_manager' | 'consultant';
 
 /**
  * Role-based permission matrix
@@ -57,14 +57,17 @@ export const ROLE_PERMISSIONS: Record<RoleName, Permission[]> = {
     'can_create_content',
     'can_publish_content',
   ],
-  operator: [
+  project_manager: [
     'can_view_all_clients',
+    'can_edit_clients',
     'can_manage_tickets',
     'can_manage_meetings',
+    'can_view_analytics',
   ],
-  content_editor: [
+  consultant: [
+    'can_view_all_clients',
+    'can_manage_meetings',
     'can_create_content',
-    'can_publish_content',
   ],
 };
 

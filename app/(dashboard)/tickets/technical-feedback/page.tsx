@@ -1,5 +1,44 @@
 "use client";
 
+                                    <p><strong className="text-white">Browser:</strong> {fb.browser_info}</p>
+                                    <p><strong className="text-white">OS:</strong> {fb.os_info}</p>
+                                    <p className="col-span-2 truncate"><strong className="text-white">Path:</strong> {fb.url_path}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col gap-3 min-w-[200px]">
+                                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Update Status</h4>
+                                {fb.status !== "open" && (
+                                    <button onClick={() => updateStatus(fb.id, "open")} className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                        <AlertCircle size={14} /> Mark Open
+                                    </button>
+                                )}
+                                {fb.status !== "in_progress" && (
+                                    <button onClick={() => updateStatus(fb.id, "in_progress")} className="px-4 py-2 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                        <Clock size={14} /> Mark In Progress
+                                    </button>
+                                )}
+                                {fb.status !== "resolved" && (
+                                    <button onClick={() => updateStatus(fb.id, "resolved")} className="px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                                        <CheckCircle size={14} /> Mark Resolved
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    
+                    {feedbacks.length === 0 && (
+                        <div className="text-center p-12 bg-white/5 border border-white/10 rounded-2xl">
+                            <CheckCircle size={48} className="mx-auto text-slate-600 mb-4" />
+                            <h3 className="text-lg font-bold text-white">No technical feedback found</h3>
+                            <p className="text-sm text-slate-400 mt-2">All caught up!</p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+=======
 import { useState, useEffect } from "react";
 import { 
   Search, 

@@ -76,6 +76,9 @@ export interface Document {
   link?: string;
   documentSource?: string;
   google_drive_id?: string;
+  is_ai_generated?: boolean;
+  is_draft?: boolean;
+  is_ai_reviewed?: boolean;
 }
 
 // Stale-data threshold: 30 seconds
@@ -114,6 +117,9 @@ function mapDocument(d: any): Document {
     type: normalizedType as FileType,
     documentSource: docSource,
     google_drive_id: d.google_drive_id || '',
+    is_ai_generated: d.is_ai_generated,
+    is_draft: d.is_draft,
+    is_ai_reviewed: d.is_ai_reviewed,
     scanStatus: d.scan_status || d.scanStatus || 'passed',
     accessRule: d.access_rule || d.accessRule || { type: 'immediate', description: '' },
     createdAt: d.created_at || d.createdAt,
@@ -160,6 +166,7 @@ interface VaultStore {
   uploadNewVersion: (id: string, file: File, uploadedBy: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   toggleVisibility: (id: string) => Promise<void>;
+  markAsReviewed: (id: string) => Promise<void>;
   batchUpdate: (ids: string[], updates: Partial<Document>) => Promise<void>;
 
   // Folder Actions
@@ -380,6 +387,19 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
       }));
     } catch (error) {
       set({ error: 'Failed to toggle visibility' });
+    }
+  },
+
+  markAsReviewed: async (id) => {
+    try {
+      await vaultApi.updateDocument(id, { is_ai_reviewed: true });
+      set(state => ({
+        documents: state.documents.map(d =>
+          d.id.toString() === id.toString() ? { ...d, is_ai_reviewed: true } : d
+        ),
+      }));
+    } catch (error) {
+      set({ error: 'Failed to mark as reviewed' });
     }
   },
 
