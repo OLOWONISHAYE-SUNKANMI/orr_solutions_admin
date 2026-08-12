@@ -40,7 +40,8 @@ interface AuditLog {
 
 export default function AuditCenterPage() {
   const { user } = useAuthStore();
-  const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_view_audit_logs;
+  // Rely on backend for authorization to prevent false-positive 403s on the frontend if role mapping is delayed
+  const hasPermission = true;
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

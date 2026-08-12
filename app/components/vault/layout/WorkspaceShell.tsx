@@ -102,7 +102,7 @@ export default function WorkspaceShell({
                                     if (activeDocument.type === 'pdf') return link;
                                     if (isGoogleNative) return link;
                                     if (['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'].includes(activeDocument.type)) {
-                                       return `https://docs.google.com/viewer?url=${encodeURIComponent(link)}&embedded=true`;
+                                       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(link)}`;
                                     }
                                     return link;
                                  })()}

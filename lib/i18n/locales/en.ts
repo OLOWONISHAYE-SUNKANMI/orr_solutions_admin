@@ -1283,7 +1283,8 @@ export const en = {
     adjustment_total: "Adjustment Total",
     requires_auth: "Requires Level 2 Auth",
     from: "From",
-    to: "To"
+    to: "To",
+    pending_queue: "Active Adjustment Queue"
   },
   invoicing: {
     orchestration: "Billing Orchestration",
@@ -1297,6 +1298,8 @@ export const en = {
     title: "Payment",
     disputes: "Disputes",
     subtitle: "Monitor and respond to external financial disputes, chargebacks, and high-risk transaction alerts.",
+    trends_title: "Dispute Trends",
+    activity_feed: "Recent Activity",
     all: "All",
     needs_response: "Needs Response",
     under_review: "Under Review",

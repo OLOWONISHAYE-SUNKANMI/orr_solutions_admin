@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, CheckCircle, Clock, AlertCircle, FileText, Download } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+import { AuthService } from '@/lib/auth';
 
 export default function ConsultantInvoiceManager() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -15,9 +16,10 @@ export default function ConsultantInvoiceManager() {
   const fetchInvoices = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/consultants/invoices/`);
+      const auth = AuthService.getInstance();
+      const res = await auth.makeAuthenticatedRequest(`${API_URL}/api/v1/consultants/invoices/`);
       const data = await res.json();
-      setInvoices(data.data || data.results || (Array.isArray(data) ? data : []));
+      setInvoices(Array.isArray(data.data) ? data.data : Array.isArray(data.results) ? data.results : Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch consultant invoices:', err);
     } finally {
@@ -31,7 +33,8 @@ export default function ConsultantInvoiceManager() {
 
   const handleApprove = async (invoiceId: string) => {
     try {
-      await fetch(`${API_URL}/api/v1/consultants/invoices/${invoiceId}/`, {
+      const auth = AuthService.getInstance();
+      await auth.makeAuthenticatedRequest(`${API_URL}/api/v1/consultants/invoices/${invoiceId}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

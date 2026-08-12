@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { CMSService } from '../../../../lib/cms-api';
-import { Save, Loader } from 'lucide-react';
+import { Save } from 'lucide-react';
+import Skeleton from "@/app/components/ui/Skeleton";
 import RichTextEditor from '../../../../components/RichTextEditor';
 import SuccessModal from '../../../components/ui/SuccessModal';
 import ErrorModal from '../../../components/ui/ErrorModal';
@@ -56,33 +57,10 @@ export default function Contact() {
         const cleanedData = cleanContentObject(response);
         setData(cleanedData);
       } catch (error) {
+        // No dummy fallback: on error leave the form empty (every field reads
+        // `data?.field || ''`) rather than seeding placeholder contact details
+        // that an admin could unknowingly save back to the live CMS.
         console.error('❌ Error fetching Contact data:', error);
-        setData({
-          id: 1,
-          hero_title: "Contact Us",
-          contact_info_title: "Contact Information",
-          contact_info_subtitle: "Say something to start a live chat!",
-          phone_number: "+012 3456 789",
-          email_address: "demo@gmail.com",
-          address: "132 Dartmouth Street Boston, Massachusetts 02156 United States",
-          first_name_label: "First Name",
-          last_name_label: "Last Name",
-          email_label: "Email",
-          phone_label: "Phone Number",
-          subject_label: "Select Subject?",
-          message_label: "Message",
-          first_name_placeholder: "John",
-          last_name_placeholder: "Doe",
-          email_placeholder: "your@email.com",
-          phone_placeholder: "+1 012 3456 789",
-          message_placeholder: "Write your message...",
-          subject_option_1: "General Inquiry",
-          subject_option_2: "General Inquiry",
-          subject_option_3: "General Inquiry",
-          subject_option_4: "General Inquiry",
-          submit_button_text: "Send Message",
-          is_active: true
-        });
       } finally {
         setLoading(false);
       }
@@ -168,8 +146,15 @@ export default function Contact() {
 
   if (loading) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center">
-        <Loader className="animate-spin" size={48} />
+      <div className="min-h-screen text-white p-4 md:p-8 flex flex-col gap-6">
+        <Skeleton className="h-8 w-64" />
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="rounded-xl border border-secondary/40 bg-white/5 p-6 flex flex-col gap-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ))}
       </div>
     );
   }

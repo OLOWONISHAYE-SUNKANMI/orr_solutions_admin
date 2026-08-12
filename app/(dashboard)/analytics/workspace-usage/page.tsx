@@ -110,9 +110,12 @@ export default function WorkspaceUsagePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken') || localStorage.getItem('auth-token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : undefined;
+
         const [workspaceRes, adoptionRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/workspace-usage/analytics/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/workspace-usage/feature-adoption/`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/workspace-usage/analytics/`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/workspace-usage/feature-adoption/`, { headers })
         ]);
         
         if (workspaceRes.ok && adoptionRes.ok) {

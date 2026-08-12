@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Settings, Clock, MessageSquare, Save, Loader } from "lucide-react";
+import Skeleton from "@/app/components/ui/Skeleton";
 
 interface AutoReplyTemplate {
   name: string;
@@ -74,8 +75,11 @@ export default function AutoReplySettingsPage() {
         <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
         <div className="relative z-10 p-4 md:p-8">
           <div className="bg-card backdrop-blur-sm rounded-2xl p-4 md:p-8 border border-white/10">
-            <div className="flex items-center justify-center py-12">
-              <Loader className="animate-spin" size={32} />
+            <div className="flex flex-col gap-4">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-10 w-40" />
             </div>
           </div>
         </div>

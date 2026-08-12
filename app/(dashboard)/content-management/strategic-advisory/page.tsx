@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Save, Loader, AlertCircle, Eye, Edit } from "lucide-react";
+import Skeleton from "@/app/components/ui/Skeleton";
 import { cmsAPI } from "@/app/services";
 import SuccessModal from "../../../components/ui/SuccessModal";
 import ErrorModal from "../../../components/ui/ErrorModal";
@@ -93,8 +94,15 @@ export default function StrategicAdvisoryAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center">
-        <Loader className="animate-spin" size={48} />
+      <div className="min-h-screen text-white p-4 md:p-8 flex flex-col gap-6">
+        <Skeleton className="h-8 w-64" />
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="rounded-xl border border-secondary/40 bg-white/5 p-6 flex flex-col gap-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ))}
       </div>
     );
   }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowDown, ArrowUp, Loader, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, Download } from "lucide-react";
+import { DashboardSkeleton } from "@/app/components/ui/SkeletonPresets";
 import React from "react";
 import {
   BarChart,
@@ -61,11 +62,7 @@ export default function AnalyticsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen text-white flex items-center justify-center">
-        <Loader className="animate-spin" size={48} />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
   return (
     <div className="min-h-screen text-white relative overflow-hidden star">

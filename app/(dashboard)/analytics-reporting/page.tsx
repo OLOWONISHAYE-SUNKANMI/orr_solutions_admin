@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Download, Search, Loader } from "lucide-react";
+import { TrendingUp, TrendingDown, Download, Search } from "lucide-react";
+import { DashboardSkeleton } from "@/app/components/ui/SkeletonPresets";
 import { analyticsAPI } from "@/app/services";
 import { useLanguageStore } from "@/store/languageStore";
 
@@ -77,11 +78,7 @@ export default function AnalyticsReportingPage() {
   ];
 
   if (loading) {
-    return (
-      <div className="min-h-screen text-white relative overflow-hidden star flex items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!data) return null;

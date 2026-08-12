@@ -2,14 +2,15 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Clock, AlertTriangle, TrendingUp, User, ArrowRight, ShieldCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertTriangle, TrendingUp, User, ArrowRight, ShieldCheck, BarChart3, History } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell, PieChart, Pie } from 'recharts';
 
 import { useLanguageStore } from '@/store/languageStore';
 import { useProRataStore } from '@/store/proRataStore';
 
 export default function ProRataApprovalsPage() {
   const { t } = useLanguageStore();
-  const { requests, isLoading, fetchRequests, processAction } = useProRataStore();
+  const { requests, statistics, recentDecisions, workflowMetrics, isLoading, fetchRequests, processAction } = useProRataStore();
 
   React.useEffect(() => {
     fetchRequests();
@@ -42,7 +43,116 @@ export default function ProRataApprovalsPage() {
           </div>
         </div>
 
+        {/* Stats Bar */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+           {[
+             { label: 'Total Requests', value: statistics.totalRequestsThisMonth, color: 'text-white' },
+             { label: 'Pending Queue', value: statistics.pendingRequests, color: 'text-amber-500' },
+             { label: 'Pending Prorata Amount', value: `$${statistics.totalProrataAmountPending.toLocaleString()}`, color: 'text-rose-500' },
+             { label: 'Approved Prorata Amount', value: `$${statistics.totalProrataAmountApproved.toLocaleString()}`, color: 'text-emerald-500' }
+           ].map((stat, i) => (
+             <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                <p className={`text-2xl font-black ${stat.color}`}>
+                  {isLoading ? '...' : stat.value}
+                </p>
+             </div>
+           ))}
+        </div>
+
+        {/* Charts & Metrics Section */}
+        {workflowMetrics && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+             {/* Monthly Trend Chart */}
+             <div className="lg:col-span-2 bg-card/30 backdrop-blur-md rounded-3xl border border-white/10 p-6 flex flex-col h-[350px]">
+                <div className="mb-4">
+                   <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                      <TrendingUp size={16} className="text-primary" />
+                      Monthly Request Volume
+                   </h2>
+                   <p className="text-xs text-slate-400">Pro-rata billing adjustment request trends</p>
+                </div>
+                <div className="flex-1 min-h-0">
+                   {workflowMetrics.monthly_trend && workflowMetrics.monthly_trend.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                         <AreaChart data={workflowMetrics.monthly_trend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                               <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor="#a3e635" stopOpacity={0}/>
+                               </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                            <XAxis dataKey="month" stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                              itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                            />
+                            <Area type="monotone" dataKey="requests" name="Requests Filed" stroke="#a3e635" strokeWidth={2} fillOpacity={1} fill="url(#colorRequests)" />
+                         </AreaChart>
+                      </ResponsiveContainer>
+                   ) : (
+                      <div className="flex items-center justify-center h-full text-slate-500 text-xs font-bold uppercase tracking-widest">
+                         No Trend Data Available
+                      </div>
+                   )}
+                </div>
+             </div>
+
+             {/* Requests by Type breakdown */}
+             <div className="bg-card/30 backdrop-blur-md rounded-3xl border border-white/10 p-6 flex flex-col h-[350px]">
+                <div className="mb-4">
+                   <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                      <BarChart3 size={16} className="text-primary" />
+                      Adjustment Category Distribution
+                   </h2>
+                   <p className="text-xs text-slate-400">Total requests parsed by action category</p>
+                </div>
+                <div className="flex-1 min-h-0">
+                   {workflowMetrics.requests_by_type ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                         <BarChart 
+                           data={[
+                             { name: 'Upgrade', count: workflowMetrics.requests_by_type.plan_upgrade || 0, color: '#38bdf8' },
+                             { name: 'Downgrade', count: workflowMetrics.requests_by_type.plan_downgrade || 0, color: '#fb7185' },
+                             { name: 'Adjustment', count: workflowMetrics.requests_by_type.billing_adjustment || 0, color: '#fbbf24' }
+                           ]} 
+                           layout="vertical"
+                           margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                         >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
+                            <XAxis type="number" stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} />
+                            <YAxis dataKey="name" type="category" stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                              itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                            />
+                            <Bar dataKey="count" name="Total Requests" radius={[0, 8, 8, 0]}>
+                               {[
+                                 { color: '#38bdf8' },
+                                 { color: '#fb7185' },
+                                 { color: '#fbbf24' }
+                               ].map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={entry.color} />
+                               ))}
+                            </Bar>
+                         </BarChart>
+                      </ResponsiveContainer>
+                   ) : (
+                      <div className="flex items-center justify-center h-full text-slate-500 text-xs font-bold uppercase tracking-widest">
+                         No Breakdown Data Available
+                      </div>
+                   )}
+                </div>
+             </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-6">
+           <h2 className="text-lg font-black text-white uppercase tracking-widest italic -mb-2">
+              {t('pro_rata.pending_queue') || 'Active Adjustment Queue'}
+           </h2>
           {isLoading ? (
             <div className="py-20 flex justify-center">
                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -125,7 +235,7 @@ export default function ProRataApprovalsPage() {
               </AnimatePresence>
 
               {requests.length === 0 && (
-                <div className="bg-card/20 backdrop-blur-md border border-dashed border-white/10 rounded-3xl p-20 flex flex-col items-center gap-4">
+                <div className="bg-card/20 backdrop-blur-md border border-dashed border-white/10 rounded-3xl p-16 flex flex-col items-center gap-4">
                    <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
                       <CheckCircle size={32} />
                    </div>
@@ -137,6 +247,69 @@ export default function ProRataApprovalsPage() {
               )}
             </>
           )}
+        </div>
+
+        {/* Recent Decisions Log */}
+        <div className="bg-card/30 backdrop-blur-md rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+          <div className="p-8 border-b border-white/5 flex items-center gap-3">
+             <History className="text-primary" size={20} />
+             <div>
+                <h3 className="text-lg font-black text-white uppercase tracking-widest">Recent Approval Decisions</h3>
+                <p className="text-xs text-slate-400">Audit trail of authorized or rejected billing modifications</p>
+             </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+             <table className="w-full text-left">
+                <thead>
+                   <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5">
+                      <th className="py-6 px-8">Client</th>
+                      <th className="py-6 px-8">Transition</th>
+                      <th className="py-6 px-8 text-right">Adjustment Amount</th>
+                      <th className="py-6 px-8">Status</th>
+                      <th className="py-6 px-8 text-right">Decided Date</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-sm">
+                   {recentDecisions.length > 0 ? recentDecisions.map((dec, idx) => (
+                      <tr key={dec.request_id || idx} className="hover:bg-white/[0.02] transition-colors">
+                         <td className="py-6 px-8">
+                            <div>
+                               <p className="font-bold text-white uppercase tracking-tight">{dec.client_name}</p>
+                               <p className="text-xs text-slate-500 font-mono">{dec.client_email}</p>
+                            </div>
+                         </td>
+                         <td className="py-6 px-8">
+                            <div className="flex items-center gap-2">
+                               <span className="text-xs px-2 py-0.5 bg-white/5 border border-white/10 rounded text-slate-400 font-bold uppercase">{dec.current_plan}</span>
+                               <ArrowRight className="text-slate-500" size={12} />
+                               <span className="text-xs px-2 py-0.5 bg-primary/10 border border-primary/20 rounded text-primary font-bold uppercase">{dec.new_plan}</span>
+                            </div>
+                         </td>
+                         <td className="py-6 px-8 text-right font-black text-white">
+                            ${Math.abs(dec.prorata_amount).toLocaleString()}
+                         </td>
+                         <td className="py-6 px-8">
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${
+                              dec.status === 'approved' ? 'text-emerald-500' : 'text-rose-500'
+                            }`}>
+                               {dec.status}
+                            </span>
+                         </td>
+                         <td className="py-6 px-8 text-right text-slate-500 text-xs font-mono">
+                            {new Date(dec.decided_at).toLocaleDateString()}
+                         </td>
+                      </tr>
+                   )) : (
+                      <tr>
+                         <td colSpan={5} className="py-16 text-center text-slate-500 uppercase tracking-widest font-black text-xs">
+                            No Billing Adjustment Logs Available
+                         </td>
+                      </tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
         </div>
       </div>
     </div>

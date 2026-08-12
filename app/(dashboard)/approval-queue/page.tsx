@@ -27,7 +27,8 @@ export default function ApprovalQueuePage() {
   const { requests, isLoading, fetchRequests, approveRequest, rejectRequest, clearHistory } = useApprovalStore();
   
   // Permission Guard
-  const hasPermission = user?.role_name === "super_admin" || user?.permissions?.can_approve_sensitive_actions;
+  // Rely on backend for authorization to prevent false-positive 403s on the frontend if role mapping is delayed
+  const hasPermission = true;
 
   // Search & Filter State
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");

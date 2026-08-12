@@ -15,15 +15,53 @@ export interface ProRataRequest {
   status: 'pending' | 'approved' | 'rejected';
 }
 
+export interface RecentDecision {
+  request_id: string;
+  client_name: string;
+  client_email: string;
+  request_type: string;
+  current_plan: string;
+  new_plan: string;
+  prorata_amount: number;
+  reason: string;
+  status: 'approved' | 'rejected';
+  decided_by: string;
+  decided_at: string;
+}
+
+export interface WorkflowMetrics {
+  average_approval_time: number;
+  requests_by_priority: {
+    high: number;
+    normal: number;
+    low: number;
+  };
+  requests_by_type: {
+    plan_upgrade: number;
+    plan_downgrade: number;
+    billing_adjustment: number;
+  };
+  monthly_trend: Array<{
+    month: string;
+    requests: number;
+  }>;
+}
+
 interface ProRataStats {
-  pendingCount: number;
-  totalAdjustmentValue: number;
-  averageProcessingTime: string;
+  totalRequestsThisMonth: number;
+  pendingRequests: number;
+  approvedRequests: number;
+  rejectedRequests: number;
+  totalProrataAmountPending: number;
+  totalProrataAmountApproved: number;
+  averageProcessingTime: number;
   approvalRate: number;
 }
 
 interface ProRataState {
   requests: ProRataRequest[];
+  recentDecisions: RecentDecision[];
+  workflowMetrics: WorkflowMetrics | null;
   statistics: ProRataStats;
   isLoading: boolean;
   
@@ -33,12 +71,18 @@ interface ProRataState {
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
 
-export const useProRataStore = create<ProRataState>((set) => ({
+export const useProRataStore = create<ProRataState>((set, get) => ({
   requests: [],
+  recentDecisions: [],
+  workflowMetrics: null,
   statistics: {
-    pendingCount: 0,
-    totalAdjustmentValue: 0,
-    averageProcessingTime: '0 days',
+    totalRequestsThisMonth: 0,
+    pendingRequests: 0,
+    approvedRequests: 0,
+    rejectedRequests: 0,
+    totalProrataAmountPending: 0,
+    totalProrataAmountApproved: 0,
+    averageProcessingTime: 0,
     approvalRate: 0
   },
   isLoading: false,
@@ -46,8 +90,19 @@ export const useProRataStore = create<ProRataState>((set) => ({
   fetchRequests: async () => {
     set({ isLoading: true });
     try {
-      const auth = AuthService.getInstance();
-      const response = await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/prorata-approvals/requests/`);
+      const token = typeof window !== 'undefined' ? (
+        localStorage.getItem('access_token') || 
+        localStorage.getItem('accessToken') || 
+        localStorage.getItem('auth-token')
+      ) : null;
+
+      const response = await fetch(`${baseUrl}/admin-portal/v1/prorata-approvals/requests/`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       const result = await response.json();
       const data = result.data || result || {};
       
@@ -67,13 +122,26 @@ export const useProRataStore = create<ProRataState>((set) => ({
 
       const statsData = data.statistics || {};
       const statistics: ProRataStats = {
-        pendingCount: (data.pending_requests || []).length,
-        totalAdjustmentValue: statsData.total_adjustment_value || 0,
-        averageProcessingTime: statsData.average_processing_time || '0 days',
+        totalRequestsThisMonth: statsData.total_requests_this_month || 0,
+        pendingRequests: statsData.pending_requests || 0,
+        approvedRequests: statsData.approved_requests || 0,
+        rejectedRequests: statsData.rejected_requests || 0,
+        totalProrataAmountPending: statsData.total_prorata_amount_pending || 0,
+        totalProrataAmountApproved: statsData.total_prorata_amount_approved || 0,
+        averageProcessingTime: statsData.average_processing_time || 0,
         approvalRate: statsData.approval_rate || 0
       };
 
-      set({ requests: mappedRequests, statistics, isLoading: false });
+      const recentDecisions = data.recent_decisions || [];
+      const workflowMetrics = data.workflow_metrics || null;
+
+      set({ 
+        requests: mappedRequests, 
+        recentDecisions, 
+        workflowMetrics, 
+        statistics, 
+        isLoading: false 
+      });
     } catch (error) {
       console.error('Failed to fetch pro-rata requests:', error);
       set({ isLoading: false });
@@ -82,22 +150,27 @@ export const useProRataStore = create<ProRataState>((set) => ({
 
   processAction: async (id, decision) => {
     try {
-      const auth = AuthService.getInstance();
-      await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/prorata-approvals/decision/`, {
+      const token = typeof window !== 'undefined' ? (
+        localStorage.getItem('access_token') || 
+        localStorage.getItem('accessToken') || 
+        localStorage.getItem('auth-token')
+      ) : null;
+
+      await fetch(`${baseUrl}/admin-portal/v1/prorata-approvals/decision/`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           request_id: id,
           decision: decision
         })
       });
       
-      set(state => ({
-        requests: state.requests.filter(r => r.id !== id),
-        statistics: {
-          ...state.statistics,
-          pendingCount: state.statistics.pendingCount - 1
-        }
-      }));
+      // Refresh statistics & requests list after change
+      await get().fetchRequests();
     } catch (error) {
       console.error('Failed to process decision:', error);
     }
