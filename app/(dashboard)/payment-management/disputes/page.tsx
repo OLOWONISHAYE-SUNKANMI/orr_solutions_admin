@@ -10,6 +10,7 @@ import { useLanguageStore } from '@/store/languageStore';
 import { useDisputeStore } from '@/store/disputeStore';
 import { useClientStore } from '@/store/clientStore';
 import { useInvoiceStore } from '@/store/invoiceStore';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
 /* ─── Reusable Modal Shell ──────────────────────────────────────────── */
 function Modal({ isOpen, onClose, title, children }: {
@@ -84,8 +85,8 @@ function CreateDisputeModal() {
     setSubmitting(true);
     setError('');
     const result = await createDispute({
-      client_id: Number(form.client_id),
-      invoice_id: Number(form.invoice_id),
+      client_id: form.client_id,
+      invoice_id: form.invoice_id,
       dispute_amount: Number(form.dispute_amount),
       dispute_reason: form.dispute_reason,
       dispute_type: form.dispute_type,
@@ -285,7 +286,7 @@ export default function PaymentDisputesPage() {
   const {
     disputes, statistics, isLoading, fetchDisputes,
     searchQuery, setSearchQuery, statusFilter, setStatusFilter,
-    filteredDisputes, setCreateModalOpen
+    filteredDisputes, setCreateModalOpen, recentActivity, disputeTrends
   } = useDisputeStore();
 
   const [actionDispute, setActionDispute] = useState<any | null>(null);
@@ -349,6 +350,75 @@ export default function PaymentDisputesPage() {
                 </p>
              </div>
            ))}
+        </div>
+
+        {/* Charts & Feed Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           {/* Trends Chart */}
+           <div className="lg:col-span-2 bg-card/30 backdrop-blur-md rounded-3xl border border-white/10 p-6 flex flex-col h-[400px]">
+              <div className="flex items-center justify-between mb-6">
+                 <div>
+                    <h2 className="text-sm font-black text-white uppercase tracking-widest">{t('disputes.trends_title') || 'Dispute Trends'}</h2>
+                    <p className="text-xs text-slate-400">Historical performance over the last 6 months</p>
+                 </div>
+              </div>
+              <div className="flex-1 min-h-0">
+                 {disputeTrends && disputeTrends.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={[...disputeTrends].reverse()} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                             <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                             </linearGradient>
+                             <linearGradient id="colorWin" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                             </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                          <XAxis dataKey="month" stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#ffffff50" fontSize={10} tickLine={false} axisLine={false} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                            itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '10px' }} />
+                          <Area type="monotone" dataKey="total_disputes" name="Total Disputes" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorTotal)" />
+                          <Area type="monotone" dataKey="win_rate" name="Win Rate (%)" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorWin)" />
+                       </AreaChart>
+                    </ResponsiveContainer>
+                 ) : (
+                    <div className="flex items-center justify-center h-full text-slate-500 text-xs font-bold uppercase tracking-widest">
+                       {isLoading ? 'Loading Trends...' : 'No Trend Data Available'}
+                    </div>
+                 )}
+              </div>
+           </div>
+
+           {/* Recent Activity Feed */}
+           <div className="bg-card/30 backdrop-blur-md rounded-3xl border border-white/10 p-6 flex flex-col h-[400px]">
+              <div className="mb-6 flex items-center gap-2 text-rose-500">
+                 <History size={16} />
+                 <h2 className="text-sm font-black text-white uppercase tracking-widest">{t('disputes.activity_feed') || 'Recent Activity'}</h2>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                 {recentActivity && recentActivity.length > 0 ? recentActivity.map((activity, idx) => (
+                    <div key={activity.activity_id || idx} className="relative pl-6 pb-4 border-l border-white/10 last:border-0 last:pb-0">
+                       <div className="absolute left-[-5px] top-0 w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                       <p className="text-[10px] text-slate-500 font-bold mb-1">
+                          {new Date(activity.timestamp).toLocaleString()} • {activity.performed_by}
+                       </p>
+                       <p className="text-sm text-white font-medium">{activity.description}</p>
+                       <p className="text-[10px] text-rose-400 font-mono mt-1 uppercase">Ref: {activity.dispute_id}</p>
+                    </div>
+                 )) : (
+                    <div className="flex items-center justify-center h-full text-slate-500 text-xs font-bold uppercase tracking-widest">
+                       {isLoading ? 'Loading Activity...' : 'No Recent Activity'}
+                    </div>
+                 )}
+              </div>
+           </div>
         </div>
 
         {/* Table Card */}

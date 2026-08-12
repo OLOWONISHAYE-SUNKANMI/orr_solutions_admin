@@ -26,6 +26,7 @@ import {
   AlertCircle,
   Sparkles
 } from "lucide-react";
+import { DashboardSkeleton } from "@/app/components/ui/SkeletonPresets";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PermissionGuard from "@/app/components/admin/PermissionGuard";
@@ -171,11 +172,7 @@ function page() {
   }, [wallets]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen text-white flex items-center justify-center">
-        <Loader className="animate-spin" size={48} />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

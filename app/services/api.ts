@@ -1762,6 +1762,42 @@ export const consultantAPI = {
 };
 
 // ============================================================================
+// TECHNICAL FEEDBACK ENDPOINTS
+// ============================================================================
+
+export const feedbackAPI = {
+  listFeedback: () => {
+    console.log('[API] Fetching technical feedback');
+    return apiCall<any>("/admin-portal/v1/feedback/").catch(error => {
+      console.error('[API ERROR] Failed to fetch technical feedback:', error);
+      throw error;
+    });
+  },
+
+  createFeedback: (data: Record<string, any>) => {
+    console.log('[API] Creating technical feedback:', data);
+    return apiCall<any>("/admin-portal/v1/feedback/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }).catch(error => {
+      console.error('[API ERROR] Failed to create technical feedback:', error);
+      throw error;
+    });
+  },
+
+  updateStatus: (id: number, status: string) => {
+    console.log(`[API] Updating technical feedback ${id} status to '${status}'`);
+    return apiCall<any>(`/admin-portal/v1/feedback/${id}/`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }).catch(error => {
+      console.error(`[API ERROR] Failed to update technical feedback ${id}:`, error);
+      throw error;
+    });
+  },
+};
+
+// ============================================================================
 // EXPORT ALL APIS
 // ============================================================================
 
@@ -1785,4 +1821,5 @@ export default {
   roleManagement: roleManagementAPI,
   consultantApproval: consultantApprovalAPI,
   consultant: consultantAPI,
+  feedback: feedbackAPI,
 };

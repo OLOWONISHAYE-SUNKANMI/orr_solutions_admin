@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAdminClientRequestStore } from "@/store/adminClientRequestStore";
 import { ArrowLeft, Clock, ShieldCheck, CheckCircle2, AlertCircle, FileText, Briefcase, Zap, Building2, MapPin } from "lucide-react";
+import Skeleton from "@/app/components/ui/Skeleton";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useNotificationContext } from "@/lib/contexts/NotificationContext";
@@ -30,7 +31,24 @@ export default function ClientRequestDetailPage() {
   }, [id, fetchRequestDetail, fetchProjectManagers]);
 
   if (isLoading && !currentRequest) {
-    return <div className="p-8 text-white text-center">Loading request details...</div>;
+    return (
+      <div className="p-8 flex flex-col gap-6">
+        <Skeleton className="h-8 w-72" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-xl border border-secondary/40 bg-white/5 p-6 flex flex-col gap-4">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+          <div className="rounded-xl border border-secondary/40 bg-white/5 p-6 flex flex-col gap-4">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {

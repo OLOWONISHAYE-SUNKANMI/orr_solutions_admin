@@ -72,16 +72,8 @@ export const useWalletStore = create<WalletState>()(
     (set, get) => ({
       wallets: [],
       transactions: [],
-      systemEvents: [
-        {
-          id: 'ev1',
-          type: 'vault_unlock',
-          description: 'Document Vault unlocked for Acme Corp post-payment',
-          timestamp: '2026-04-20T10:05:00Z',
-          userId: 'c1',
-          userName: 'Acme Corp'
-        }
-      ],
+      // Populated from the wallet-logs audit-trail endpoint by fetchData().
+      systemEvents: [],
       isLoading: false,
       balanceModalOpen: false,
       selectedUserId: null,

@@ -25,6 +25,8 @@ export interface InterestedConsultant {
   responseStatus?: OpportunityResponseStatus;
   responseTimestamp?: string;
   lastUpdated?: string;
+  assignmentId?: number;
+  interestStatement?: string;
 }
 
 export interface AdminProjectBrief {
@@ -47,9 +49,10 @@ export interface AdminProjectBrief {
   clarificationNotes?: string;
   pmInputRequestNotes?: string;
   interestedConsultants?: InterestedConsultant[];
-  selectedConsultantId?: string;
+  selectedConsultantIds?: string[];
   // Assignment tracking
-  assignmentId?: number;
+  assignmentId?: number; // legacy, keeping just in case
+  assignmentIds?: number[];
   assignmentStatus?: string; // draft | invitation_sent | accepted | access_activated
   accessLevel?: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access';
   isAccessActivated?: boolean;
@@ -71,55 +74,16 @@ interface AdminProjectState {
   generateConsultantSummary: (id: string) => Promise<void>;
   approveConsultantSummary: (id: string, editedSummary: string) => Promise<void>;
   requestPmInputForSourcing: (id: string, notes: string) => void;
-  sourceProjectInternally: (id: string) => void;
+  sourceProjectInternally: (id: string) => Promise<void>;
   sourceProjectExternally: (id: string, email: string) => void;
   selectConsultant: (id: string, consultantId: string) => void;
   updateShortlistStatus: (projectId: string, consultantId: string, status: ShortlistStatus) => void;
   updateSelectionNotes: (projectId: string, consultantId: string, notes: string) => void;
   sendConsultantInvitation: (id: string, invitationMessage?: string) => Promise<void>;
   activateProjectAccess: (id: string, accessLevel: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access') => Promise<void>;
+  activateConsultantAccess: (id: string, consultantId: string, accessLevel: 'Assignment Brief Only' | 'Selected Documents Only' | 'Full Project Workspace' | 'Restricted Custom Access') => Promise<void>;
   completeProject: (id: string) => Promise<void>;
 }
-
-// Mock initial data bridging from the PM dashboard concepts
-const MOCK_PROJECTS: AdminProjectBrief[] = [
-  {
-    id: 'ORR-PROJ-000001',
-    dbId: 1,
-    pmId: 'PM-Jane-Doe',
-    clientName: 'Acme Corp',
-    projectTitle: 'Q3 Market Expansion Strategy',
-    primaryCategory: 'Strategy',
-    targetDeadline: '2026-08-15',
-    urgency: 'High',
-    status: 'Pending Admin Review',
-    createdAt: new Date().toISOString(),
-    scope: 'Analyze European market entry feasibility and regulatory requirements for Acme Corp.',
-    confidentiality: 'Highly Confidential',
-    consultantsNeeded: 2,
-    createdBy: 'System',
-    sentTo: [],
-    summaryVersionSent: 'none'
-  },
-  {
-    id: 'ORR-PROJ-000002',
-    dbId: 2,
-    pmId: 'PM-John-Smith',
-    clientName: 'TechFlow',
-    projectTitle: 'IT Infrastructure Audit',
-    primaryCategory: 'IT & Tech',
-    targetDeadline: '2026-07-30',
-    urgency: 'Normal',
-    status: 'Pending Admin Review',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    scope: 'Comprehensive security audit of cloud infrastructure and internal networks.',
-    confidentiality: 'Standard',
-    consultantsNeeded: 1,
-    createdBy: 'System',
-    sentTo: [],
-    summaryVersionSent: 'none'
-  }
-];
 
 export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
   projects: [],
@@ -236,29 +200,54 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
       if (!response.ok) return;
 
       const result = await response.json();
-      const assignments: any[] = Array.isArray(result.data) ? result.data
+      let assignments: any[] = Array.isArray(result.data) ? result.data
         : Array.isArray(result) ? result : [];
 
       if (assignments.length === 0) return;
 
+      // Limit assignments to project.consultantsNeeded to fix dirty test data
+      if (project.consultantsNeeded && assignments.length > project.consultantsNeeded) {
+        assignments = assignments.slice(0, project.consultantsNeeded);
+      }
+
       // Map assignments → InterestedConsultant shape
+      // Priority: use opportunity response_status (from PMOpportunity) over assignment status
+      const mapResponseStatus = (a: any): string => {
+        const oppStatus = a.response_status; // from PMOpportunity (attached by backend)
+        const asgStatus = a.status; // from PMAssignment
+        // If the opportunity has a meaningful response_status, use it
+        if (oppStatus === 'interested') return 'Interested';
+        if (oppStatus === 'declined') return 'Declined';
+        if (oppStatus === 'clarification_requested') return 'Clarification Requested';
+        if (oppStatus === 'access_activated') return 'Access Activated';
+        if (oppStatus === 'assignment_accepted') return 'Assignment Accepted';
+        if (oppStatus === 'assignment_declined') return 'Declined';
+        if (oppStatus === 'viewed') return 'Invited';
+        if (oppStatus === 'invited') return 'Invited';
+        // Fallback to assignment status
+        if (asgStatus === 'access_activated') return 'Access Activated';
+        if (asgStatus === 'accepted') return 'Assignment Accepted';
+        if (asgStatus === 'declined' || asgStatus === 'rejected') return 'Declined';
+        if (asgStatus === 'invitation_sent') return 'Invited';
+        return 'Selected';
+      };
+
       const consultants = assignments.map((a: any) => ({
         id: String(a.consultant ?? a.consultant_id ?? a.id),
         name: a.consultant_name || a.consultant_email || `Consultant #${a.consultant ?? a.id}`,
         expertise: a.assignment_role || a.specialization || 'Consulting',
         cost: a.assignment_budget ? `$${a.assignment_budget}` : 'TBD',
-        responseStatus: a.status === 'access_activated' ? 'Access Activated'
-          : a.status === 'accepted' ? 'Assignment Accepted'
-          : a.status === 'invitation_sent' ? 'Invited'
-          : 'Selected' as any,
+        responseStatus: mapResponseStatus(a) as any,
         lastUpdated: a.updated_at || a.created_at,
+        assignmentId: a.id,
+        interestStatement: a.interest_statement || '',
       }));
 
-      // Primary assignment drives the project-level state
-      const primary = assignments[0];
-      const selectedId = String(primary.consultant ?? primary.consultant_id ?? primary.id);
-      const assignmentId: number = primary.id;
-      const assignmentStatus: string = primary.status ?? 'draft';
+      // Extract all assigned consultant IDs
+      const selectedIds = assignments.map(a => String(a.consultant ?? a.consultant_id ?? a.id));
+      const allAssignmentIds = assignments.map(a => a.id);
+      const assignmentId: number = assignments[0]?.id; // Use primary for now
+      const assignmentStatus: string = assignments[0]?.status ?? 'draft';
       const isAccessActivated = assignmentStatus === 'access_activated';
 
       const accessLevelMap: Record<string, string> = {
@@ -267,7 +256,8 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         full_project_workspace: 'Full Project Workspace',
         restricted_custom_access: 'Restricted Custom Access',
       };
-      const accessLevel = accessLevelMap[primary.project_access_level] as any ?? undefined;
+      const primary = assignments[0];
+      const accessLevel = accessLevelMap[primary?.project_access_level] as any ?? undefined;
 
       // Derive admin-facing status from assignment status
       const derivedStatus = isAccessActivated ? 'Active'
@@ -281,8 +271,9 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
             ? {
                 ...p,
                 interestedConsultants: consultants,
-                selectedConsultantId: selectedId,
+                selectedConsultantIds: selectedIds,
                 assignmentId,
+                assignmentIds: allAssignmentIds,
                 assignmentStatus,
                 isAccessActivated,
                 ...(accessLevel ? { accessLevel } : {}),
@@ -299,7 +290,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
 
   sendConsultantInvitation: async (id, invitationMessage = '') => {
     const project = get().projects.find(p => p.id === id);
-    if (!project || !project.selectedConsultantId) {
+    if (!project || !project.selectedConsultantIds || project.selectedConsultantIds.length === 0) {
       console.error('[sendConsultantInvitation] No project or no selected consultant.');
       return;
     }
@@ -308,17 +299,19 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
 
     try {
-      // Step 1: Create assignment if not yet created
-      let assignmentId = project.assignmentId ?? null;
+      // Step 1 & 2: Loop over all selected consultants to create assignment and send invite
+      const assignmentIds: any[] = [];
+      for (const consultantId of project.selectedConsultantIds) {
+        let currentAssignmentId = null;
 
-      if (!assignmentId) {
+        // Try creating an assignment
         const assignRes = await auth.makeAuthenticatedRequest(
           `${baseUrl}/pm/v1/projects/${project.dbId}/assign/`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              consultant: Number(project.selectedConsultantId),
+              consultant: Number(consultantId),
               project_access_level: 'assignment_brief_only',
               assignment_scope: project.scope || project.internalSummary || 'Consultant assignment for this project.',
               invitation_message: invitationMessage,
@@ -328,7 +321,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
 
         if (assignRes.ok) {
           const assignData = await assignRes.json();
-          assignmentId = assignData?.data?.id ?? assignData?.id ?? null;
+          currentAssignmentId = assignData?.data?.id ?? assignData?.id ?? null;
         } else {
           // Try fetching existing
           const existingRes = await auth.makeAuthenticatedRequest(
@@ -337,30 +330,28 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
           if (existingRes.ok) {
             const ex = await existingRes.json();
             const list: any[] = Array.isArray(ex.data) ? ex.data : Array.isArray(ex) ? ex : [];
-            const found = list.find((a: any) => String(a.consultant) === String(project.selectedConsultantId));
-            assignmentId = found?.id ?? null;
+            const found = list.find((a: any) => String(a.consultant) === String(consultantId));
+            currentAssignmentId = found?.id ?? null;
           }
         }
-      }
 
-      if (!assignmentId) {
-        console.error('[sendConsultantInvitation] Could not create or find assignment.');
-        return;
-      }
+        if (currentAssignmentId) {
+          assignmentIds.push(currentAssignmentId);
 
-      // Step 2: Send invitation
-      const inviteRes = await auth.makeAuthenticatedRequest(
-        `${baseUrl}/pm/v1/assignments/${assignmentId}/send-invitation/`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: invitationMessage }),
+          // Send invitation
+          await auth.makeAuthenticatedRequest(
+            `${baseUrl}/pm/v1/assignments/${currentAssignmentId}/send-invitation/`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: invitationMessage }),
+            }
+          );
         }
-      );
+      }
 
-      if (!inviteRes.ok) {
-        const errData = await inviteRes.json().catch(() => ({}));
-        console.error('[sendConsultantInvitation] Failed:', errData);
+      if (assignmentIds.length === 0) {
+        console.error('[sendConsultantInvitation] Could not create or find any assignments.');
         return;
       }
 
@@ -370,10 +361,11 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
           p.id === id
             ? {
                 ...p,
-                assignmentId,
+                assignmentId: assignmentIds[0],
+                assignmentIds: assignmentIds,
                 assignmentStatus: 'invitation_sent',
                 interestedConsultants: p.interestedConsultants?.map(c =>
-                  c.id === p.selectedConsultantId
+                  p.selectedConsultantIds?.includes(c.id)
                     ? { ...c, responseStatus: 'Invited', lastUpdated: new Date().toISOString() }
                     : c
                 ),
@@ -382,7 +374,7 @@ export const useAdminProjectStore = create<AdminProjectState>((set, get) => ({
         ),
       }));
 
-      console.log('[sendConsultantInvitation] Invitation sent, assignmentId:', assignmentId);
+      console.log('[sendConsultantInvitation] Invitations sent, assignmentIds:', assignmentIds);
     } catch (err) {
       console.error('[sendConsultantInvitation] Error:', err);
     }
@@ -531,14 +523,14 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
     )
   })),
 
-  sourceProjectInternally: (id) => {
+  sourceProjectInternally: async (id) => {
     // Set status and clear previous consultants while matching runs
     set((state) => ({
       projects: state.projects.map(p =>
         p.id === id ? {
           ...p,
           status: 'Sourcing Internally',
-          interestedConsultants: undefined,
+          interestedConsultants: p.interestedConsultants?.filter(c => p.selectedConsultantIds?.includes(c.id)) || [],
           sentTo: [],
           summaryVersionSent: 'v1.0 (Auto-match)'
         } : p
@@ -546,44 +538,48 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
     }));
 
     // Run matching algorithm on backend and fetch results
-    (async () => {
-      try {
-        const project = get().projects.find(p => p.id === id);
-        if (!project) return;
-        const auth = (await import('@/lib/auth')).AuthService.getInstance();
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
-        // Trigger matching (POST)
-        await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/match-consultants/`, {
-          method: 'POST',
-        });
-        // Retrieve matches (GET)
-        const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/matches/`);
-        if (!response.ok) {
-          console.error('Failed to fetch matches for internal sourcing');
-          return;
-        }
-        const result = await response.json();
-        const matches = result.data || result;
-        const consultants = (Array.isArray(matches) ? matches : []).map((m: any) => ({
-          id: m.consultant?.toString() || m.id?.toString() || '',
-          name: m.consultant_name || m.name || 'Unnamed',
-          expertise: m.specialization || m.expertise || 'General',
-          cost: m.rate ? `$${m.rate}/hr` : '$0/hr',
-        }));
-        // Update state with real consultants
-        set((state) => ({
-          projects: state.projects.map(p =>
-            p.id === id ? {
-              ...p,
-              interestedConsultants: consultants,
-              sentTo: consultants.map(c => c.id),
-            } : p
-          )
-        }));
-      } catch (error) {
-        console.error('Error during internal sourcing', error);
+    try {
+      const project = get().projects.find(p => p.id === id);
+      if (!project) return;
+      const auth = (await import('@/lib/auth')).AuthService.getInstance();
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+      // Trigger matching (POST)
+      await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/match-consultants/`, {
+        method: 'POST',
+      });
+      // Retrieve matches (GET)
+      const response = await auth.makeAuthenticatedRequest(`${baseUrl}/pm/v1/projects/${project.dbId}/matches/`);
+      if (!response.ok) {
+        console.error('Failed to fetch matches for internal sourcing');
+        return;
       }
-    })();
+      const result = await response.json();
+      const matches = result.data || result;
+      const consultants = (Array.isArray(matches) ? matches : []).map((m: any) => ({
+        id: m.consultant?.toString() || m.id?.toString() || '',
+        name: m.consultant_name || m.name || 'Unnamed',
+        expertise: m.specialization || m.expertise || 'General',
+        cost: m.rate ? `$${m.rate}/hr` : '$0/hr',
+      }));
+      // Update state with real consultants, merging with existing selected consultants
+      set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.id === id) {
+            const existingSelected = p.interestedConsultants?.filter(c => p.selectedConsultantIds?.includes(c.id)) || [];
+            const newConsultants = consultants.filter((c: any) => !existingSelected.find(ec => ec.id === c.id));
+            const mergedConsultants = [...existingSelected, ...newConsultants];
+            return {
+              ...p,
+              interestedConsultants: mergedConsultants,
+              sentTo: mergedConsultants.map(c => c.id),
+            };
+          }
+          return p;
+        })
+      }));
+    } catch (error) {
+      console.error('Error during internal sourcing', error);
+    }
   },
 
   sourceProjectExternally: (id, email) => set((state) => ({
@@ -602,20 +598,54 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
   })),
 
   selectConsultant: (id, consultantId) => set((state) => ({
-    projects: state.projects.map(p =>
-      p.id === id ? {
-        ...p,
-        status: 'Consultant Assignment Pending',
-        selectedConsultantId: consultantId,
-        interestedConsultants: p.interestedConsultants?.map(c =>
-          c.id === consultantId ? {
-            ...c,
-            responseStatus: 'Selected',
-            lastUpdated: new Date().toISOString()
-          } : c
-        )
-      } : p
-    )
+    projects: state.projects.map(p => {
+      if (p.id === id) {
+        const currentSelected = p.selectedConsultantIds || [];
+        
+        let newSelected = [...currentSelected];
+        const targetConsultant = p.interestedConsultants?.find(c => c.id === consultantId);
+        const unlockedStatuses = [undefined, 'Interested', 'Matches', 'Selected'];
+        const isLocked = targetConsultant && !unlockedStatuses.includes(targetConsultant.responseStatus as any);
+
+        if (currentSelected.includes(consultantId)) {
+          if (!isLocked) {
+            // Toggle off only if not locked
+            newSelected = currentSelected.filter(cId => cId !== consultantId);
+          }
+        } else if (currentSelected.length < p.consultantsNeeded) {
+          // Toggle on
+          newSelected.push(consultantId);
+        }
+
+        return {
+          ...p,
+          status: newSelected.length > 0 ? 'Consultant Assignment Pending' : 'Sourcing Internally',
+          selectedConsultantIds: newSelected,
+          interestedConsultants: p.interestedConsultants?.map(c => {
+            const isNowSelected = newSelected.includes(c.id);
+            const wasSelected = currentSelected.includes(c.id);
+            
+            if (isNowSelected && !wasSelected) {
+              // Just selected
+              return {
+                ...c,
+                responseStatus: (!c.responseStatus || unlockedStatuses.includes(c.responseStatus as any)) ? 'Selected' : c.responseStatus,
+                lastUpdated: new Date().toISOString()
+              };
+            } else if (!isNowSelected && wasSelected) {
+              // Just unselected
+              return {
+                ...c,
+                responseStatus: 'Interested', // revert back
+                lastUpdated: new Date().toISOString()
+              };
+            }
+            return c;
+          })
+        };
+      }
+      return p;
+    })
   })),
 
   updateShortlistStatus: (projectId, consultantId, status) => set((state) => ({
@@ -650,9 +680,71 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
     if (!project) return;
 
     // Must have an assignment already (created during send-invitation)
-    const assignmentId = project.assignmentId;
-    if (!assignmentId) {
-      console.error('[activateProjectAccess] No assignment ID found. Send invitation first.');
+    const assignmentIds = project.assignmentIds || (project.assignmentId ? [project.assignmentId] : []);
+    if (!assignmentIds || assignmentIds.length === 0) {
+      console.error('[activateProjectAccess] No assignment IDs found. Send invitation first.');
+      return;
+    }
+
+    const auth = (await import('@/lib/auth')).AuthService.getInstance();
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+    const accessLevelMap: Record<string, string> = {
+      'Assignment Brief Only': 'assignment_brief_only',
+      'Selected Documents Only': 'selected_documents_only',
+      'Full Project Workspace': 'full_project_workspace',
+      'Restricted Custom Access': 'restricted_custom_access',
+    };
+
+    try {
+      for (const assignId of assignmentIds) {
+        const activateResponse = await auth.makeAuthenticatedRequest(
+          `${baseUrl}/pm/v1/assignments/${assignId}/activate-access/`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_level: accessLevelMap[accessLevel] ?? 'full_project_workspace' }),
+          }
+        );
+
+        if (!activateResponse.ok) {
+          const errData = await activateResponse.json().catch(() => ({}));
+          console.error(`[activateProjectAccess] Failed for assignment ${assignId}:`, errData);
+        }
+      }
+
+      set(state => ({
+        projects: state.projects.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                accessLevel,
+                assignmentStatus: 'access_activated',
+                isAccessActivated: true,
+                status: 'Active',
+                interestedConsultants: p.interestedConsultants?.map(c =>
+                  p.selectedConsultantIds?.includes(c.id)
+                    ? { ...c, responseStatus: 'Access Activated', lastUpdated: new Date().toISOString() }
+                    : c
+                ),
+              }
+            : p
+        ),
+      }));
+
+      console.log('[activateProjectAccess] Done for assignments', assignmentIds);
+    } catch (error) {
+      console.error('[activateProjectAccess] Error:', error);
+      throw error;
+    }
+  },
+
+  activateConsultantAccess: async (id, consultantId, accessLevel) => {
+    const project = get().projects.find(p => p.id === id);
+    if (!project) return;
+
+    const consultant = project.interestedConsultants?.find(c => c.id === consultantId);
+    if (!consultant || !consultant.assignmentId) {
+      console.error('[activateConsultantAccess] No assignment ID found for consultant.', consultantId);
       return;
     }
 
@@ -667,7 +759,7 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
 
     try {
       const activateResponse = await auth.makeAuthenticatedRequest(
-        `${baseUrl}/pm/v1/assignments/${assignmentId}/activate-access/`,
+        `${baseUrl}/pm/v1/assignments/${consultant.assignmentId}/activate-access/`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -677,8 +769,7 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
 
       if (!activateResponse.ok) {
         const errData = await activateResponse.json().catch(() => ({}));
-        console.error('[activateProjectAccess] Failed:', errData);
-        return;
+        console.error(`[activateConsultantAccess] Failed for assignment ${consultant.assignmentId}:`, errData);
       }
 
       set(state => ({
@@ -686,12 +777,8 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
           p.id === id
             ? {
                 ...p,
-                accessLevel,
-                assignmentStatus: 'access_activated',
-                isAccessActivated: true,
-                status: 'Active',
                 interestedConsultants: p.interestedConsultants?.map(c =>
-                  c.id === p.selectedConsultantId
+                  c.id === consultantId
                     ? { ...c, responseStatus: 'Access Activated', lastUpdated: new Date().toISOString() }
                     : c
                 ),
@@ -700,9 +787,9 @@ This project requires ${project.consultantsNeeded} consultant(s). The work is hi
         ),
       }));
 
-      console.log('[activateProjectAccess] Done for assignment', assignmentId);
+      console.log('[activateConsultantAccess] Done for assignment', consultant.assignmentId);
     } catch (error) {
-      console.error('[activateProjectAccess] Error:', error);
+      console.error('[activateConsultantAccess] Error:', error);
       throw error;
     }
   },

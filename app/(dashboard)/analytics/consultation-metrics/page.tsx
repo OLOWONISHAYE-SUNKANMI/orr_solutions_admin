@@ -80,9 +80,12 @@ export default function ConsultationMetricsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken') || localStorage.getItem('auth-token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : undefined;
+
         const [consultationRes, schedulingRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/consultation-metrics/performance/`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/consultation-metrics/scheduling-analytics/`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/consultation-metrics/performance/`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/consultation-metrics/scheduling-analytics/`, { headers })
         ]);
         
         if (consultationRes.ok && schedulingRes.ok) {

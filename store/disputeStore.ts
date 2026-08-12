@@ -24,11 +24,32 @@ interface DisputeStats {
   totalAmount: number;
 }
 
+export interface DisputeActivity {
+  activity_id: string;
+  dispute_id: string;
+  activity_type: string;
+  description: string;
+  performed_by: string;
+  timestamp: string;
+  status: string;
+}
+
+export interface DisputeTrend {
+  month: string;
+  total_disputes: number;
+  chargebacks: number;
+  inquiries: number;
+  dispute_rate: number;
+  win_rate: number;
+}
+
 type StatusFilter = 'all' | 'needs_response' | 'under_review' | 'resolved';
 
 interface DisputeState {
   disputes: Dispute[];
   statistics: DisputeStats;
+  recentActivity: DisputeActivity[];
+  disputeTrends: DisputeTrend[];
   isLoading: boolean;
   searchQuery: string;
   statusFilter: StatusFilter;
@@ -40,8 +61,8 @@ interface DisputeState {
   // Actions
   fetchDisputes: () => Promise<void>;
   createDispute: (data: {
-    client_id: number;
-    invoice_id: number;
+    client_id: string | number;
+    invoice_id: string | number;
     dispute_amount: number;
     dispute_reason: string;
     dispute_type: string;
@@ -64,6 +85,8 @@ export const useDisputeStore = create<DisputeState>((set, get) => ({
     disputeRate: 0,
     totalAmount: 0
   },
+  recentActivity: [],
+  disputeTrends: [],
   isLoading: false,
   searchQuery: '',
   statusFilter: 'all',
@@ -124,7 +147,10 @@ export const useDisputeStore = create<DisputeState>((set, get) => ({
         totalAmount: statsData.total_disputed_amount || 0
       };
 
-      set({ disputes: mappedDisputes, statistics, isLoading: false });
+      const recentActivity = data.recent_activity || [];
+      const disputeTrends = data.dispute_trends || [];
+
+      set({ disputes: mappedDisputes, statistics, recentActivity, disputeTrends, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch disputes:', error);
       set({ isLoading: false });
@@ -133,15 +159,25 @@ export const useDisputeStore = create<DisputeState>((set, get) => ({
 
   createDispute: async (data) => {
     try {
-      const auth = AuthService.getInstance();
-      const response = await auth.makeAuthenticatedRequest(`${baseUrl}/admin-portal/v1/payment-disputes/overview/`, {
+      const token = typeof window !== 'undefined' ? (
+        localStorage.getItem('access_token') || 
+        localStorage.getItem('accessToken') || 
+        localStorage.getItem('auth-token')
+      ) : null;
+      
+      const response = await fetch(`${baseUrl}/admin-portal/v1/payment-disputes/overview/`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(data),
       });
       const result = await response.json();
 
-      if (result.error) {
-        return { success: false, error: result.error };
+      if (result.error || result.success === false) {
+        return { success: false, error: result.error || result.message || 'Unknown error' };
       }
 
       // Refresh the list
@@ -155,18 +191,28 @@ export const useDisputeStore = create<DisputeState>((set, get) => ({
 
   performAction: async (disputeId, action, notes = '') => {
     try {
-      const auth = AuthService.getInstance();
-      const response = await auth.makeAuthenticatedRequest(
-        `${baseUrl}/admin-portal/v1/payment-disputes/${disputeId}/actions/`,
+      const token = typeof window !== 'undefined' ? (
+        localStorage.getItem('access_token') || 
+        localStorage.getItem('accessToken') || 
+        localStorage.getItem('auth-token')
+      ) : null;
+
+      const response = await fetch(
+        `${baseUrl}/admin-portal/v1/payment-disputes/${disputeId}/action/`,
         {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({ action, notes }),
         }
       );
       const result = await response.json();
 
-      if (result.error) {
-        return { success: false, error: result.error };
+      if (result.error || result.success === false) {
+        return { success: false, error: result.error || result.message || 'Unknown error' };
       }
 
       // Refresh the list

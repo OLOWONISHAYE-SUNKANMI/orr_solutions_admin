@@ -1,8 +1,9 @@
 "use client";
 
-import { Users, ToggleLeft, ToggleRight, Loader } from "lucide-react";
+import { Users, ToggleLeft, ToggleRight } from "lucide-react";
 import type { ClientListItem } from "@/app/services/types";
 import { useIsSuperAdmin } from "@/lib/rbac/hooks";
+import { SkeletonList } from "@/app/components/ui/SkeletonPresets";
 
 interface ClientListProps {
   clients: ClientListItem[];
@@ -36,9 +37,7 @@ export default function ClientList({ clients, selectedClientId, loading, onClien
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader className="animate-spin" size={24} />
-      </div>
+      <SkeletonList rows={5} />
     );
   }
 

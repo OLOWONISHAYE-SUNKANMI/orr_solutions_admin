@@ -1263,7 +1263,8 @@ export const it = {
     adjustment_total: "Totale Rettifica",
     requires_auth: "Richiede Autenticazione Livello 2",
     from: "Da",
-    to: "A"
+    to: "A",
+    pending_queue: "Coda di Rettifica Attiva"
   },
   invoicing: {
     orchestration: "Orchestrazione Fatturazione",
@@ -1277,6 +1278,8 @@ export const it = {
     title: "Contenziosi",
     disputes: "Pagamenti",
     subtitle: "Monitora e rispondi ai contenziosi finanziari esterni, chargeback e avvisi di transazioni ad alto rischio.",
+    trends_title: "Andamento Contenziosi",
+    activity_feed: "Attività Recente",
     all: "Tutti",
     needs_response: "Richiede Risposta",
     under_review: "In Revisione",

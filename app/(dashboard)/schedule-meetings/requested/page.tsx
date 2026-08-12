@@ -5,6 +5,7 @@ import { Clock, User, Calendar, CheckCircle, XCircle, Edit, Loader, AlertCircle,
 import { meetingAPI, authAPI } from "@/app/services";
 import type { Meeting } from "@/app/services/types";
 import { useLanguageStore } from "@/store/languageStore";
+import { SkeletonList } from "@/app/components/ui/SkeletonPresets";
 
 export default function RequestedMeetingsPage() {
   const { t } = useLanguageStore();
@@ -94,9 +95,7 @@ export default function RequestedMeetingsPage() {
         <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
         <div className="relative z-10 p-8">
           <div className="bg-card backdrop-blur-sm rounded-2xl p-8 border border-white/10">
-            <div className="flex items-center justify-center py-12">
-              <Loader className="animate-spin" size={32} />
-            </div>
+            <SkeletonList rows={5} />
           </div>
         </div>
       </div>

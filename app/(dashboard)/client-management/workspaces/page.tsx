@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, Users, Bot, Calendar, FileText, Loader, Activity, Settings, RefreshCcw, TrendingUp } from "lucide-react";
+import { Briefcase, Users, Bot, Calendar, FileText, Activity, Settings, RefreshCcw, TrendingUp } from "lucide-react";
+import { DashboardSkeleton } from "@/app/components/ui/SkeletonPresets";
 import { useLanguageStore } from "@/store/languageStore";
 import { analyticsAPI } from "@/app/services";
 
@@ -30,14 +31,7 @@ export default function ClientWorkspacesPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen text-white relative overflow-hidden star">
-        <div className="absolute inset-0 bg-[url('/stars.svg')] opacity-20 pointer-events-none" />
-        <div className="relative z-10 p-4 md:p-8 flex items-center justify-center min-h-[60vh]">
-          <Loader className="animate-spin text-primary" size={48} />
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const featureUsage = data?.feature_usage || {};

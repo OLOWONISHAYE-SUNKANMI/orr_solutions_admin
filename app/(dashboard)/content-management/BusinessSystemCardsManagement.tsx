@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Save, Loader, Plus, Trash2, Edit } from 'lucide-react';
+import { Save, Plus, Trash2, Edit } from 'lucide-react';
+import { SkeletonCardGrid } from "@/app/components/ui/SkeletonPresets";
 import RichTextEditor from '../../../components/RichTextEditor';
 import { useNotificationContext } from '../../../lib/contexts/NotificationContext';
 import { useLanguageStore } from '@/store/languageStore';
@@ -141,9 +142,7 @@ export default function BusinessSystemCardsManagement({
     return (
       <div className={sectionClass}>
         <h2 className={titleClass}>{t('content_management.business_system_section')}</h2>
-        <div className="flex items-center justify-center py-8">
-          <Loader className="animate-spin" size={24} />
-        </div>
+        <SkeletonCardGrid count={3} />
       </div>
     );
   }

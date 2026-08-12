@@ -5,9 +5,9 @@ import {
   DollarSign,
   MoreVertical,
   Wallet,
-  Loader,
   Download,
 } from "lucide-react";
+import { DashboardSkeleton } from "@/app/components/ui/SkeletonPresets";
 import { useState, useEffect } from "react";
 import { billingAPI, BillingHistoryItem, PaymentStats } from "@/app/services";
 import { useLanguageStore } from "@/store/languageStore";
@@ -77,12 +77,7 @@ export default function PaymentManagementPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen text-white relative overflow-hidden star flex flex-col items-center justify-center gap-4">
-        <Loader className="w-12 h-12 animate-spin text-primary" />
-        <p className="text-gray-500 uppercase tracking-widest font-bold text-xs animate-pulse">{t('analytics.loading')}</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
