@@ -1804,7 +1804,7 @@ export const feedbackAPI = {
 export const subscriptionsAPI = {
   getManagement: () => {
     console.log('[API] Fetching subscription management data');
-    return apiCall("/admin-portal/v1/subscriptions/management/").catch(error => {
+    return apiCall<any>("/admin-portal/v1/subscriptions/management/").catch(error => {
       console.error('[API ERROR] Failed to fetch subscription management data:', error);
       throw error;
     });
