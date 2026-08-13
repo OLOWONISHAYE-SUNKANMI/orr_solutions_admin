@@ -189,7 +189,7 @@ export default function DocumentStudioPage() {
          return <DocsEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
       }
       if (activeDocument.type === 'sheet' || activeDocument.type === 'xlsx' || activeDocument.type === 'google_sheet') {
-         return <SheetsEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;
+         return <SheetsEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} fileUrl={activeDocument.link || activeDocument.file} />;
       }
       if (activeDocument.type === 'slide' || activeDocument.type === 'pptx' || activeDocument.type === 'google_slide') {
          return <SlidesEditor key={activeDocument.id} content={content} onChange={handleContentChange} title={title} onTitleChange={handleTitleChange} />;

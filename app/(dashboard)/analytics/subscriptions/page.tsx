@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Users, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { useLanguageStore } from "@/store/languageStore";
-import { AuthService } from "@/lib/auth";
+import api from "@/app/services/api";
 
 export default function SubscriptionsPage() {
   const { t, language } = useLanguageStore();
@@ -13,13 +13,8 @@ export default function SubscriptionsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await AuthService.getInstance().makeAuthenticatedRequest(`${process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app'}/admin-portal/v1/subscriptions/management/`);
-        if (response.ok) {
-          const result = await response.json();
-          setData(result.data || result);
-        } else {
-          console.error('API Error:', response.status);
-        }
+        const result = await api.subscriptions.getManagement();
+        setData(result.data || result);
       } catch (error) {
         console.error('Error fetching subscriptions:', error);
       } finally {
