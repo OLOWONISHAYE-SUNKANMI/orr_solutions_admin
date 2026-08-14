@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Sparkles, X, Activity } from 'lucide-react';
+import { Sparkles, X, Activity, ShieldAlert } from 'lucide-react';
 import '@fortune-sheet/react/dist/index.css';
 
 interface SheetsEditorProps {
@@ -10,6 +10,7 @@ interface SheetsEditorProps {
    onChange: (content: string) => void;
    title: string;
    onTitleChange: (title: string) => void;
+   fileUrl?: string;
 }
 
 // FortuneSheet uses window/document extensively, so it must be dynamically imported with SSR disabled.
@@ -18,7 +19,7 @@ const Workbook = dynamic(() => import('@fortune-sheet/react').then(mod => mod.Wo
     loading: () => <div className="flex items-center justify-center h-full w-full bg-gray-50 text-gray-400">Loading spreadsheet engine...</div>
 });
 
-export default function SheetsEditor({ content, onChange, title, onTitleChange }: SheetsEditorProps) {
+export default function SheetsEditor({ content, onChange, title, onTitleChange, fileUrl }: SheetsEditorProps) {
     const [showInsights, setShowInsights] = useState(false);
     const workbookRef = React.useRef<any>(null);
     
@@ -52,6 +53,8 @@ export default function SheetsEditor({ content, onChange, title, onTitleChange }
     });
 
     const [isParsingExcel, setIsParsingExcel] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const lastFetchedUrl = React.useRef<string | null>(null);
 
     React.useEffect(() => {
         if (content && content.startsWith('data:') && (content.includes('excel') || content.includes('spreadsheetml') || title?.toLowerCase().endsWith('.xlsx') || title?.toLowerCase().endsWith('.xls'))) {
@@ -77,15 +80,65 @@ export default function SheetsEditor({ content, onChange, title, onTitleChange }
                         setIsParsingExcel(false);
                     }, (err: any) => {
                         console.error("Failed to parse Excel file", err);
+                        setErrorMsg(String(err));
                         setIsParsingExcel(false);
                     });
                 });
-            } catch (err) {
+            } catch (err: any) {
                 console.error(err);
+                setErrorMsg(err.message || String(err));
                 setIsParsingExcel(false);
             }
+        } else if (fileUrl && !fileUrl.includes('docs.google.com') && lastFetchedUrl.current !== fileUrl) {
+            // Since this component is only rendered for sheet/xlsx types, we can safely attempt to parse any fileUrl provided.
+            lastFetchedUrl.current = fileUrl;
+            setIsParsingExcel(true);
+            const fetchExcel = async () => {
+                try {
+                    const token = localStorage.getItem('access_token') || localStorage.getItem('accessToken') || localStorage.getItem('auth-token');
+                    const headers: HeadersInit = {};
+                    if (token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+                    
+                    let fetchUrl = fileUrl;
+                    if (fetchUrl.startsWith('/')) {
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://orr-backend-105825824472.asia-southeast2.run.app';
+                        fetchUrl = `${apiUrl}${fetchUrl}`;
+                    }
+                    
+                    // Route through local API proxy to bypass strict CORS policies on GCS or other external buckets
+                    const proxiedUrl = `/api/proxy-download?url=${encodeURIComponent(fetchUrl)}`;
+                    
+                    const res = await fetch(proxiedUrl, { headers });
+                    if (!res.ok) throw new Error(`Failed to fetch file: ${res.statusText}`);
+                    const blob = await res.blob();
+                    const file = new File([blob], title || "file.xlsx", {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+                    
+                    // @ts-ignore
+                    import('luckyexcel').then((LuckyExcel) => {
+                        LuckyExcel.default.transformExcelToLucky(file, (exportJson: any) => {
+                            if (exportJson.sheets && exportJson.sheets.length > 0) {
+                                setData(exportJson.sheets);
+                                const newContent = JSON.stringify(exportJson.sheets);
+                                onChangeRef.current(newContent);
+                            }
+                            setIsParsingExcel(false);
+                        }, (err: any) => {
+                            console.error("Failed to parse Excel file from URL", err);
+                            setErrorMsg(`Parse Error: ${String(err)}`);
+                            setIsParsingExcel(false);
+                        });
+                    });
+                } catch (err: any) {
+                    console.error("Error fetching or parsing fileUrl:", err);
+                    setErrorMsg(`Fetch Error: ${err.message || String(err)}`);
+                    setIsParsingExcel(false);
+                }
+            };
+            fetchExcel();
         }
-    }, []);
+    }, [content, fileUrl, title]);
 
     const onChangeRef = React.useRef(onChange);
     React.useEffect(() => {
@@ -137,7 +190,14 @@ export default function SheetsEditor({ content, onChange, title, onTitleChange }
             
             <div className="flex-1 relative w-full overflow-hidden flex">
                 <div className="flex-1 relative">
-                    {isParsingExcel ? (
+                    {errorMsg ? (
+                        <div className="flex flex-col items-center justify-center h-full w-full bg-red-50 text-red-500 p-8 text-center">
+                            <ShieldAlert size={48} className="mb-4 text-red-400" />
+                            <h3 className="text-lg font-bold">Failed to load spreadsheet</h3>
+                            <p className="text-sm mt-2 max-w-md">{errorMsg}</p>
+                            <p className="text-xs mt-4 text-red-400">Please check your internet connection, or verify the file is not corrupted. CORS policies may block fetching from external domains.</p>
+                        </div>
+                    ) : isParsingExcel ? (
                         <div className="flex flex-col items-center justify-center h-full w-full bg-white text-gray-500">
                             <h3 className="text-lg font-medium text-gray-800">Parsing Excel File...</h3>
                             <p className="text-sm mt-2">Loading sheets and formatting. This may take a moment for larger files.</p>

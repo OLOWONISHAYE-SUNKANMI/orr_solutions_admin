@@ -74,11 +74,11 @@ export default function WorkspaceShell({
                         exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col overflow-hidden"
                      >
-                        {(activeDocument.link || activeDocument.webViewLink) && !isMock ? (
+                        {(activeDocument.link || activeDocument.webViewLink) && !isMock && !['xlsx', 'xls', 'sheet', 'google_sheet'].includes(activeDocument.type) ? (
                            <div className="flex-1 bg-card flex flex-col">
                               <div className="h-10 border-b border-white/10 flex items-center justify-between px-6 bg-white/[0.02]">
                                  <div className="flex items-center gap-3">
-                                    <div className={`w-2 h-2 rounded-full ${activeDocument.type === 'pdf' ? 'bg-red-500' : (activeDocument.type === 'docx' || activeDocument.type === 'xlsx' || activeDocument.type === 'pptx') ? 'bg-blue-400' : 'bg-green-500'}`} />
+                                    <div className={`w-2 h-2 rounded-full ${activeDocument.type === 'pdf' ? 'bg-red-500' : (activeDocument.type === 'docx' || activeDocument.type === 'pptx') ? 'bg-blue-400' : 'bg-green-500'}`} />
                                     <span className="text-xs font-semibold text-slate-400">
                                        {activeDocument.type === 'pdf' ? 'PDF Viewer' : (activeDocument.documentSource?.startsWith('google_')) ? 'Live Google Sync' : 'Office Preview'}
                                     </span>
@@ -101,7 +101,7 @@ export default function WorkspaceShell({
 
                                     if (activeDocument.type === 'pdf') return link;
                                     if (isGoogleNative) return link;
-                                    if (['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'].includes(activeDocument.type)) {
+                                    if (['docx', 'doc', 'pptx', 'ppt'].includes(activeDocument.type)) {
                                        return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(link)}`;
                                     }
                                     return link;
